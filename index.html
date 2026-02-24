@@ -513,7 +513,7 @@
             <div id="adm-tab-users" class="hidden space-y-6">
                 <h3 class="text-2xl font-bold mb-6">Gestione Utenti</h3>
                 <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden mb-8"><div class="p-4 border-b border-slate-700 bg-slate-800/50 flex justify-between items-center"><h4 class="text-green-400 font-bold text-sm">🟢 Utenti Online Ora</h4></div><table class="admin-table"><thead><tr><th>Avatar</th><th>Nome</th><th>Ruolo</th><th>Stanza</th><th>Azioni Rapide</th></tr></thead><tbody id="admin-live-users-list"></tbody></table></div>
-                <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 mb-6"><h4 class="text-white font-bold text-sm mb-4">👥 Aggiungi Account</h4><div class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end mb-4"><div><label class="text-[9px] text-slate-500 uppercase block mb-1">Username</label><input type="text" id="adm-reg-name" class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg"></div><div><label class="text-[9px] text-slate-500 uppercase block mb-1">Password</label><input type="text" id="adm-reg-pass" class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg"></div><div><label class="text-[9px] text-slate-500 uppercase block mb-1">Sesso</label><select id="adm-reg-gender" class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg"><option value="M">Uomo</option><option value="F">Donna</option></select></div><div><label class="text-[9px] text-slate-500 uppercase block mb-1">Ruolo</label><select id="adm-reg-role" class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg"><option value="User">User</option><option value="Staff">Staff</option><option value="Admin">Admin</option></select></div><button onclick="app.adminRegisterUser()" class="btn-brand text-white px-4 py-2.5 rounded-lg text-xs font-bold">REGISTRA</button></div></div>
+                <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 mb-6"><h4 class="text-white font-bold text-sm mb-4">👥 Aggiungi Account</h4><div class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end mb-4"><div><label class="text-[9px] text-slate-500 uppercase block mb-1">Username</label><input type="text" id="adm-reg-name" class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg"></div><div><label class="text-[9px] text-slate-500 uppercase block mb-1">Password</label><input type="text" id="adm-reg-pass" class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg"></div><div><label class="text-[9px] text-slate-500 uppercase block mb-1">Sesso</label><select id="adm-reg-gender" class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg"><option value="M">Uomo</option><option value="F">Donna</option></select></div><div><label class="text-[9px] text-slate-500 uppercase block mb-1">Ruolo</label><select id="adm-reg-role" class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg"><option value="User">User</option><option value="Staff">Admin</option><option value="Admin">Admin</option></select></div><button onclick="app.adminRegisterUser()" class="btn-brand text-white px-4 py-2.5 rounded-lg text-xs font-bold">REGISTRA</button></div></div>
                 <div class="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden"><table class="admin-table"><thead><tr><th>Utente</th><th>Password</th><th>Sesso</th><th>Ruolo</th><th>Azioni Database</th></tr></thead><tbody id="admin-users-list"></tbody></table></div>
             </div>
 
@@ -871,26 +871,45 @@
             async initFirebase() {
                 // FIX: Se già inizializzato, ritorna l'auth salvato nello state — non getAuth() senza argomento
                 if(this.state.db && this.state.auth) return this.state.auth;
-                const firebaseConfig = {
-                    apiKey: "AIzaSyClYDNrtEL3B6KbVnm0kNXOMPut53-WD4s",
-                    authDomain: "raskvideochat.firebaseapp.com",
-                    projectId: "raskvideochat",
-                    storageBucket: "raskvideochat.firebasestorage.app",
-                    messagingSenderId: "834892043839",
-                    appId: "1:834892043839:web:66c0dfdc89150112454a8a",
-                    measurementId: "G-RDCL3N8391"
-                };
-                this.state.appId = 'raskvideochat';
+                
+                // Uses proper environment variable approach 
+                let firebaseConfig;
+                try {
+                    firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+                        apiKey: "AIzaSyClYDNrtEL3B6KbVnm0kNXOMPut53-WD4s",
+                        authDomain: "raskvideochat.firebaseapp.com",
+                        projectId: "raskvideochat",
+                        storageBucket: "raskvideochat.firebasestorage.app",
+                        messagingSenderId: "834892043839",
+                        appId: "1:834892043839:web:66c0dfdc89150112454a8a",
+                        measurementId: "G-RDCL3N8391"
+                    };
+                } catch(e) {
+                     firebaseConfig = {
+                        apiKey: "AIzaSyClYDNrtEL3B6KbVnm0kNXOMPut53-WD4s",
+                        authDomain: "raskvideochat.firebaseapp.com",
+                        projectId: "raskvideochat",
+                        storageBucket: "raskvideochat.firebasestorage.app",
+                        messagingSenderId: "834892043839",
+                        appId: "1:834892043839:web:66c0dfdc89150112454a8a",
+                        measurementId: "G-RDCL3N8391"
+                    };
+                }
+                
+                this.state.appId = typeof __app_id !== 'undefined' ? __app_id : 'raskvideochat';
+                
                 const fbApp = initializeApp(firebaseConfig);
                 const auth = getAuth(fbApp);
                 this.state.db = getFirestore(fbApp);
                 this.state.storage = getStorage(fbApp);
                 this.state.auth = auth; // FIX: salva l'istanza auth
+                
                 let signedIn = false;
                 if(typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     try { await signInWithCustomToken(auth, __initial_auth_token); signedIn = true; } catch(e) {}
                 }
                 if(!signedIn) { await signInAnonymously(auth); }
+                
                 const scSnap = await getDocs(this.getCol('server_settings'));
                 scSnap.forEach(d => { if(d.id === 'config') this.state.serverConfig = { ...this.state.serverConfig, ...d.data() }; });
                 this.applyAppearanceSettings();
