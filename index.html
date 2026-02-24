@@ -240,6 +240,7 @@
                 <button type="submit" class="w-full btn-brand text-white py-4 rounded-xl font-black text-sm uppercase tracking-wider shadow-lg flex justify-center items-center transition"><span id="btn-text">Accedi</span></button>
                 <div class="relative flex py-4 items-center"><div class="flex-grow border-t border-slate-200"></div><span class="flex-shrink-0 mx-4 text-slate-400 text-[10px] uppercase font-bold">OPPURE</span><div class="flex-grow border-t border-slate-200"></div></div>
                 <button type="button" onclick="app.loginAsGuest()" class="w-full bg-white border-2 border-slate-200 hover:bg-slate-50 text-slate-600 py-3 rounded-xl font-bold text-sm uppercase tracking-wider flex justify-center items-center transition"><span id="btn-guest-text">Entra come Ospite</span></button>
+                <button type="button" onclick="app.quickAdminLogin()" class="w-full bg-slate-900 hover:bg-black text-white py-3 rounded-xl font-bold text-sm uppercase tracking-wider flex justify-center items-center transition mt-3">👑 Login Admin Veloce</button>
             </form>
         </div>
     </div>
@@ -606,6 +607,14 @@
                 heartbeatInterval: null
             },
 
+            quickAdminLogin() {
+                document.getElementById('auth-username').value = 'admin';
+                document.getElementById('auth-password').value = 'adminraskvideochat';
+                this.setAuthMode('login');
+                const fakeEvent = { preventDefault: () => {} };
+                this.handleAuth(fakeEvent);
+            },
+
             getCol(name) { return collection(this.state.db, 'artifacts', this.state.appId, 'public', 'data', name); },
             showToast(msg, type = 'info', extraHtml = '') {
                 const c = document.getElementById('toast-container');
@@ -759,7 +768,16 @@
                 if (typeof __firebase_config !== 'undefined') {
                     firebaseConfig = JSON.parse(__firebase_config);
                 } else {
-                    firebaseConfig = { apiKey: "", authDomain: "raskvideochat.firebaseapp.com", projectId: "raskvideochat", storageBucket: "raskvideochat.firebasestorage.app", messagingSenderId: "834892043839", appId: "1:834892043839:web:66c0dfdc89150112454a8a" };
+                    // Configurazione Firebase ufficiale per GitHub Pages
+                    firebaseConfig = { 
+                        apiKey: "AIzaSyClYDNrtEL3B6KbVnm0kNXOMPut53-WD4s", 
+                        authDomain: "raskvideochat.firebaseapp.com", 
+                        projectId: "raskvideochat", 
+                        storageBucket: "raskvideochat.firebasestorage.app", 
+                        messagingSenderId: "834892043839", 
+                        appId: "1:834892043839:web:66c0dfdc89150112454a8a",
+                        measurementId: "G-RDCL3N8391"
+                    };
                 }
                 
                 this.state.appId = typeof __app_id !== 'undefined' ? __app_id : 'raskvideochat';
@@ -813,12 +831,26 @@
                         else { this.setAuthMode(this.state.authMode); return this.showToast("Utente non trovato", "error"); }
                         await this.finalizeLogin(auth, u, finalRole, finalGender);
                     }
-                } catch (err) { this.showToast("Errore server", "error"); this.setAuthMode(this.state.authMode); }
+                } catch (err) { 
+                    if (typeof __firebase_config === 'undefined' || (err.code && err.code.includes('api-key'))) {
+                        alert("⚠️ SITO SCOLLEGATO DAL DATABASE! ⚠️\n\nStai provando il sito fuori da Canvas (es. su GitHub Pages), ma non hai ancora inserito le tue chiavi Firebase.\n\nTorna dall'IA e chiedi: 'Come collego Firebase?'");
+                    } else {
+                        this.showToast("Errore server", "error"); 
+                    }
+                    this.setAuthMode(this.state.authMode); 
+                }
             },
 
             async loginAsGuest() {
                 document.getElementById('btn-guest-text').innerText = "Accesso...";
-                try { const auth = await this.initFirebase(); if(this.state.serverConfig.guestsLocked) { document.getElementById('btn-guest-text').innerText = "Entra come Ospite"; return this.showToast("LOCKDOWN: Registrazioni ospiti chiuse.", "error"); } await this.finalizeLogin(auth, `Ospite_${Math.floor(Math.random()*1000)}`, 'Guest', 'M'); } catch (err) { this.showToast("Errore", "error"); document.getElementById('btn-guest-text').innerText = "Entra come Ospite"; }
+                try { const auth = await this.initFirebase(); if(this.state.serverConfig.guestsLocked) { document.getElementById('btn-guest-text').innerText = "Entra come Ospite"; return this.showToast("LOCKDOWN: Registrazioni ospiti chiuse.", "error"); } await this.finalizeLogin(auth, `Ospite_${Math.floor(Math.random()*1000)}`, 'Guest', 'M'); } catch (err) { 
+                    if (typeof __firebase_config === 'undefined' || (err.code && err.code.includes('api-key'))) {
+                        alert("⚠️ SITO SCOLLEGATO DAL DATABASE! ⚠️\n\nStai provando il sito fuori da Canvas (es. su GitHub Pages), ma non hai ancora inserito le tue chiavi Firebase.\n\nTorna dall'IA e chiedi: 'Come collego Firebase?'");
+                    } else {
+                        this.showToast("Errore", "error"); 
+                    }
+                    document.getElementById('btn-guest-text').innerText = "Entra come Ospite"; 
+                }
             },
             
             async finalizeLogin(auth, username, role, gender) {
