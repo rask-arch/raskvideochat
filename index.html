@@ -754,7 +754,6 @@
             async initFirebase() {
                 if(this.state.db) return getAuth();
                 
-                // Conforme alle regole di Canvas Runtime
                 let firebaseConfig;
                 if (typeof __firebase_config !== 'undefined') {
                     firebaseConfig = JSON.parse(__firebase_config);
@@ -1552,7 +1551,7 @@
             closePrivateChat() { 
                 this.state.privateChatTarget = null; 
                 document.getElementById('pvt-window').classList.remove('active'); 
-                if(this.state.f4.active) this.togglePvtGame(); 
+                if(this.state.f4.active) this.togglePvtGame(); // chiudi gioco se aperto
             },
             async sendPrivateMessage(e) { e.preventDefault(); const t = document.getElementById('pvt-input').value.trim(); if(!t || !this.state.privateChatTarget) return; await addDoc(this.getCol('messages_pvt'), { text: this.sanitize(t), name: this.state.me.name, fromUid: this.state.me.uid, toUid: this.state.privateChatTarget.uid, timestamp: Date.now() }); document.getElementById('pvt-input').value = ''; },
             renderPrivateChat() { const t = this.state.privateChatTarget; if(!t) return; const c = document.getElementById('pvt-messages'); const msgs = this.state.allPvtMessages.filter(m => ((m.fromUid === this.state.me.uid && m.toUid === t.uid) || (m.fromUid === t.uid && m.toUid === this.state.me.uid)) && m.timestamp >= this.state.loginTime).sort((a,b) => a.timestamp - b.timestamp); c.innerHTML = msgs.map(m => `<div class="pvt-msg ${m.fromUid === this.state.me.uid ? 'me' : 'them'}">${m.text}</div>`).join(''); setTimeout(() => { c.scrollTop = c.scrollHeight; }, 10); },
