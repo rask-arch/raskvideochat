@@ -1,0 +1,1807 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>RaskVideochat - Public Beta 1.0</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+
+    <style>
+        /* === RESET, CORE & CSS VARIABLES === */
+        :root {
+            --brand-col-1: #4338ca;
+            --brand-col-2: #4f46e5;
+            --brand-col-3: #7e22ce;
+        }
+        
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body { background-color: #0f172a; color: #1e293b; font-family: 'Plus Jakarta Sans', sans-serif; margin: 0; overflow: hidden; height: 100dvh; display: flex; flex-direction: column; overscroll-behavior: none; transition: background-color 0.3s ease; }
+        
+        #app-bg-container { position: fixed; inset: 0; z-index: -2; background: radial-gradient(circle at top right, #2e1065, #020617 70%); background-size: cover; background-position: center; transition: background 0.5s ease; }
+        .app-backdrop { position: absolute; inset: 0; background: rgba(241, 245, 249, 0.85); backdrop-filter: blur(5px); z-index: -1; transition: background 0.3s ease; }
+        .brand-gradient { background: linear-gradient(135deg, var(--brand-col-1) 0%, var(--brand-col-2) 50%, var(--brand-col-3) 100%); transition: background 0.5s ease; }
+        .text-brand { color: var(--brand-col-2); transition: color 0.5s ease; }
+        .border-brand { border-color: var(--brand-col-2); transition: border-color 0.5s ease; }
+
+        /* === LIGHT THEME OVERRIDES === */
+        body.light-theme { background-color: #f8fafc; color: #0f172a; }
+        body.light-theme #app-bg-container { background: radial-gradient(circle at top right, #e2e8f0, #f8fafc 80%); }
+        body.light-theme .app-backdrop { background: rgba(255, 255, 255, 0.95); }
+        body.light-theme .text-white:not(header .text-white, .btn-brand, .toast, .admin-nav-item, .v-btn, .text-white\/70, .text-white\/50, .text-white\/40, .pvt-header .text-white) { color: #0f172a !important; }
+        body.light-theme .bg-slate-900 { background: #ffffff !important; border-color: #e2e8f0 !important; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
+        body.light-theme .bg-slate-800 { background: #f1f5f9 !important; border-color: #e2e8f0 !important; }
+        body.light-theme .admin-sidebar { background: #f8fafc; border-right: 1px solid #e2e8f0; }
+        body.light-theme .admin-nav-item { color: #475569; }
+        body.light-theme .admin-nav-item:hover { background: #e2e8f0; color: #0f172a; }
+        body.light-theme .admin-nav-item.active { background: #ffffff; color: var(--brand-col-2); border-left-color: var(--brand-col-2); }
+        body.light-theme .admin-content { background: #f1f5f9; }
+        body.light-theme .admin-table th { border-bottom-color: #cbd5e1; color: #475569; }
+        body.light-theme .admin-table td { border-bottom-color: #e2e8f0; color: #0f172a; }
+        body.light-theme .admin-table tr:hover { background: #f8fafc; }
+        body.light-theme .text-slate-400 { color: #64748b; }
+        body.light-theme .stage-host-part { background: #ffffff; border-color: #e2e8f0; }
+        body.light-theme .sidebar-right { background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%); border-left: 1px solid #cbd5e1; }
+        body.light-theme .sidebar-right .text-white, body.light-theme .sidebar-right .text-white\/70, body.light-theme .sidebar-right .text-white\/40 { color: #0f172a !important; }
+        body.light-theme .user-card-compact { background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.05); }
+        body.light-theme .user-card-compact:hover { background: rgba(0,0,0,0.08); border-color: rgba(0,0,0,0.1); }
+        body.light-theme .user-card-name { color: #0f172a; }
+        body.light-theme .user-card-status { color: #475569; }
+        body.light-theme .room-btn.inactive { background: rgba(0,0,0,0.04); color: #475569; }
+        body.light-theme .room-btn.inactive:hover { background: rgba(0,0,0,0.08); }
+        body.light-theme .bg-black\/20 { background: rgba(0,0,0,0.05); }
+        body.light-theme .border-white\/10 { border-color: rgba(0,0,0,0.1); }
+        body.light-theme #msg-container { background-color: rgba(255,255,255,0.85); }
+        body.light-theme #stage-canvas { border: 1px solid #cbd5e1; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+
+        /* === UI BUTTONS === */
+        .nav-btn { background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); width: 38px; height: 38px; border-radius: 12px; color: white; transition: all 0.2s; display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; }
+        .nav-btn svg { width: 18px; height: 18px; opacity: 0.9; }
+        .nav-btn:hover { background: rgba(255, 255, 255, 0.18); border-color: rgba(255, 255, 255, 0.3); transform: translateY(-1px); }
+        .nav-btn.admin { background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.25); color: #fca5a5; }
+        .nav-btn.admin:hover { background: rgba(239, 68, 68, 0.3); }
+        .nav-btn.cam-on { background: rgba(34, 197, 94, 0.2); border-color: rgba(34, 197, 94, 0.4); color: #86efac; }
+        .nav-btn.cam-on:hover { background: rgba(34, 197, 94, 0.3); }
+        
+        .btn-brand { background-color: var(--brand-col-2); color: white; transition: background-color 0.3s; }
+        .btn-brand:hover { background-color: var(--brand-col-1); }
+
+        /* === TOAST NOTIFICATIONS === */
+        #toast-container { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10000; display: flex; flex-direction: column; gap: 8px; pointer-events: none; width: 90%; max-width: 350px; }
+        .toast { background: rgba(15, 23, 42, 0.95); color: white; padding: 12px 20px; border-radius: 12px; font-size: 13px; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,0.3); animation: toastSlideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; align-items: center; justify-content: space-between; gap: 10px; pointer-events: auto; border-left: 4px solid transparent; }
+        .toast.success { border-left-color: #22c55e; } .toast.error { border-left-color: #ef4444; } .toast.info { border-left-color: #3b82f6; } .toast.request { border-left-color: #f59e0b; flex-direction: column; align-items: flex-start; gap: 8px; }
+        @keyframes toastSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* === MODALS === */
+        .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); z-index: 9000; display: none; align-items: center; justify-content: center; animation: fadeIn 0.2s ease-out; }
+        .modal-overlay.active { display: flex; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        /* === ADMIN PANEL === */
+        #admin-panel { position: fixed; inset: 0; z-index: 9999; background: #0f172a; color: #f8fafc; display: none; flex-direction: row; }
+        #admin-panel.active { display: flex; }
+        .admin-sidebar { width: 250px; background: #1e293b; border-right: 1px solid #334155; display: flex; flex-direction: column; flex-shrink: 0; }
+        .admin-content { flex: 1; padding: 2rem; overflow-y: auto; background: #0f172a; }
+        .admin-nav-item { padding: 1rem 1.5rem; cursor: pointer; color: #94a3b8; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 10px; border-left: 3px solid transparent; transition: all 0.2s; }
+        .admin-nav-item:hover { background: #334155; color: white; } .admin-nav-item.active { background: #1e293b; color: var(--brand-col-2); border-left-color: var(--brand-col-2); }
+        .stat-card { background: #1e293b; padding: 1.5rem; border-radius: 12px; border: 1px solid #334155; }
+        .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+        .admin-table th { text-align: left; padding: 10px; color: #64748b; font-size: 11px; text-transform: uppercase; border-bottom: 1px solid #334155; }
+        .admin-table td { padding: 12px 10px; border-bottom: 1px solid #1e293b; color: #cbd5e1; }
+        .admin-table tr:hover { background: #1e293b; }
+        .toggle-switch { position: relative; display: inline-block; width: 40px; height: 22px; } .toggle-switch input { opacity: 0; width: 0; height: 0; } .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #334155; transition: .4s; border-radius: 22px; } .toggle-slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; } input:checked + .toggle-slider { background-color: var(--brand-col-2); } input:checked + .toggle-slider:before { transform: translateX(18px); }
+
+        /* === AUTH SCREEN === */
+        #auth-screen { position: fixed; inset: 0; z-index: 8000; display: flex; align-items: center; justify-content: center; transition: opacity 0.8s ease, visibility 0.8s; overflow: hidden; background: #020617; }
+        #auth-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
+        #auth-bg-container { position: absolute; inset: 0; z-index: 1; overflow: hidden; }
+        .auth-video-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; filter: hue-rotate(240deg) saturate(1.8) brightness(0.4) contrast(1.3); }
+        #auth-bg-container::after { content: ''; position: absolute; inset: 0; background: rgba(30, 27, 75, 0.5); mix-blend-mode: overlay; z-index: 2; }
+        .auth-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); width: 100%; max-width: 400px; padding: 2.5rem; border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8); position: relative; z-index: 10; animation: cardEntrance 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.6s both; }
+        @keyframes cardEntrance { 0% { opacity: 0; transform: scale(0.85) translateY(50px); filter: blur(12px); } 100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); } }
+        
+        /* === VIDEO WINDOWS === */
+        .video-window { position: fixed; background: #000; border: 3px solid white; border-radius: 16px; overflow: hidden; display: none; box-shadow: 0 15px 40px rgba(0,0,0,0.4); z-index: 3500; min-width: 120px; min-height: 120px; touch-action: none; transition: box-shadow 0.2s; }
+        .video-window.active { display: block; } .mirror { transform: scaleX(-1); }
+        .drag-handle { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; cursor: move; touch-action: none; }
+        .resize-handle { position: absolute; bottom: 0; right: 0; width: 22px; height: 22px; cursor: se-resize; z-index: 60; background: linear-gradient(135deg, transparent 50%, var(--brand-col-2) 50%); border-bottom-right-radius: 13px; }
+        #resize-pvt { background: linear-gradient(135deg, transparent 50%, #db2777 50%); border-bottom-right-radius: 16px; }
+
+        #local-video-container { width: 160px; height: 160px; bottom: 20px; right: 20px; border-color: var(--brand-col-2); }
+        #watch-video-container { width: 180px; height: 180px; top: 80px; left: 20px; border-color: #ec4899; }
+        
+        /* CONTROLLI AUDIO */
+        .video-controls { position: absolute; bottom: 5px; left: 5px; right: 5px; display: flex; align-items: center; justify-content: space-between; z-index: 50; padding: 4px; background: rgba(0,0,0,0.6); border-radius: 8px; backdrop-filter: blur(4px); gap: 4px; }
+        .remote-vol-controls { position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); width: 80%; display: flex; align-items: center; justify-content: center; z-index: 50; padding: 6px; background: rgba(0,0,0,0.6); border-radius: 8px; backdrop-filter: blur(4px); gap: 6px; opacity: 0; transition: opacity 0.3s; }
+        #watch-video-container:hover .remote-vol-controls { opacity: 1; }
+        .stage-vol-ctrl { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); border-radius: 8px; padding: 6px 10px; z-index: 50; display: flex; align-items: center; gap: 6px; opacity: 0; transition: opacity 0.3s; border: 1px solid rgba(255,255,255,0.1); }
+        .stage-video-part:hover .stage-vol-ctrl { opacity: 1; }
+
+        .v-btn { background: transparent; border: none; color: white; width: 24px; height: 24px; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.2s; }
+        .v-btn:hover { background: rgba(255,255,255,0.2); } .v-btn.off { color: #ef4444; position: relative; } .v-btn.off::after { content: ''; position: absolute; width: 100%; height: 2px; background: #ef4444; transform: rotate(45deg); }
+        .vol-slider-cont { display: flex; align-items: center; flex: 1; padding: 0 5px; } 
+        .vol-slider { width: 100%; height: 3px; -webkit-appearance: none; background: rgba(255,255,255,0.3); border-radius: 2px; outline: none; } .vol-slider::-webkit-slider-thumb { -webkit-appearance: none; width: 12px; height: 12px; background: white; border-radius: 50%; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+        
+        @media (max-width: 768px) { #local-video-container { width: 130px; height: 130px; top: 60px; right: 10px; bottom: auto; } #watch-video-container { width: 130px; height: 130px; top: 200px; right: 10px; left: auto; } .remote-vol-controls, .stage-vol-ctrl { opacity: 1; } }
+
+        /* GAME STAGE */
+        #game-stage { background: #020617; position: relative; overflow: hidden; flex-shrink: 0; transition: all 0.3s ease; display: flex; flex-direction: row; height: 280px; border-bottom: 1px solid #334155; } 
+        #game-stage.hidden { display: none; }
+        .stage-video-part { width: 280px; height: 280px; flex-shrink: 0; position: relative; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; border-right: 1px solid #1e293b; }
+        .stage-host-part { flex: 1; min-width: 0; background: #0f172a; display: flex; flex-direction: column; padding: 12px; gap: 8px; }
+        @media (max-width: 768px) { #game-stage { flex-direction: column; height: auto; } .stage-video-part { width: 100%; height: auto; aspect-ratio: 1/1; border-right: none; border-bottom: 1px solid #334155; } .stage-host-part { flex: none; height: 200px; } }
+        
+        .floating-reaction { position: absolute; bottom: 0; font-size: 32px; animation: floatUp 2.5s ease-in-out forwards; pointer-events: none; z-index: 100; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); }
+        @keyframes floatUp { 0% { transform: translateY(0) scale(0.5); opacity: 0; } 20% { opacity: 1; transform: translateY(-30px) scale(1.2); } 100% { transform: translateY(-200px) scale(1); opacity: 0; } }
+
+        /* Canvas Draw & Guess */
+        #stage-canvas { cursor: crosshair; touch-action: none; background-color: white; border-radius: 8px; box-shadow: inset 0 0 10px rgba(0,0,0,0.2); }
+
+        /* Chat & Sidebar */
+        .custom-scroll::-webkit-scrollbar { width: 4px; } .custom-scroll::-webkit-scrollbar-track { background: transparent; } .custom-scroll::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.2); border-radius: 10px; }
+        #msg-container { background-color: rgba(255,255,255,0.6); backdrop-filter: blur(5px); transition: background-color 0.3s ease; scroll-behavior: smooth; }
+        
+        .chat-line { padding: 8px 12px; border-radius: 12px; display: flex; align-items: flex-start; gap: 10px; animation: fadeIn 0.3s ease-out; margin-bottom: 4px; background: rgba(255,255,255,0.5); backdrop-filter: blur(2px); border-left: 3px solid transparent; box-shadow: 0 1px 3px rgba(0,0,0,0.05); transition: background 0.2s; position: relative; }
+        .chat-line:hover { background: rgba(255,255,255,0.7); }
+        .chat-timestamp { font-size: 10px; color: #475569; margin-top: 5px; flex-shrink: 0; font-family: monospace; }
+        .chat-avatar { width: 34px; height: 34px; border-radius: 10px; object-fit: cover; flex-shrink: 0; border: 1px solid rgba(0,0,0,0.1); background: #e2e8f0; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        
+        .chat-content-area { width: 100%; min-width: 0; line-height: 1.42; padding-top: 1px; }
+        .chat-name { font-weight: 800; font-size: 13px; cursor: pointer; transition: opacity 0.2s; text-shadow: 0 1px 2px rgba(255,255,255,0.8); display: inline; margin-right: 4px; }
+        .chat-name:hover { opacity: 0.7; text-decoration: underline; }
+        .chat-text { font-weight: 600; word-break: break-word; text-shadow: 0 1px 1px rgba(255,255,255,0.5); display: inline; }
+        .chat-text b, .chat-text strong { font-weight: 900; color: #000; } 
+        .chat-image { max-width: 240px; width: 100%; height: auto; border-radius: 12px; margin-top: 6px; border: 1px solid rgba(0,0,0,0.1); display: block; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        .chat-quote { background: rgba(0,0,0,0.05); border-left: 3px solid var(--brand-col-2); padding: 4px 8px; border-radius: 4px 8px 8px 4px; font-size: 11px; color: #475569; margin-bottom: 4px; display: block; max-height: 40px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+        .sidebar-right { background: linear-gradient(180deg, var(--brand-col-1) 0%, var(--brand-col-2) 100%); color: white; transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1); z-index: 5000; }
+        @media (min-width: 769px) { .sidebar-right { width: 320px; position: relative; transform: translateX(0); } }
+        @media (max-width: 768px) { .sidebar-right { position: fixed; top: 0; right: 0; bottom: 0; width: 85%; max-width: 300px; transform: translateX(100%); box-shadow: -10px 0 20px rgba(0,0,0,0.5); } .sidebar-right.open { transform: translateX(0); } }
+
+        .user-card-compact { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-radius: 8px; cursor: pointer; transition: all 0.2s; background: rgba(255, 255, 255, 0.05); margin-bottom: 2px; border: 1px solid transparent; }
+        .user-card-compact:hover { background: rgba(255, 255, 255, 0.15); border-color: rgba(255,255,255,0.1); }
+        .user-card-avatar { width: 24px; height: 24px; border-radius: 6px; overflow: hidden; background: rgba(255,255,255,0.1); flex-shrink: 0; }
+        .user-card-avatar img { width: 100%; height: 100%; object-fit: cover; }
+        .user-card-name { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.9); }
+        .user-card-status { font-size: 8px; font-weight: 700; color: rgba(255,255,255,0.4); text-transform: uppercase; }
+
+        .room-btn { width: 100%; padding: 12px; border-radius: 12px; font-size: 12px; font-weight: 800; text-align: left; display: flex; justify-content: space-between; transition: all 0.2s; align-items: center; }
+        .room-btn.active { background: white; color: var(--brand-col-2); box-shadow: 0 4px 12px rgba(0,0,0,0.1); }
+        .room-btn.inactive { background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.6); } .room-btn.inactive:hover { background: rgba(255,255,255,0.2); }
+        
+        .emoji-picker { position: absolute; bottom: 85px; left: 20px; width: 280px; background: white; border: 1px solid #e2e8f0; border-radius: 16px; padding: 12px; display: none; grid-template-columns: repeat(6, 1fr); gap: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.15); z-index: 200; }
+        .emoji-picker.active { display: grid; }
+        .emoji-btn { font-size: 22px; cursor: pointer; text-align: center; padding: 6px; border-radius: 8px; border:none; background:transparent;} .emoji-btn:hover { background: #f1f5f9; transform: scale(1.1); }
+
+        .user-menu-modal { background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.4); position: fixed; z-index: 8000; display: none; width: 180px; border: 1px solid #e2e8f0; }
+        .user-menu-modal.active { display: block; animation: fadeInMenu 0.15s ease-out; }
+        @keyframes fadeInMenu { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        .user-menu-header { padding: 10px; border-bottom: 1px solid #f1f5f9; background: #f8fafc; font-weight: 800; font-size: 13px; color: #1e293b; text-align: center; }
+        .user-menu-item { padding: 10px 15px; font-size: 12px; font-weight: 600; color: #475569; cursor: pointer; display: flex; align-items: center; gap: 8px; border-top: 1px solid #f8fafc; }
+        .user-menu-item:hover { background: #f1f5f9; color: #0f172a; } .user-menu-item.danger { color: #ef4444; background: #fff5f5; border-top: 1px solid #fee2e2; } .user-menu-item.danger:hover { background: #fef2f2; color: #dc2626; }
+
+        .pvt-window { position: fixed; bottom: 20px; left: 20px; width: 320px; height: 400px; min-width: 250px; min-height: 250px; background: white; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); display: none; flex-direction: column; z-index: 6000; overflow: hidden; border: 1px solid rgba(0,0,0,0.1); touch-action: none; }
+        .pvt-window.active { display: flex; animation: popup 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        @keyframes popup { from { transform: scale(0.8) translateY(20px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
+        .pvt-header { background: linear-gradient(135deg, #ec4899 0%, #db2777 100%); padding: 10px 12px; color: white; cursor: move; display: flex; justify-content: space-between; align-items: center; touch-action: none; gap: 5px; }
+        .pvt-messages { flex: 1; overflow-y: auto; padding: 12px; background: #fdf2f8; display: flex; flex-direction: column; }
+        .pvt-input-area { padding: 10px; background: white; border-top: 1px solid #fbcfe8; display: flex; gap: 6px; }
+        .pvt-msg { margin-bottom: 8px; font-size: 12px; padding: 6px 10px; border-radius: 8px; max-width: 85%; word-break: break-word; }
+        .pvt-msg.me { background: #db2777; color: white; align-self: flex-end; }
+        .pvt-msg.them { background: white; color: #831843; border: 1px solid #fbcfe8; align-self: flex-start; }
+        
+        /* === FORZA 4 STYLES === */
+        .pvt-game-area { display: none; flex: 1; background: #0f172a; flex-direction: column; align-items: center; justify-content: center; padding: 10px; position: relative; }
+        .pvt-game-area.active { display: flex; }
+        .f4-board-mini { background-color: #2563eb; padding: 8px; border-radius: 12px; display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; width: 100%; max-width: 280px; box-shadow: inset 0 0 10px rgba(0,0,0,0.3), 0 10px 20px rgba(0,0,0,0.4); }
+        .f4-cell-mini { aspect-ratio: 1; border-radius: 50%; background-color: #1e293b; cursor: pointer; transition: all 0.2s; box-shadow: inset 0 4px 6px rgba(0,0,0,0.6); }
+        .f4-cell-mini:hover:not(.red):not(.yellow) { background-color: #334155; }
+        .f4-cell-mini.red { background-color: #ef4444; box-shadow: inset 0 -2px 4px rgba(0,0,0,0.3), 0 0 10px rgba(239,68,68,0.5); }
+        .f4-cell-mini.yellow { background-color: #eab308; box-shadow: inset 0 -2px 4px rgba(0,0,0,0.3), 0 0 10px rgba(234,179,8,0.5); }
+        .f4-cell-mini.win { border: 3px solid white; animation: pulseWinF4 1s infinite alternate; }
+        @keyframes pulseWinF4 { from { transform: scale(1); } to { transform: scale(1.1); filter: brightness(1.2); } }
+
+        .toolbar-icon { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; font-weight: 900; font-size: 12px; cursor: pointer; transition: all 0.2s; }
+        .toolbar-icon:disabled { opacity: 0.5; cursor: not-allowed; }
+        
+        .avatar-edit-btn { position: absolute; bottom: -5px; right: -5px; background: var(--brand-col-2); color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: transform 0.2s; }
+        .avatar-edit-btn:hover { transform: scale(1.1); }
+    </style>
+</head>
+<body class="dark-theme">
+    
+    <div id="app-bg-container"></div>
+    <div class="app-backdrop"></div>
+    <div id="toast-container"></div>
+    
+    <!-- LOGIN SCREEN -->
+    <div id="auth-screen">
+        <div id="auth-bg-container">
+            <video autoplay loop muted playsinline class="auth-video-bg"><source src="https://assets.codepen.io/3364143/7btrrd.mp4" type="video/mp4"></video>
+        </div>
+        
+        <div class="auth-card">
+            <div class="text-center mb-6">
+                <h1 class="text-2xl font-black text-slate-900 tracking-tight app-title-display">RaskVideochat</h1>
+                <p class="text-xs font-bold text-brand uppercase tracking-widest mt-1">Public Beta 1.0</p>
+            </div>
+            
+            <div class="flex border-b border-slate-200 mb-6">
+                <button type="button" onclick="app.setAuthMode('login')" id="tab-btn-login" class="flex-1 pb-3 text-[11px] font-black uppercase tracking-widest border-b-2 border-brand text-brand transition">Accedi</button>
+                <button type="button" onclick="app.setAuthMode('register')" id="tab-btn-register" class="flex-1 pb-3 text-[11px] font-black uppercase tracking-widest border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition">Registrati</button>
+            </div>
+
+            <form id="auth-form" onsubmit="app.handleAuth(event)" class="space-y-4">
+                <div><label class="block text-[10px] font-black uppercase text-slate-500 mb-1 ml-1">Username</label><input type="text" id="auth-username" placeholder="Scegli un nome..." required class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition border-brand-focus"></div>
+                <div><label class="block text-[10px] font-black uppercase text-slate-500 mb-1 ml-1">Password</label><input type="password" id="auth-password" placeholder="******" required class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition border-brand-focus"></div>
+                <div id="gender-group" style="display: none;"><label class="block text-[10px] font-black uppercase text-slate-500 mb-1 ml-1">Il tuo Sesso</label><select id="auth-gender" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition"><option value="M">Uomo</option><option value="F">Donna</option></select></div>
+                <button type="submit" class="w-full btn-brand text-white py-4 rounded-xl font-black text-sm uppercase tracking-wider shadow-lg flex justify-center items-center transition"><span id="btn-text">Accedi</span></button>
+                <div class="relative flex py-4 items-center"><div class="flex-grow border-t border-slate-200"></div><span class="flex-shrink-0 mx-4 text-slate-400 text-[10px] uppercase font-bold">OPPURE</span><div class="flex-grow border-t border-slate-200"></div></div>
+                <button type="button" onclick="app.loginAsGuest()" class="w-full bg-white border-2 border-slate-200 hover:bg-slate-50 text-slate-600 py-3 rounded-xl font-bold text-sm uppercase tracking-wider flex justify-center items-center transition"><span id="btn-guest-text">Entra come Ospite</span></button>
+            </form>
+        </div>
+    </div>
+
+    <!-- MAIN APP -->
+    <div id="main-app" class="flex-1 flex flex-col h-full opacity-0 transition-opacity duration-1000 pointer-events-none">
+        
+        <header class="brand-gradient px-4 py-3 sm:px-6 flex justify-between items-center z-[150] shadow-xl relative border-b border-white/10 shrink-0">
+            <div class="flex items-center gap-3 sm:gap-4">
+                <div class="w-9 h-9 sm:w-10 sm:h-10 bg-white/15 rounded-xl flex items-center justify-center backdrop-blur-md border border-white/20 shadow-inner"><svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M15.9 14.3H15L4.93 14.3C3.87 14.3 3 13.43 3 12.37V4.93C3 3.87 3.87 3 4.93 3H15.06C16.12 3 17 3.87 17 4.93V7.9L21 4V13.3L17 9.4V12.37C17 13.43 16.13 14.3 15.9 14.3Z"/></svg></div>
+                <div class="hidden sm:block"><h1 class="text-white font-extrabold text-lg sm:text-xl tracking-tight leading-none app-title-display">RaskVideochat</h1><p class="text-white/40 text-[9px] font-bold uppercase tracking-[0.2em] mt-0.5">Public Beta 1.0</p></div>
+            </div>
+
+            <!-- RADIO CONTROL -->
+            <div class="hidden lg:flex items-center bg-black/30 backdrop-blur-md border border-white/10 rounded-xl p-1 gap-2 mx-auto absolute left-1/2 transform -translate-x-1/2 group">
+                <button onclick="app.toggleRadio()" id="radio-btn-main" class="w-8 h-8 flex items-center justify-center rounded-lg btn-brand text-white shadow-lg transition"><svg id="radio-icon" width="14" height="14" fill="currentColor" viewBox="0 0 16 16"><path d="m11.596 8.697-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.363 3.692a.802.802 0 0 1 0 1.393z"/></svg></button>
+                <div class="flex flex-col w-32 overflow-hidden px-1"><div class="flex items-center justify-between"><span class="text-[8px] text-white/50 font-bold uppercase tracking-wider">ON AIR</span><div class="flex gap-0.5" id="radio-visualizer" style="opacity:0;"><div class="w-0.5 h-2 bg-white/80 animate-pulse"></div><div class="w-0.5 h-2 bg-white/80 animate-pulse" style="animation-delay: 0.1s"></div><div class="w-0.5 h-2 bg-white/80 animate-pulse" style="animation-delay: 0.2s"></div></div></div><div class="text-[10px] text-white font-bold truncate" id="radio-metadata">Caricamento...</div></div>
+                <div class="flex items-center opacity-70 group-hover:opacity-100 transition">
+                    <input type="range" min="0" max="1" step="0.05" value="0.5" oninput="app.setRadioVolume(this.value)" class="w-12 h-1 ml-1 cursor-pointer" title="Volume Radio">
+                </div>
+                <select id="station-select" onchange="app.changeStation()" class="bg-transparent text-white/50 text-[9px] font-bold outline-none border-none cursor-pointer w-4 hover:text-white transition"></select>
+                <audio id="radio-stream" crossorigin="anonymous"></audio>
+            </div>
+
+            <div class="flex items-center gap-2 ml-auto">
+                <button onclick="app.toggleTheme()" class="nav-btn" title="Cambia Tema" id="theme-toggle-btn">☀️</button>
+                <div class="h-6 w-[1px] bg-white/20 mx-1 hidden sm:block"></div>
+                <button onclick="app.toggleCam()" id="header-btn-cam" class="nav-btn" title="Attiva Cam"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></button>
+                <div class="h-6 w-[1px] bg-white/20 mx-1 hidden sm:block"></div>
+                <button onclick="app.openModal('rules-modal')" class="nav-btn hidden sm:flex" title="Regole Community"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20M4 19.5V3a1 1 0 0 1 1-1h15v15H6.5a1 1 0 0 0-1 1z"/></svg></button>
+                <button onclick="app.openModal('settings-modal')" class="nav-btn hidden sm:flex" title="Impostazioni Hardware"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+                <button id="admin-nav-btn" onclick="app.openAdminPanel()" class="nav-btn admin hidden" title="Pannello Amministrazione"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></button>
+                
+                <button onclick="app.openModal('profile-modal')" class="w-9 h-9 sm:w-10 sm:h-10 sm:ml-2 rounded-xl border border-white/30 overflow-hidden bg-white/20 hover:scale-105 transition shadow-lg" title="Il Mio Profilo"><img id="my-avatar-mini" src="" class="w-full h-full object-cover"></button>
+                <button onclick="app.toggleSidebar()" class="nav-btn md:hidden" title="Menu Sidebar"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg></button>
+            </div>
+        </header>
+
+        <div class="flex-1 flex overflow-hidden relative">
+            <main class="flex-1 flex flex-col bg-transparent overflow-hidden">
+                
+                <!-- GAME STAGE -->
+                <div id="game-stage" class="hidden">
+                    <div class="stage-video-part" id="stage-reaction-area">
+                        <video id="stage-player" class="w-full h-full object-cover hidden" autoplay playsinline></video>
+                        <canvas id="stage-canvas" class="w-full h-full absolute inset-0 z-20 hidden"></canvas>
+                        <div id="draw-word-display" class="absolute top-3 left-1/2 transform -translate-x-1/2 bg-slate-900/90 text-white px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase z-30 hidden border border-white/20 backdrop-blur-md shadow-xl"></div>
+
+                        <div class="stage-vol-ctrl hidden" id="stage-vol-ctrl-container">
+                            <span class="text-[9px] text-white font-bold uppercase">Volume Host</span>
+                            <input type="range" class="w-16 h-1" min="0" max="1" step="0.05" value="1" oninput="app.setStageVolume(this.value)">
+                        </div>
+                        <div id="game-placeholder" class="absolute inset-0 flex flex-col items-center justify-center text-white/50 bg-slate-900/90 z-10"><div class="text-5xl mb-4">🎤</div><h2 class="text-xl font-black text-white uppercase tracking-tighter mb-1 text-center">Palco<br>Live</h2></div>
+                    </div>
+                    
+                    <div class="stage-host-part">
+                        <button id="btn-become-host" onclick="app.claimHost()" class="w-full btn-brand text-white py-3 rounded-xl font-black text-xs uppercase shadow-lg transition-all shrink-0">Sali Sul Palco</button>
+                        
+                        <div id="host-draw-panel" class="hidden flex-col gap-2 bg-slate-800 rounded-lg border border-slate-700 p-2 mt-1 shadow-inner relative z-30">
+                            <div class="flex justify-between items-center gap-2">
+                                <input type="text" id="draw-word-input" class="flex-1 bg-slate-900 text-white text-[10px] px-2 py-1.5 rounded outline-none border border-slate-700 focus:border-brand transition" placeholder="Parola segreta...">
+                                <button onclick="app.startDrawGame()" id="btn-start-draw" class="bg-brand text-white px-3 py-1.5 rounded text-[10px] font-black uppercase tracking-wider hover:bg-indigo-500">Disegna</button>
+                                <button onclick="app.stopDrawGame()" id="btn-stop-draw" class="bg-red-600 text-white px-3 py-1.5 rounded text-[10px] font-black uppercase tracking-wider hidden hover:bg-red-500">Ferma</button>
+                            </div>
+                            <div id="draw-tools" class="hidden justify-between items-center mt-1 border-t border-slate-700 pt-2">
+                                <div class="flex gap-1.5">
+                                    <button class="w-5 h-5 rounded-full bg-black border-2 border-slate-500 focus:border-white transition" onclick="app.setDrawColor('#000000')"></button>
+                                    <button class="w-5 h-5 rounded-full bg-red-500 border-2 border-slate-500 focus:border-white transition" onclick="app.setDrawColor('#ef4444')"></button>
+                                    <button class="w-5 h-5 rounded-full bg-blue-500 border-2 border-slate-500 focus:border-white transition" onclick="app.setDrawColor('#3b82f6')"></button>
+                                    <button class="w-5 h-5 rounded-full bg-green-500 border-2 border-slate-500 focus:border-white transition" onclick="app.setDrawColor('#22c55e')"></button>
+                                    <button class="w-5 h-5 rounded-full bg-white flex items-center justify-center text-[10px] border-2 border-slate-500 focus:border-brand transition" onclick="app.setDrawColor('#ffffff')">🧹</button>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <input type="range" id="brush-size" min="2" max="20" value="5" class="w-16 h-1 bg-slate-600 rounded outline-none cursor-pointer">
+                                    <button onclick="app.clearCanvas(true)" class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded text-[8px] font-bold uppercase transition">Pulisci</button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex-1 bg-slate-900 rounded-lg border border-slate-700 p-3 flex flex-col relative overflow-hidden shadow-inner mt-1" id="bulletin-panel">
+                            <div class="text-[9px] text-brand font-black uppercase mb-2 tracking-widest border-b border-slate-800 pb-1">Bacheca Host</div>
+                            <div id="host-bulletin-edit-area" class="hidden flex-1 flex flex-col mt-2">
+                                <textarea id="host-bulletin-input" class="w-full flex-1 bg-transparent text-white text-xs outline-none resize-none custom-scroll placeholder-slate-600" placeholder="Scrivi qui annunci, regole, o messaggi..."></textarea>
+                                <button onclick="app.saveBulletin()" class="mt-2 w-full bg-slate-800 hover:bg-slate-700 text-brand py-1.5 rounded text-[10px] font-black uppercase transition border border-slate-700">Pubblica Testo</button>
+                            </div>
+                            <div id="host-bulletin-display" class="text-white text-xs font-bold w-full h-full overflow-y-auto custom-scroll whitespace-pre-wrap leading-relaxed mt-2">Il palco è vuoto. Aspettiamo un Host!</div>
+                        </div>
+
+                        <div class="w-full pt-2 text-center shrink-0 border-t border-slate-800 mt-1"><div class="flex justify-center gap-3"><button onclick="app.sendReaction('❤️')" class="text-2xl hover:scale-125 transition transform">❤️</button><button onclick="app.sendReaction('😂')" class="text-2xl hover:scale-125 transition transform">😂</button><button onclick="app.sendReaction('🎉')" class="text-2xl hover:scale-125 transition transform">🎉</button></div></div>
+                    </div>
+                </div>
+
+                <!-- CHAT -->
+                <div id="msg-container" class="flex-1 p-3 overflow-y-auto custom-scroll backdrop-blur-sm relative" style="background-color: rgba(255,255,255,0.6);"></div>
+                
+                <div class="px-3 py-2 brand-gradient flex items-center gap-4 shrink-0 shadow-inner border-y border-white/10">
+                    <div class="flex items-center gap-2"><label class="text-[9px] font-black text-white/70 uppercase">Colore Txt</label><input type="color" id="text-color" value="#1e293b" class="w-5 h-5 border border-white/30 p-0 bg-transparent cursor-pointer rounded"></div>
+                    <div class="flex items-center gap-2"><label class="text-[9px] font-black text-white/70 uppercase">Size</label><select id="text-size" class="text-[10px] font-bold bg-white/20 text-white rounded-lg px-2 py-1 outline-none border border-white/20 appearance-none"><option value="12px" class="text-slate-900">Piccolo</option><option value="14px" selected class="text-slate-900">Normale</option><option value="18px" class="text-slate-900">Grande</option></select></div>
+                    <div class="h-4 w-[1px] bg-white/20 mx-1"></div>
+                    <button onclick="app.insertBold()" class="toolbar-icon bg-white/10 text-white hover:bg-white/30 border border-white/20" title="Grassetto">B</button>
+                    <button onclick="app.triggerImageUpload()" class="toolbar-icon bg-white/10 text-white hover:bg-white/30 border border-white/20 flex gap-1 px-2 w-auto" title="Aggiungi Immagine"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span class="text-[10px] uppercase">Img</span></button>
+                    <button id="btn-voice-record" onclick="app.toggleVoiceRecord()" class="toolbar-icon bg-white/10 text-white hover:bg-white/30 border border-white/20" title="Nota Vocale">🎤</button>
+                </div>
+
+                <div class="p-3 border-t border-slate-200/50 bg-white/90 backdrop-blur shrink-0 pb-safe relative">
+                    <div id="emoji-picker" class="emoji-picker"></div>
+                    
+                    <div id="reply-preview-container" class="hidden px-4 py-2 bg-slate-100/80 border border-slate-200 mb-2 rounded-xl text-xs flex justify-between items-center shadow-inner">
+                        <div class="truncate border-l-2 border-brand pl-2">
+                            <span class="text-[10px] text-brand font-black uppercase tracking-wider">Rispondi a <span id="reply-preview-name"></span></span>
+                            <div id="reply-preview-text" class="text-slate-600 truncate mt-0.5 font-medium"></div>
+                        </div>
+                        <button type="button" onclick="app.cancelReply()" class="text-slate-400 hover:text-red-500 font-bold w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-50">✕</button>
+                    </div>
+
+                    <form id="chat-box" class="flex gap-2 items-end max-w-4xl mx-auto">
+                        <button type="button" onclick="app.toggleEmojiPicker(event)" class="p-2 text-slate-400 hover:text-brand transition"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.828 14.828a4 4 0 0 1-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg></button>
+                        <textarea id="msg-input" placeholder="Scrivi un messaggio..." rows="1" class="flex-1 bg-slate-100 border-0 rounded-2xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand/20 transition resize-none max-h-32" style="overflow-y:auto;"></textarea>
+                        <button type="submit" id="send-btn" class="btn-brand text-white px-5 py-3 rounded-2xl font-bold text-xs shadow-lg active:scale-95 transition-all">INVIA</button>
+                    </form>
+                </div>
+            </main>
+
+            <!-- SIDEBAR -->
+            <aside id="sidebar-right" class="sidebar-right flex flex-col shrink-0 shadow-2xl z-50">
+                <div class="p-4 border-b border-white/10 flex justify-between items-center md:hidden"><span class="font-black text-xs uppercase tracking-widest">Menu</span><button onclick="app.toggleSidebar()" class="text-white/70 hover:text-white">✕</button></div>
+                <div class="p-6 border-b border-white/10"><h2 class="text-[10px] font-black uppercase text-white/40 tracking-[0.25em] mb-4">Stanze Attive</h2><nav id="rooms-list" class="space-y-2"></nav></div>
+                <div class="p-2 border-b border-white/10 bg-black/20 text-center text-[10px] font-bold text-green-300 uppercase tracking-widest">Utenti Connessi</div>
+                <div class="flex-1 overflow-y-auto p-4 custom-scroll" id="user-sidebar"></div>
+            </aside>
+        </div>
+    </div>
+
+    <!-- === MODALS === -->
+    <div id="rules-modal" class="modal-overlay">
+        <div class="bg-white w-[480px] rounded-[32px] p-8 shadow-2xl mx-4">
+            <h2 class="text-xl font-black text-brand mb-5 flex items-center gap-2">Regolamento Community</h2>
+            <div class="space-y-4 text-xs text-slate-600 leading-relaxed max-h-80 overflow-y-auto pr-2 custom-scroll"><p><b>1. Rispetto:</b> Mantieni sempre un comportamento educato.</p><p><b>2. Privacy:</b> Non diffondere dati personali.</p><p><b>3. Multimedia:</b> Divieto di contenuti osceni.</p><p><b>4. Moderazione:</b> Gli Admin possono sospendere o bannare.</p></div>
+            <button onclick="app.closeModal('rules-modal')" class="w-full mt-8 py-4 btn-brand text-white rounded-2xl font-bold text-xs transition shadow-lg">CHIUDI</button>
+        </div>
+    </div>
+
+    <div id="settings-modal" class="modal-overlay" onclick="app.closeOnOverlay(event, this)">
+        <div class="bg-white w-[420px] rounded-[32px] overflow-hidden shadow-2xl flex flex-col mx-4">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center"><h2 class="text-lg font-black text-slate-800">Impostazioni</h2><button onclick="app.closeModal('settings-modal')" class="text-slate-300">✕</button></div>
+            <div class="p-6 space-y-6">
+                <div>
+                    <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-3 flex justify-between items-center"><span>Hardware (Audio/Video)</span><button onclick="app.populateMediaDevices()" class="text-brand hover:underline font-bold bg-slate-100 px-2 py-1 rounded">Rileva Periferiche</button></h3>
+                    <div class="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                        <div><label class="block text-[10px] font-bold text-slate-500 mb-1">Fotocamera</label><select id="select-video-source" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-2 text-xs outline-none"><option value="">Predefinita</option></select></div>
+                        <div><label class="block text-[10px] font-bold text-slate-500 mb-1">Microfono</label><select id="select-audio-source" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-2 text-xs outline-none"><option value="">Predefinito</option></select></div>
+                        <div class="pt-2 border-t border-slate-200 mt-2 flex justify-between items-center"><span class="text-xs font-bold text-slate-700">Audio Notifiche</span><input type="checkbox" checked onchange="app.state.soundsEnabled = this.checked" class="w-4 h-4 cursor-pointer"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="profile-modal" class="modal-overlay" onclick="app.closeOnOverlay(event, this)">
+        <div class="bg-white w-[380px] rounded-[40px] overflow-hidden shadow-2xl mx-4">
+            <div class="h-24 brand-gradient"></div>
+            <div class="p-8 pt-10 text-center relative">
+                <div class="w-20 h-20 mx-auto -mt-20 mb-4 rounded-3xl border-4 border-white bg-slate-100 overflow-hidden shadow-xl relative">
+                    <img id="prof-avatar-preview" src="" class="w-full h-full object-cover">
+                    <button onclick="document.getElementById('avatar-upload').click()" class="avatar-edit-btn" title="Cambia Foto"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></svg></button>
+                    <input type="file" id="avatar-upload" class="hidden" accept="image/*" onchange="app.handleAvatarSelect(event)">
+                </div>
+                <h2 class="text-lg font-black text-slate-800">Il tuo Profilo</h2><p class="text-[10px] text-slate-500 mt-1">Carica una foto o cambia nome</p>
+                <div class="mt-6 space-y-3"><input type="text" id="edit-prof-name" placeholder="Il tuo nome..." class="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none"><button onclick="app.saveProfile()" class="w-full brand-gradient text-white py-4 rounded-xl font-black uppercase text-[10px] tracking-widest mt-2 shadow-lg">Salva nel Cloud</button></div>
+            </div>
+        </div>
+    </div>
+
+    <div id="room-password-modal" class="modal-overlay">
+        <div class="bg-white w-[380px] rounded-[32px] p-8 shadow-2xl mx-4 text-center">
+            <div class="text-4xl mb-4">🔒</div>
+            <h2 class="text-xl font-black text-slate-800 mb-2">Stanza Protetta</h2>
+            <p class="text-xs text-slate-500 mb-6">Inserisci la password per accedere a questa stanza VIP.</p>
+            <input type="password" id="room-pin-input" placeholder="Password stanza..." class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-center text-sm font-bold outline-none mb-4 focus:border-brand transition">
+            <div class="flex gap-2 w-full">
+                <button onclick="app.closeModal('room-password-modal')" class="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold text-xs transition hover:bg-slate-200">Annulla</button>
+                <button onclick="app.submitRoomPassword()" class="flex-1 btn-brand text-white py-3 rounded-xl font-bold text-xs shadow-lg transition">Entra</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ADMIN PANEL -->
+    <div id="admin-panel">
+        <div class="admin-sidebar">
+            <div class="p-6 border-b border-slate-700"><h2 class="text-white font-black text-2xl tracking-tighter">Admin<span class="text-brand">Panel</span></h2></div>
+            <nav class="flex-1 mt-4">
+                <div class="admin-nav-item active" onclick="app.adminSwitchTab('dashboard', event)">📊 Dashboard</div>
+                <div class="admin-nav-item" onclick="app.adminSwitchTab('users', event)">👥 Gestione Utenti</div>
+                <div class="admin-nav-item" onclick="app.adminSwitchTab('rooms', event)">🏠 Stanze & Sicurezza</div>
+                <div class="admin-nav-item" onclick="app.adminSwitchTab('security', event)">🛡️ Moderazione</div>
+                <div class="admin-nav-item" onclick="app.adminSwitchTab('appearance', event)">🎨 Personalizzazione</div>
+                <div class="admin-nav-item" onclick="app.adminSwitchTab('radio', event)">📻 Radio Cloud</div>
+            </nav>
+            <div class="p-4 border-t border-slate-700"><button onclick="app.closeAdminPanel()" class="w-full py-3 bg-red-600/10 text-red-500 rounded-lg font-bold text-xs hover:bg-red-600/20 transition">CHIUDI PANNELLO</button></div>
+        </div>
+        <div class="admin-content custom-scroll">
+            <!-- Dashboard -->
+            <div id="adm-tab-dashboard" class="space-y-6"><h3 class="text-2xl font-bold mb-6">Panoramica Server</h3><div class="grid grid-cols-1 md:grid-cols-3 gap-6"><div class="stat-card"><p class="text-slate-400 text-xs font-bold uppercase">Utenti Connessi</p><p class="text-3xl font-black text-indigo-400 mt-2" id="stat-users">0</p></div><div class="stat-card"><p class="text-slate-400 text-xs font-bold uppercase">Stanze Attive</p><p class="text-3xl font-black text-green-400 mt-2" id="stat-rooms">0</p></div><div class="stat-card"><p class="text-slate-400 text-xs font-bold uppercase">Messaggi Oggi</p><p class="text-3xl font-black text-pink-400 mt-2" id="stat-msgs">0</p></div></div></div>
+            
+            <!-- Users Tab -->
+            <div id="adm-tab-users" class="hidden space-y-6">
+                <h3 class="text-2xl font-bold mb-6">Gestione Utenti</h3>
+                <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden mb-8"><div class="p-4 border-b border-slate-700 bg-slate-800/50 flex justify-between items-center"><h4 class="text-green-400 font-bold text-sm">🟢 Utenti Online Ora</h4></div><table class="admin-table"><thead><tr><th>Avatar</th><th>Nome</th><th>Ruolo</th><th>Stanza</th><th>Azioni Rapide</th></tr></thead><tbody id="admin-live-users-list"></tbody></table></div>
+                <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 mb-6"><h4 class="text-white font-bold text-sm mb-4">👥 Aggiungi Account</h4><div class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end mb-4"><div><label class="text-[9px] text-slate-500 uppercase block mb-1">Username</label><input type="text" id="adm-reg-name" class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg"></div><div><label class="text-[9px] text-slate-500 uppercase block mb-1">Password</label><input type="text" id="adm-reg-pass" class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg"></div><div><label class="text-[9px] text-slate-500 uppercase block mb-1">Sesso</label><select id="adm-reg-gender" class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg"><option value="M">Uomo</option><option value="F">Donna</option></select></div><div><label class="text-[9px] text-slate-500 uppercase block mb-1">Ruolo</label><select id="adm-reg-role" class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg"><option value="User">User</option><option value="Staff">Staff</option><option value="Admin">Admin</option></select></div><button onclick="app.adminRegisterUser()" class="btn-brand text-white px-4 py-2.5 rounded-lg text-xs font-bold">REGISTRA</button></div></div>
+                <div class="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden"><table class="admin-table"><thead><tr><th>Utente</th><th>Password</th><th>Sesso</th><th>Ruolo</th><th>Azioni Database</th></tr></thead><tbody id="admin-users-list"></tbody></table></div>
+            </div>
+
+            <!-- Rooms Tab -->
+            <div id="adm-tab-rooms" class="hidden space-y-6">
+                <h3 class="text-2xl font-bold mb-6">Gestione Stanze & VIP</h3>
+                <div class="bg-slate-800 p-5 rounded-xl border border-slate-700">
+                    <div class="grid grid-cols-1 md:grid-cols-6 gap-3 items-end mb-4">
+                        <div class="col-span-2"><label class="text-[9px] text-slate-500 uppercase block mb-1">Nome Stanza</label><input type="text" id="adm-room-name" placeholder="Es: Area VIP" class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg"></div>
+                        <div><label class="text-[9px] text-slate-500 uppercase block mb-1">Badge</label><input type="text" id="adm-room-badge" placeholder="Es: VIP" class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg"></div>
+                        <div><label class="text-[9px] text-slate-500 uppercase block mb-1">Accesso Base</label><select id="adm-room-role" class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg"><option value="Guest">Tutti</option><option value="User">Registrati</option><option value="Staff">Solo Staff</option></select></div>
+                        <div class="flex flex-col items-center justify-center"><label class="text-[9px] text-slate-500 uppercase block mb-2 text-center">Con Pw 🔒</label><input type="checkbox" id="adm-room-locked" onchange="document.getElementById('adm-room-pw').disabled = !this.checked" class="w-4 h-4 cursor-pointer"></div>
+                        <div><label class="text-[9px] text-slate-500 uppercase block mb-1">Password</label><input type="text" id="adm-room-pw" placeholder="PIN segreto" disabled class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg disabled:opacity-50"></div>
+                    </div>
+                    <button onclick="app.adminAddRoom()" class="bg-green-600 hover:bg-green-500 text-white px-6 py-2.5 rounded-lg text-xs font-bold w-full md:w-auto">CREA STANZA</button>
+                    
+                    <div class="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden mt-6"><table class="admin-table"><thead><tr><th>Nome</th><th>Badge</th><th>Accesso Minimo</th><th>Status Pw</th><th>Azioni</th></tr></thead><tbody id="admin-rooms-list"></tbody></table></div>
+                </div>
+            </div>
+
+            <!-- Security Tab -->
+            <div id="adm-tab-security" class="hidden space-y-6">
+                <h3 class="text-2xl font-bold mb-6">Sicurezza & Moderazione</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8"><div class="bg-slate-800 p-6 rounded-xl border border-slate-700 flex items-center justify-between"><div><h4 class="text-white font-bold text-sm">Blocco Chat Pubblica</h4><p class="text-slate-400 text-xs">Impedisce ai non-staff di scrivere.</p></div><label class="toggle-switch"><input type="checkbox" id="adm-lock-chat" onchange="app.adminUpdateServerConfig('chatLocked', this.checked)"><span class="toggle-slider"></span></label></div><div class="bg-slate-800 p-6 rounded-xl border border-slate-700 flex items-center justify-between"><div><h4 class="text-white font-bold text-sm">Blocco Accesso Ospiti</h4><p class="text-slate-400 text-xs">Impedisce ai guest di loggare.</p></div><label class="toggle-switch"><input type="checkbox" id="adm-lock-guests" onchange="app.adminUpdateServerConfig('guestsLocked', this.checked)"><span class="toggle-slider"></span></label></div></div>
+                <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 mb-8"><h4 class="text-white font-bold text-sm mb-2">Invia Broadcast Globale</h4><div class="flex gap-2"><input type="text" id="adm-broadcast-text" class="flex-1 bg-slate-900 border border-slate-600 text-white text-sm p-3 rounded-lg" placeholder="Es: Manutenzione server!"><button onclick="app.adminSendBroadcast()" class="bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-lg font-bold uppercase shadow-lg">Invia Alert</button></div></div>
+                <div class="grid grid-cols-2 gap-6"><div class="bg-slate-800 p-5 rounded-xl border border-yellow-500/30"><h4 class="text-xs font-black uppercase text-yellow-400 mb-3 tracking-widest">Utenti Mutati</h4><div class="flex gap-2 mb-4"><input type="text" id="adm-mute-name" class="flex-1 bg-slate-900 border border-slate-700 text-xs text-white p-2 rounded" placeholder="Nome utente..."><button onclick="app.adminMuteUserBtn()" class="bg-yellow-600 text-white px-3 rounded text-xs">Muta</button></div><div class="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden"><table class="admin-table"><tbody id="admin-muted-list"></tbody></table></div></div><div class="bg-slate-800 p-5 rounded-xl border border-red-500/30"><h4 class="text-xs font-black uppercase text-red-400 mb-3 tracking-widest">Blacklist (Ban)</h4><div class="flex gap-2 mb-4"><input type="text" id="adm-ban-name" class="flex-1 bg-slate-900 border border-slate-700 text-xs text-white p-2 rounded" placeholder="Nome utente..."><button onclick="app.adminBanUserBtn()" class="bg-red-600 text-white px-3 rounded text-xs">Ban</button></div><div class="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden"><table class="admin-table"><tbody id="admin-banned-list"></tbody></table></div></div></div>
+            </div>
+
+            <!-- Appearance Tab -->
+            <div id="adm-tab-appearance" class="hidden space-y-6">
+                <h3 class="text-2xl font-bold mb-6">Personalizzazione Grafica</h3>
+                <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-5">
+                    <div>
+                        <label class="text-[10px] text-slate-400 uppercase font-black block mb-2 tracking-widest">Nome App / Titolo</label>
+                        <input type="text" id="adm-app-title" class="w-full bg-slate-900 border border-slate-600 text-white text-sm p-3.5 rounded-lg font-bold" placeholder="Es. RaskVideochat">
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-slate-400 uppercase font-black block mb-2 tracking-widest">Sfondo App (URL Immagine o GIF)</label>
+                        <input type="text" id="adm-app-bg" class="w-full bg-slate-900 border border-slate-600 text-white text-sm p-3.5 rounded-lg" placeholder="Lascia vuoto per sfondo standard">
+                        <p class="text-[10px] text-slate-500 mt-1">Carica un'immagine online (es. da Imgur o Giphy) e incolla qui il link diretto.</p>
+                    </div>
+                    <div class="grid grid-cols-2 gap-6 border-t border-slate-700 pt-5">
+                        <div>
+                            <label class="text-[10px] text-slate-400 uppercase font-black block mb-2 tracking-widest">Colore Brand Primario</label>
+                            <div class="flex items-center gap-3">
+                                <input type="color" id="adm-color-1" class="w-12 h-12 bg-slate-900 border border-slate-600 rounded-lg cursor-pointer p-1">
+                                <span class="text-xs text-slate-400">Sinistra/Top</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="text-[10px] text-slate-400 uppercase font-black block mb-2 tracking-widest">Colore Brand Secondario</label>
+                            <div class="flex items-center gap-3">
+                                <input type="color" id="adm-color-2" class="w-12 h-12 bg-slate-900 border border-slate-600 rounded-lg cursor-pointer p-1">
+                                <span class="text-xs text-slate-400">Destra/Bottom</span>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="app.adminSaveAppearance()" class="w-full btn-brand text-white py-4 rounded-xl font-black uppercase tracking-widest mt-6 shadow-lg text-sm">Salva e Applica a Tutti</button>
+                </div>
+            </div>
+
+            <!-- Radio Tab -->
+            <div id="adm-tab-radio" class="hidden space-y-6">
+                <h3 class="text-2xl font-bold mb-6">Configurazione Radio</h3>
+                <div class="bg-slate-800 p-5 rounded-xl border border-slate-700"><div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end mb-4"><div><label class="text-[9px] text-slate-500 uppercase block mb-1">Nome</label><input type="text" id="adm-radio-name" class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg"></div><div><label class="text-[9px] text-slate-500 uppercase block mb-1">URL Stream</label><input type="text" id="adm-radio-url" class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg" placeholder="https://..."></div><button onclick="app.adminAddStation()" class="bg-green-600 hover:bg-green-500 text-white px-4 py-2.5 rounded-lg text-xs font-bold">AGGIUNGI STAZIONE</button></div><div class="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden"><table class="admin-table"><thead><tr><th>Nome</th><th>URL</th><th>Azioni</th></tr></thead><tbody id="admin-radio-list"></tbody></table></div></div>
+            </div>
+        </div>
+    </div>
+
+    <input type="file" id="img-upload" style="display:none" accept="image/*">
+
+    <!-- FLOATING CAMS E PVT CHAT -->
+    <div id="local-video-container" class="video-window">
+        <div class="drag-handle" id="drag-local"></div>
+        <video id="v-player" class="w-full h-full object-cover mirror pointer-events-none" autoplay playsinline muted></video>
+        <div class="absolute top-2 left-2 bg-red-600 px-1.5 py-0.5 rounded text-[7px] font-black text-white uppercase z-20 pointer-events-none">Tu</div>
+        <button onclick="app.toggleCam()" class="absolute top-2 right-2 w-5 h-5 bg-black/50 text-white rounded-full flex items-center justify-center text-[10px] z-50 hover:bg-black cursor-pointer">×</button>
+        <div class="video-controls" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">
+            <button class="v-btn" id="btn-toggle-video" onclick="app.toggleVideoTrack()" title="Attiva/Disattiva Video"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z"/></svg></button>
+            <button class="v-btn" id="btn-toggle-audio" onclick="app.toggleAudioTrack()" title="Attiva/Disattiva Mic"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z"/></svg></button>
+            <div class="vol-slider-cont" title="Sensibilità Microfono Locale">
+                <input type="range" class="vol-slider" id="mic-volume-slider" min="0" max="100" value="100" oninput="app.setMicGain(this.value)">
+            </div>
+        </div>
+        <div class="resize-handle" id="resize-local"></div>
+    </div>
+    
+    <div id="watch-video-container" class="video-window">
+        <div class="drag-handle" id="drag-watch"></div>
+        <video id="remote-v-player" class="w-full h-full object-cover pointer-events-none" autoplay playsinline></video>
+        <div class="absolute inset-0 bg-slate-900 flex items-center justify-center z-[-1]"><span class="text-white/20 text-[9px] font-black uppercase">Stream <span id="watching-name">P2P</span></span></div>
+        <button onclick="app.closeRemoteStream()" class="absolute top-2 right-2 w-5 h-5 bg-black/50 text-white rounded-full flex items-center justify-center text-[10px] z-50 hover:bg-black cursor-pointer">×</button>
+        <div class="remote-vol-controls" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">
+            <span class="text-[8px] text-white font-bold uppercase">Volume</span>
+            <input type="range" class="vol-slider" min="0" max="1" step="0.05" value="1" oninput="app.setRemoteVolume(this.value)">
+        </div>
+        <div class="resize-handle" id="resize-watch"></div>
+    </div>
+
+    <!-- PVT CHAT & GAMES WINDOW -->
+    <div id="pvt-window" class="pvt-window" onmousedown="app.bringToFront(this)">
+        <div class="pvt-header" id="drag-pvt">
+            <div id="pvt-title-area" class="flex items-center min-w-0 flex-1"></div>
+            <div class="flex gap-1">
+                <button onclick="app.togglePvtGame()" class="text-white/80 hover:text-white p-1 hover:bg-white/20 rounded transition" title="Gioca a Forza 4">🎮</button>
+                <button onclick="app.closePrivateChat()" class="text-white/80 hover:text-white p-1 hover:bg-white/20 rounded transition ml-1">✕</button>
+            </div>
+        </div>
+        
+        <!-- Chat Area -->
+        <div id="pvt-messages" class="pvt-messages custom-scroll"></div>
+        <form id="pvt-form" class="pvt-input-area" onsubmit="app.sendPrivateMessage(event)">
+            <input type="text" id="pvt-input" placeholder="Scrivi..." class="flex-1 bg-slate-100 border-0 rounded-lg px-3 py-2 text-xs outline-none">
+            <button type="submit" class="bg-pink-600 text-white px-3 py-2 rounded-lg text-xs font-bold">Invia</button>
+        </form>
+
+        <!-- Forza 4 Game Area -->
+        <div id="pvt-game-area" class="pvt-game-area">
+            <div class="w-full flex justify-between items-center mb-4 px-2">
+                <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"></div><span class="text-[10px] text-slate-300 font-bold uppercase truncate max-w-[80px]" id="f4-p1-name">P1</span></div>
+                <div id="f4-status" class="text-[10px] font-black uppercase text-white bg-slate-800 px-3 py-1 rounded border border-slate-700">Caricamento...</div>
+                <div class="flex items-center gap-2"><span class="text-[10px] text-slate-300 font-bold uppercase truncate max-w-[80px]" id="f4-p2-name">P2</span><div class="w-3 h-3 rounded-full bg-yellow-400 shadow-[0_0_8px_rgba(234,179,8,0.8)]"></div></div>
+            </div>
+            <div id="f4-grid" class="f4-board-mini">
+                <!-- JS Injected -->
+            </div>
+            <button onclick="app.resetF4Game()" id="f4-reset-btn" class="mt-4 bg-slate-700 hover:bg-slate-600 text-white text-[10px] font-bold px-4 py-2 rounded hidden uppercase tracking-widest transition">Nuova Partita</button>
+        </div>
+        
+        <div class="resize-handle" id="resize-pvt"></div>
+    </div>
+    
+    <div id="user-menu-modal" class="user-menu-modal" onclick="app.closeUserMenu()"></div>
+
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
+        import { getAuth, signInAnonymously, signInWithCustomToken } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
+        import { getFirestore, collection, addDoc, onSnapshot, doc, setDoc, deleteDoc, updateDoc, getDocs } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+        import { getStorage, ref, uploadBytesResumable, getDownloadURL } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js';
+
+        window.app = {
+            state: {
+                isLoggedIn: false, db: null, storage: null, appId: 'raskvideochat', peer: null, currentCall: null, localStream: null,
+                micGainNode: null, localAudioCtx: null, theme: 'dark',
+                draw: { isDrawing: false, color: '#000000', size: 5, ctx: null, active: false, word: '', syncTimer: null },
+                f4: { active: false, unsub: null, gameId: null, board: Array(42).fill(null), turn: null, p1: null, p2: null, status: 'idle' },
+                isRadioPlaying: false, radioStations: [], serverConfig: { chatLocked: false, guestsLocked: false, badWords: "", appTitle: "RaskVideochat", appBgUrl: "", color1: "#4338ca", color2: "#7e22ce" },
+                me: { uid: null, name: "", color: "#64748b", camActive: false, role: "User", gender: "M", avatarUrl: null, muted: false, currentRoom: 'lobby' },
+                users: [], allMessages: [], allPvtMessages: [], registeredUsers: [], ignoredUsers: [], soundsEnabled: true,
+                bannedUsers: [], mutedUsers: [], rooms: [], currentRoom: 'lobby', gameHostUid: null, privateChatTarget: null, selectedUserForMenu: null,
+                loginTime: Date.now(),
+                emojis: ["😀","😂","😍","😎","😭","😡","👍","👎","🎉","🔥","❤️","💩","🤔","👋","👀","💪","💀","👻"],
+                msgCount: 0, authMode: 'login', replyingTo: null,
+                isRecording: false, mediaRecorder: null, audioChunks: [], unlockedRooms: [], pendingRoomId: null,
+                heartbeatInterval: null
+            },
+
+            getCol(name) { return collection(this.state.db, 'artifacts', this.state.appId, 'public', 'data', name); },
+            showToast(msg, type = 'info', extraHtml = '') {
+                const c = document.getElementById('toast-container');
+                const t = document.createElement('div');
+                t.className = `toast ${type}`;
+                t.innerHTML = `<span>${msg}</span>${extraHtml}`;
+                c.appendChild(t);
+                if(type !== 'request') { setTimeout(() => { t.style.opacity = '0'; setTimeout(() => t.remove(), 400) }, 3500); }
+                return t.id = `toast-${Date.now()}`;
+            },
+            sanitize(s) { const d = document.createElement('div'); d.textContent=s; return d.innerHTML; },
+            playBeep() { if(!this.state.soundsEnabled) return; try { const ctx = new (window.AudioContext || window.webkitAudioContext)(); const osc = ctx.createOscillator(); const gain = ctx.createGain(); osc.connect(gain); gain.connect(ctx.destination); osc.type = 'sine'; osc.frequency.setValueAtTime(800, ctx.currentTime); gain.gain.setValueAtTime(0.05, ctx.currentTime); gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.3); osc.start(); osc.stop(ctx.currentTime + 0.3); setTimeout(() => ctx.close(), 500); } catch(e){} },
+            openModal(id) { document.getElementById(id).classList.add('active'); if(id==='profile-modal'){ document.getElementById('edit-prof-name').value = this.state.me.name; document.getElementById('prof-avatar-preview').src = this.state.me.avatarUrl; } },
+            closeModal(id) { document.getElementById(id).classList.remove('active'); },
+            closeOnOverlay(e, el) { if(e.target === el) el.classList.remove('active'); },
+
+            // --- DRAW & GUESS LOGIC ---
+            initStageCanvas() {
+                const canvas = document.getElementById('stage-canvas');
+                const parent = canvas.parentElement;
+                canvas.width = parent.clientWidth > 0 ? parent.clientWidth : 280; 
+                canvas.height = parent.clientHeight > 0 ? parent.clientHeight : 280;
+                this.state.draw.ctx = canvas.getContext('2d');
+                this.state.draw.ctx.lineCap = 'round';
+                this.state.draw.ctx.lineJoin = 'round';
+                this.clearCanvas(false);
+
+                let isDown = false;
+                const startDraw = (e) => {
+                    if(!this.state.draw.active || this.state.gameHostUid !== this.state.me.uid) return;
+                    isDown = true; draw(e);
+                };
+                const stopDraw = () => { isDown = false; this.state.draw.ctx.beginPath(); if(this.state.draw.active) this.throttleSyncCanvas(); };
+                const draw = (e) => {
+                    if(!isDown || !this.state.draw.active) return;
+                    const rect = canvas.getBoundingClientRect();
+                    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
+                    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
+                    const x = clientX - rect.left;
+                    const y = clientY - rect.top;
+
+                    const ctx = this.state.draw.ctx;
+                    ctx.lineWidth = document.getElementById('brush-size') ? document.getElementById('brush-size').value : 5;
+                    ctx.strokeStyle = this.state.draw.color;
+
+                    ctx.lineTo(x, y);
+                    ctx.stroke();
+                    ctx.beginPath();
+                    ctx.moveTo(x, y);
+                    this.throttleSyncCanvas();
+                };
+
+                canvas.addEventListener('mousedown', startDraw);
+                canvas.addEventListener('mousemove', draw);
+                canvas.addEventListener('mouseup', stopDraw);
+                canvas.addEventListener('mouseout', stopDraw);
+                canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDraw(e); }, {passive:false});
+                canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); }, {passive:false});
+                canvas.addEventListener('touchend', stopDraw);
+                
+                window.addEventListener('resize', () => {
+                    if(this.state.draw.ctx && canvas.offsetWidth > 0) {
+                        const tempCanvas = document.createElement('canvas');
+                        tempCanvas.width = canvas.width; tempCanvas.height = canvas.height;
+                        tempCanvas.getContext('2d').drawImage(canvas, 0, 0);
+                        canvas.width = canvas.parentElement.clientWidth;
+                        canvas.height = canvas.parentElement.clientHeight;
+                        this.state.draw.ctx.lineCap = 'round'; this.state.draw.ctx.lineJoin = 'round';
+                        this.state.draw.ctx.fillStyle = '#ffffff'; this.state.draw.ctx.fillRect(0,0,canvas.width, canvas.height);
+                        this.state.draw.ctx.drawImage(tempCanvas, 0, 0);
+                    }
+                });
+            },
+            throttleSyncCanvas() {
+                if(this.state.draw.syncTimer) return;
+                this.state.draw.syncTimer = setTimeout(() => {
+                    if(this.state.gameHostUid === this.state.me.uid) {
+                        const dataUrl = document.getElementById('stage-canvas').toDataURL('image/webp', 0.5);
+                        updateDoc(doc(this.getCol('rooms_data'), 'games_stage'), { canvasData: dataUrl }).catch(()=>null);
+                    }
+                    this.state.draw.syncTimer = null;
+                }, 800);
+            },
+            clearCanvas(sync = false) {
+                if(!this.state.draw.ctx) return;
+                const canvas = document.getElementById('stage-canvas');
+                this.state.draw.ctx.fillStyle = '#ffffff';
+                this.state.draw.ctx.fillRect(0, 0, canvas.width, canvas.height);
+                if(sync && this.state.gameHostUid === this.state.me.uid) {
+                    updateDoc(doc(this.getCol('rooms_data'), 'games_stage'), { canvasData: '' }).catch(()=>null);
+                }
+            },
+            setDrawColor(c) { this.state.draw.color = c; },
+            async startDrawGame() {
+                const word = document.getElementById('draw-word-input').value.trim();
+                if(!word) return this.showToast("Inserisci una parola!", "error");
+                
+                if(!this.state.draw.ctx) this.initStageCanvas();
+                this.state.draw.active = true;
+                this.state.draw.word = word.toLowerCase();
+                document.getElementById('btn-start-draw').classList.add('hidden');
+                document.getElementById('btn-stop-draw').classList.remove('hidden');
+                document.getElementById('draw-tools').classList.remove('hidden');
+                document.getElementById('draw-word-input').disabled = true;
+
+                this.clearCanvas(false);
+                if(this.state.me.camActive) this.toggleCam();
+                
+                const dataUrl = document.getElementById('stage-canvas').toDataURL('image/webp', 0.5);
+                await updateDoc(doc(this.getCol('rooms_data'), 'games_stage'), { drawMode: true, canvasData: dataUrl });
+                this.sendSystemMessage(`🎨 <b>${this.state.me.name}</b> sta disegnando sul palco! Indovina la parola in chat per vincere!`, 'games');
+            },
+            async stopDrawGame() {
+                this.state.draw.active = false;
+                this.state.draw.word = '';
+                document.getElementById('btn-start-draw').classList.remove('hidden');
+                document.getElementById('btn-stop-draw').classList.add('hidden');
+                document.getElementById('draw-tools').classList.add('hidden');
+                document.getElementById('draw-word-input').disabled = false;
+                document.getElementById('draw-word-input').value = '';
+
+                await updateDoc(doc(this.getCol('rooms_data'), 'games_stage'), { drawMode: false, canvasData: '' });
+            },
+            async sendSystemMessage(txt, room) {
+                await addDoc(this.getCol('messages'), {
+                    roomId: room,
+                    text: `<div class="bg-indigo-600 text-white p-3 rounded-lg w-full text-center shadow-md border border-indigo-400 font-bold text-xs">⭐ SYSTEM ALERT:<br>${txt}</div>`,
+                    name: "SYSTEM", fromUid: "system", timestamp: Date.now()
+                });
+            },
+
+            // --- THEME ---
+            toggleTheme() {
+                this.state.theme = this.state.theme === 'dark' ? 'light' : 'dark';
+                const body = document.body;
+                const btn = document.getElementById('theme-toggle-btn');
+                if (this.state.theme === 'light') { body.classList.add('light-theme'); btn.innerText = "🌙"; } 
+                else { body.classList.remove('light-theme'); btn.innerText = "☀️"; }
+                localStorage.setItem('rask_theme', this.state.theme);
+                this.scrollToBottom(true);
+            },
+            loadTheme() {
+                const saved = localStorage.getItem('rask_theme');
+                if(saved === 'light') { this.state.theme = 'light'; document.body.classList.add('light-theme'); document.getElementById('theme-toggle-btn').innerText = "🌙"; }
+            },
+
+            async initFirebase() {
+                if(this.state.db) return getAuth();
+                
+                // Conforme alle regole di Canvas Runtime
+                let firebaseConfig;
+                if (typeof __firebase_config !== 'undefined') {
+                    firebaseConfig = JSON.parse(__firebase_config);
+                } else {
+                    firebaseConfig = { apiKey: "", authDomain: "raskvideochat.firebaseapp.com", projectId: "raskvideochat", storageBucket: "raskvideochat.firebasestorage.app", messagingSenderId: "834892043839", appId: "1:834892043839:web:66c0dfdc89150112454a8a" };
+                }
+                
+                this.state.appId = typeof __app_id !== 'undefined' ? __app_id : 'raskvideochat';
+                const fbApp = initializeApp(firebaseConfig); 
+                const auth = getAuth(fbApp); 
+                this.state.db = getFirestore(fbApp); 
+                this.state.storage = getStorage(fbApp);
+                
+                let signedIn = false;
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) { 
+                    try { 
+                        await signInWithCustomToken(auth, __initial_auth_token); 
+                        signedIn = true; 
+                    } catch (e) {} 
+                }
+                if (!signedIn) { await signInAnonymously(auth); }
+                
+                const scSnap = await getDocs(this.getCol('server_settings'));
+                scSnap.forEach(d => { if(d.id==='config') this.state.serverConfig = { ...this.state.serverConfig, ...d.data() }; });
+                this.applyAppearanceSettings();
+                return auth;
+            },
+
+            setAuthMode(mode) {
+                this.state.authMode = mode;
+                const tabLog = document.getElementById('tab-btn-login'); const tabReg = document.getElementById('tab-btn-register'); const btnText = document.getElementById('btn-text'); const genderGroup = document.getElementById('gender-group');
+                if(mode === 'login') { tabLog.className = "flex-1 pb-3 text-[11px] font-black uppercase tracking-widest border-b-2 border-brand text-brand transition"; tabReg.className = "flex-1 pb-3 text-[11px] font-black uppercase tracking-widest border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition"; btnText.innerText = "Accedi"; genderGroup.style.display = 'none'; } else { tabReg.className = "flex-1 pb-3 text-[11px] font-black uppercase tracking-widest border-b-2 border-brand text-brand transition"; tabLog.className = "flex-1 pb-3 text-[11px] font-black uppercase tracking-widest border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition"; btnText.innerText = "Registra Account"; genderGroup.style.display = 'block'; }
+            },
+
+            getUserColor(role, gender) { if (role === 'Admin') return '#020617'; if (role === 'Staff') return '#ef4444'; if (role === 'User') return gender === 'F' ? '#ec4899' : '#3b82f6'; return '#64748b'; },
+
+            async handleAuth(e) {
+                e.preventDefault(); const u = document.getElementById('auth-username').value.trim(); const p = document.getElementById('auth-password').value.trim(); 
+                if(!u || !p) return this.showToast("Dati mancanti", "error"); document.getElementById('btn-text').innerText = "Verifica...";
+                try {
+                    const auth = await this.initFirebase(); 
+                    const bansSnap = await getDocs(this.getCol('banned_users')); let isBanned = false; bansSnap.forEach(d => { if(d.data().username.toLowerCase() === u.toLowerCase()) isBanned = true; });
+                    if(isBanned) { this.setAuthMode(this.state.authMode); return this.showToast("Bannato.", "error"); }
+
+                    const usersSnap = await getDocs(this.getCol('registered_users')); let userFound = null; usersSnap.forEach(doc => { const data = doc.data(); if(data.name.toLowerCase() === u.toLowerCase()) userFound = data; });
+
+                    if (this.state.authMode === 'register') {
+                        if (userFound || u.toLowerCase() === 'admin') { this.setAuthMode(this.state.authMode); return this.showToast("Username occupato", "error"); }
+                        const genderVal = document.getElementById('auth-gender').value;
+                        await addDoc(this.getCol('registered_users'), { name: u, password: p, role: 'User', gender: genderVal }); 
+                        this.showToast("Account creato!", "success"); await this.finalizeLogin(auth, u, 'User', genderVal);
+                    } else {
+                        let finalRole = 'User', finalGender = 'M'; 
+                        if(u === 'admin' && p === 'adminraskvideochat') { finalRole = 'Admin'; finalGender = 'M'; }
+                        else if(userFound) { if (userFound.password !== p) { this.setAuthMode(this.state.authMode); return this.showToast("Password errata", "error"); } finalRole = userFound.role || 'User'; finalGender = userFound.gender || 'M'; }
+                        else { this.setAuthMode(this.state.authMode); return this.showToast("Utente non trovato", "error"); }
+                        await this.finalizeLogin(auth, u, finalRole, finalGender);
+                    }
+                } catch (err) { this.showToast("Errore server", "error"); this.setAuthMode(this.state.authMode); }
+            },
+
+            async loginAsGuest() {
+                document.getElementById('btn-guest-text').innerText = "Accesso...";
+                try { const auth = await this.initFirebase(); if(this.state.serverConfig.guestsLocked) { document.getElementById('btn-guest-text').innerText = "Entra come Ospite"; return this.showToast("LOCKDOWN: Registrazioni ospiti chiuse.", "error"); } await this.finalizeLogin(auth, `Ospite_${Math.floor(Math.random()*1000)}`, 'Guest', 'M'); } catch (err) { this.showToast("Errore", "error"); document.getElementById('btn-guest-text').innerText = "Entra come Ospite"; }
+            },
+            
+            async finalizeLogin(auth, username, role, gender) {
+                if(this.state.heartbeatInterval) { clearInterval(this.state.heartbeatInterval); this.state.heartbeatInterval = null; }
+
+                this.state.me.uid = auth.currentUser.uid;
+                this.state.me.name = username;
+                this.state.me.role = role;
+                this.state.me.gender = gender;
+                this.state.me.color = this.getUserColor(role, gender);
+                this.state.me.avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${username}_${Date.now()}`;
+                this.state.loginTime = Date.now();
+                
+                const onlineSnap = await getDocs(this.getCol('online_users'));
+                onlineSnap.forEach(d => { if(d.data().name.toLowerCase() === username.toLowerCase() && d.id !== this.state.me.uid) { deleteDoc(doc(this.getCol('online_users'), d.id)); } });
+                
+                if(['Admin', 'Staff'].includes(role)) document.getElementById('admin-nav-btn').classList.remove('hidden'); 
+                document.getElementById('my-avatar-mini').src = this.state.me.avatarUrl;
+                
+                await setDoc(doc(this.getCol('online_users'), this.state.me.uid), { name: this.state.me.name, color: this.state.me.color, avatarUrl: this.state.me.avatarUrl, role: this.state.me.role, gender: this.state.me.gender, camActive: false, currentRoom: 'lobby', timestamp: Date.now(), lastActive: Date.now() });
+
+                this.state.heartbeatInterval = setInterval(() => {
+                    if (this.state.isLoggedIn && this.state.me.uid) {
+                        updateDoc(doc(this.getCol('online_users'), this.state.me.uid), { lastActive: Date.now() }).catch(()=>null);
+                    }
+                }, 45000);
+
+                window.addEventListener('beforeunload', () => { 
+                    if(this.state.gameHostUid === this.state.me.uid) {
+                        updateDoc(doc(this.getCol('rooms_data'), 'games_stage'), { hostUid: null, hostName: null, drawMode: false, canvasData: '' }).catch(()=>null);
+                    }
+                    deleteDoc(doc(this.getCol('online_users'), this.state.me.uid)); 
+                    if(this.state.peer) this.state.peer.destroy(); 
+                });
+
+                this.state.isLoggedIn = true;
+                document.getElementById('auth-screen').classList.add('hidden');
+                document.getElementById('main-app').classList.remove('pointer-events-none');
+                document.getElementById('main-app').style.opacity = '1'; 
+                
+                this.initPeerJS();
+                this.startListeners();
+                
+                const availableRooms = this.state.rooms.filter(r => { if (this.state.me.role === 'Guest' && r.role !== 'Guest') return false; if (r.role === 'Staff' && !['Staff', 'Admin'].includes(this.state.me.role)) return false; return true; });
+                let targetRoomId = 'fallback';
+                if(availableRooms.length > 0) {
+                    targetRoomId = availableRooms[0].id;
+                    if(this.state.me.role !== 'Guest') { const lobby = availableRooms.find(r => r.id === 'lobby'); if(lobby) targetRoomId = lobby.id; }
+                }
+                
+                this.changeRoom(targetRoomId, true);
+                this.showToast(`Benvenuto, ${this.state.me.name}!`, "success");
+                this.playBeep(); 
+            },
+
+            // --- AVATAR UPLOAD ---
+            handleAvatarSelect(e) {
+                const f = e.target.files[0]; if(!f) return;
+                this.showToast("Elaborazione foto...", "info");
+                this.compressImage(f, (base64) => {
+                    this.state.me.avatarUrl = base64;
+                    document.getElementById('prof-avatar-preview').src = base64;
+                    document.getElementById('my-avatar-mini').src = base64;
+                    this.showToast("Anteprima aggiornata, salva per confermare.", "success");
+                });
+            },
+
+            async saveProfile() { 
+                const n = document.getElementById('edit-prof-name').value.trim(); 
+                if(n) this.state.me.name = n; 
+                await updateDoc(doc(this.getCol('online_users'), this.state.me.uid), { name: this.state.me.name, avatarUrl: this.state.me.avatarUrl }); 
+                this.closeModal('profile-modal'); this.showToast("Profilo salvato su Cloud", "success"); 
+            },
+
+            // --- ADMIN PANEL ---
+            openAdminPanel() { 
+                document.getElementById('admin-panel').classList.add('active'); 
+                this.adminRenderRegisteredUsers(); 
+                this.adminRenderLiveUsers(); 
+                if(document.getElementById('adm-app-title')) {
+                    document.getElementById('adm-app-title').value = this.state.serverConfig.appTitle || 'RaskVideochat';
+                    document.getElementById('adm-app-bg').value = this.state.serverConfig.appBgUrl || '';
+                    document.getElementById('adm-color-1').value = this.state.serverConfig.color1 || '#4338ca';
+                    document.getElementById('adm-color-2').value = this.state.serverConfig.color2 || '#7e22ce';
+                }
+            },
+            closeAdminPanel() { document.getElementById('admin-panel').classList.remove('active'); },
+
+            adminSwitchTab(tabId, event) {
+                ['dashboard', 'users', 'rooms', 'security', 'appearance', 'radio'].forEach(t => document.getElementById(`adm-tab-${t}`).classList.add('hidden'));
+                document.querySelectorAll('.admin-nav-item').forEach(el => el.classList.remove('active'));
+                document.getElementById(`adm-tab-${tabId}`).classList.remove('hidden');
+                if (event && event.currentTarget) event.currentTarget.classList.add('active');
+                if(tabId === 'users') { this.adminRenderRegisteredUsers(); this.adminRenderLiveUsers(); }
+                if(tabId === 'radio') this.adminRenderRadio();
+                if(tabId === 'rooms') this.adminRenderRooms();
+                if(tabId === 'security') { this.adminRenderMuted(); this.adminRenderBanned(); }
+            },
+            
+            async adminSaveAppearance() {
+                const title = document.getElementById('adm-app-title').value.trim() || 'RaskVideochat';
+                const bgUrl = document.getElementById('adm-app-bg').value.trim();
+                const col1 = document.getElementById('adm-color-1').value;
+                const col2 = document.getElementById('adm-color-2').value;
+                await setDoc(doc(this.getCol('server_settings'), 'config'), { appTitle: title, appBgUrl: bgUrl, color1: col1, color2: col2 }, { merge: true });
+                this.showToast("Personalizzazione Salvata", "success");
+            },
+            applyAppearanceSettings() {
+                const config = this.state.serverConfig;
+                if(config.appTitle) document.querySelectorAll('.app-title-display').forEach(el => el.innerText = config.appTitle);
+                const bgContainer = document.getElementById('app-bg-container');
+                if(config.appBgUrl) { bgContainer.style.background = `url(${config.appBgUrl}) center/cover no-repeat fixed`; }
+                else { bgContainer.style.background = `radial-gradient(circle at top right, #2e1065, #020617 70%)`; }
+                if(config.color1 && config.color2) {
+                    document.documentElement.style.setProperty('--brand-col-1', config.color1);
+                    document.documentElement.style.setProperty('--brand-col-2', config.color1); 
+                    document.documentElement.style.setProperty('--brand-col-3', config.color2);
+                }
+            },
+
+            adminRenderLiveUsers() {
+                const tbody = document.getElementById('admin-live-users-list');
+                if(!tbody) return;
+                tbody.innerHTML = this.state.users.map(u => `<tr><td><img src="${u.avatarUrl}" class="w-6 h-6 rounded-md object-cover"></td><td class="font-bold" style="color:${u.color}">${u.name}</td><td>${u.role}</td><td>${u.currentRoom}</td><td><div class="flex gap-1"><button onclick="app.kickUser('${u.uid}')" class="bg-yellow-600/20 text-yellow-500 hover:bg-yellow-600 hover:text-white px-2 py-1 rounded text-[10px] font-bold transition">Espelli</button><button onclick="app.disconnectUser('${u.uid}')" class="bg-red-600/20 text-red-500 hover:bg-red-600 hover:text-white px-2 py-1 rounded text-[10px] font-bold transition">Scollega</button></div></td></tr>`).join('');
+            },
+            async adminRegisterUser() { const n = document.getElementById('adm-reg-name').value; const p = document.getElementById('adm-reg-pass').value; const g = document.getElementById('adm-reg-gender').value; const r = document.getElementById('adm-reg-role').value; if(!n||!p) return; await addDoc(this.getCol('registered_users'), {name:n, password:p, gender:g, role:r}); document.getElementById('adm-reg-name').value=''; document.getElementById('adm-reg-pass').value=''; this.adminRenderRegisteredUsers(); this.showToast("Utente aggiunto", "success"); },
+            async adminRenderRegisteredUsers() { const snap = await getDocs(this.getCol('registered_users')); this.state.registeredUsers = []; snap.forEach(d => this.state.registeredUsers.push({id: d.id, ...d.data()})); document.getElementById('admin-users-list').innerHTML = this.state.registeredUsers.map(u => `<tr><td>${u.name}</td><td>${u.password}</td><td>${u.gender}</td><td>${u.role}</td><td><button onclick="app.adminDeleteUser('${u.id}')" class="bg-red-600/20 text-red-500 px-2 py-1 rounded text-[10px] font-bold">Elimina</button></td></tr>`).join(''); },
+            async adminDeleteUser(id) { await deleteDoc(doc(this.getCol('registered_users'), id)); this.adminRenderRegisteredUsers(); },
+            adminRenderRooms() { document.getElementById('admin-rooms-list').innerHTML = this.state.rooms.map(r => `<tr><td>${r.name}</td><td>${r.badgeText}</td><td>${r.role}</td><td>${r.isLocked ? '🔒 Protetta' : '🟢 Libera'}</td><td><button onclick="app.adminDeleteRoom('${r.id}')" class="bg-red-600/20 text-red-500 px-2 py-1 rounded text-[10px] font-bold">Elimina</button></td></tr>`).join(''); },
+            async adminAddRoom() { const n = document.getElementById('adm-room-name').value; const b = document.getElementById('adm-room-badge').value; const r = document.getElementById('adm-room-role').value; const isLocked = document.getElementById('adm-room-locked').checked; const pw = document.getElementById('adm-room-pw').value; if(!n) return; const id = n.toLowerCase().replace(/[^a-z0-9]/g, ''); await setDoc(doc(this.getCol('rooms'), id), { id:id, name:n, badgeText:b, role:r, color:'bg-slate-600', isLocked: isLocked, password: pw }); document.getElementById('adm-room-name').value=''; document.getElementById('adm-room-locked').checked = false; document.getElementById('adm-room-pw').value = ''; document.getElementById('adm-room-pw').disabled = true; this.showToast("Stanza Creata", "success"); },
+            async adminDeleteRoom(id) { if(['lobby','registration','games','staff'].includes(id)) return this.showToast("Stanza di sistema", "error"); await deleteDoc(doc(this.getCol('rooms'), id)); },
+            async adminUpdateServerConfig(key, val) { await setDoc(doc(this.getCol('server_settings'), 'config'), { [key]: val }, { merge: true }); },
+            async adminSendBroadcast() { const t = document.getElementById('adm-broadcast-text').value; if(!t) return; await addDoc(this.getCol('messages'), { roomId: 'lobby', text: `<div class="bg-red-600 text-white p-3 rounded-lg w-full text-center"><b>SYSTEM BROADCAST:</b><br>${t}</div>`, name: "SYSTEM", fromUid: "system", timestamp: Date.now() }); document.getElementById('adm-broadcast-text').value=''; this.showToast("Inviato in Lobby", "success"); },
+            async adminMuteUserBtn() { const n = document.getElementById('adm-mute-name').value; if(n) { await this.quickMuteUser(n); document.getElementById('adm-mute-name').value=''; } },
+            async adminBanUserBtn() { const n = document.getElementById('adm-ban-name').value; if(n) { await this.quickBanUser(n); document.getElementById('adm-ban-name').value=''; } },
+            async quickMuteUser(name) { this.closeUserMenu(); await addDoc(this.getCol('muted_users'), {username: name}); this.showToast(`${name} è stato mutato.`, "success"); },
+            async quickBanUser(name) { this.closeUserMenu(); await addDoc(this.getCol('banned_users'), {username: name}); this.showToast(`${name} è stato bannato.`, "success"); },
+            adminRenderMuted() { document.getElementById('admin-muted-list').innerHTML = this.state.mutedUsers.map(u => `<tr><td>${u.username}</td><td><button onclick="app.adminUnmute('${u.id}')" class="text-green-400">Rimuovi</button></td></tr>`).join(''); },
+            adminRenderBanned() { document.getElementById('admin-banned-list').innerHTML = this.state.bannedUsers.map(u => `<tr><td>${u.username}</td><td><button onclick="app.adminUnban('${u.id}')" class="text-green-400">Rimuovi</button></td></tr>`).join(''); },
+            async adminUnmute(id) { await deleteDoc(doc(this.getCol('muted_users'), id)); },
+            async adminUnban(id) { await deleteDoc(doc(this.getCol('banned_users'), id)); },
+            adminRenderRadio() { document.getElementById('admin-radio-list').innerHTML = this.state.radioStations.map(r => `<tr><td>${r.name}</td><td class="truncate max-w-[100px]">${r.url}</td><td><button onclick="app.adminDeleteStation('${r.id}')" class="text-red-400">Elimina</button></td></tr>`).join(''); },
+            async adminAddStation() { const n = document.getElementById('adm-radio-name').value.trim(); const u = document.getElementById('adm-radio-url').value.trim(); if(!n || !u) return this.showToast("Nome e URL obbligatori", "error"); if(!u.startsWith('http://') && !u.startsWith('https://')) return this.showToast("URL non valido. Deve iniziare con http:// o https://", "error"); await addDoc(this.getCol('radio_stations'), {name:n, url:u}); document.getElementById('adm-radio-name').value=''; document.getElementById('adm-radio-url').value=''; this.showToast("Stazione aggiunta", "success"); },
+            async adminDeleteStation(id) { await deleteDoc(doc(this.getCol('radio_stations'), id)); },
+            
+            startListeners() {
+                onSnapshot(this.getCol('server_settings'), snap => { 
+                    snap.forEach(d => { 
+                        if(d.id === 'config') { 
+                            this.state.serverConfig = { ...this.state.serverConfig, ...d.data() }; 
+                            this.applyAppearanceSettings();
+                            const input = document.getElementById('msg-input'); 
+                            if(this.state.serverConfig.chatLocked && !['Admin', 'Staff'].includes(this.state.me.role)) { 
+                                input.placeholder = "🔒 La chat è bloccata"; input.disabled = true; 
+                            } else if(this.state.me.muted) { 
+                                input.placeholder = "🔇 SEI STATO MUTATO DALLO STAFF"; input.disabled = true; 
+                            } else { 
+                                input.placeholder = "Scrivi un messaggio..."; input.disabled = false; 
+                            } 
+                            if(document.getElementById('adm-lock-chat')) { 
+                                document.getElementById('adm-lock-chat').checked = this.state.serverConfig.chatLocked; 
+                                document.getElementById('adm-lock-guests').checked = this.state.serverConfig.guestsLocked; 
+                            } 
+                        } 
+                    }); 
+                });
+                
+                onSnapshot(this.getCol('rooms'), snap => {
+                    let loadedRooms = []; snap.forEach(d => loadedRooms.push({id: d.id, ...d.data()}));
+                    if(loadedRooms.length === 0 && this.state.me.role === 'Admin') {
+                        const baseRooms = [ { id: 'registration', name: 'Sala Registrazioni', role: 'Guest', color: 'bg-amber-500', badgeText: 'REG' }, { id: 'lobby', name: 'Lobby Generale', role: 'User', color: 'bg-indigo-600', badgeText: 'LIVE' }, { id: 'games', name: 'Sala Live/Eventi', role: 'User', color: 'bg-purple-600', badgeText: 'SHOW' }, { id: 'staff', name: 'Stanza Staff', role: 'Staff', color: 'bg-red-600', badgeText: '🛡️', isLocked: true, password: 'admin' } ];
+                        baseRooms.forEach(async r => await setDoc(doc(this.getCol('rooms'), r.id), r));
+                    } else {
+                        this.state.rooms = loadedRooms.sort((a,b) => a.name.localeCompare(b.name));
+                        this.renderRoomsList();
+                        if(this.state.me.role === 'Admin') { this.adminRenderRooms(); document.getElementById('stat-rooms').innerText = this.state.rooms.length; }
+                        if(!this.state.rooms.find(r => r.id === this.state.currentRoom) && this.state.rooms.length > 0) this.changeRoom(this.state.rooms[0].id, true);
+                    }
+                });
+
+                onSnapshot(doc(this.getCol('rooms_data'), 'games_stage'), docSnap => { if(!docSnap.exists()) return; const data = docSnap.data(); this.state.gameHostUid = data.hostUid; this.updateStageUI(data); });
+
+                onSnapshot(this.getCol('room_kicks'), snap => { 
+                    snap.docChanges().forEach(change => { 
+                        if (change.type === 'added') { 
+                            const k = change.doc.data(); 
+                            if(k.targetUid === this.state.me.uid && (Date.now() - k.timestamp < 15000)) { 
+                                deleteDoc(doc(this.getCol('room_kicks'), change.doc.id)).catch(()=>null);
+                                if(k.type === 'kick_server') {
+                                    if(this.state.heartbeatInterval) clearInterval(this.state.heartbeatInterval);
+                                    deleteDoc(doc(this.getCol('online_users'), this.state.me.uid)).catch(()=>null);
+                                    document.body.innerHTML = '<div style="display:flex;height:100vh;align-items:center;justify-content:center;background:#000;color:red;font-weight:bold;font-size:24px;text-align:center;">SEI STATO DISCONNESSO FORZATAMENTE DALLO STAFF.</div>';
+                                    setTimeout(() => window.location.reload(), 3000);
+                                } else if (k.type === 'kick_room') {
+                                    if(this.state.currentRoom !== 'lobby') {
+                                        this.showToast("Sei stato espulso dalla stanza e rimandato in Lobby.", "error"); 
+                                        this.changeRoom('lobby', true); 
+                                    }
+                                }
+                            }
+                        } 
+                    }); 
+                });
+
+                onSnapshot(this.getCol('muted_users'), snap => { this.state.mutedUsers = []; let amIMuted = false; snap.forEach(d => { const data = d.data(); this.state.mutedUsers.push({id: d.id, ...data}); if(this.state.isLoggedIn && data.username.toLowerCase() === this.state.me.name.toLowerCase()) amIMuted = true; }); this.state.me.muted = amIMuted; if(this.state.me.role === 'Admin') this.adminRenderMuted(); const input = document.getElementById('msg-input'); if(amIMuted) { input.placeholder = "🔇 SEI STATO MUTATO DALLO STAFF"; input.disabled = true; } else if (!this.state.serverConfig.chatLocked) { input.placeholder = "Scrivi un messaggio..."; input.disabled = false; } });
+                onSnapshot(this.getCol('banned_users'), snap => { this.state.bannedUsers = []; snap.forEach(d => { const data = d.data(); this.state.bannedUsers.push({id: d.id, ...data}); if(this.state.isLoggedIn && data.username.toLowerCase() === this.state.me.name.toLowerCase()) { if(this.state.heartbeatInterval) clearInterval(this.state.heartbeatInterval); document.body.innerHTML = '<div style="display:flex;height:100vh;align-items:center;justify-content:center;background:#000;color:red;font-weight:bold;font-size:24px;">SEI STATO BANNATO DEFINITIVAMENTE.</div>'; setTimeout(() => window.location.reload(), 3000); } }); if(this.state.me.role === 'Admin') this.adminRenderBanned(); });
+                
+                onSnapshot(this.getCol('messages'), snap => { 
+                    this.state.allMessages = []; 
+                    snap.forEach(d => this.state.allMessages.push({id: d.id, ...d.data()})); 
+                    this.state.msgCount = this.state.allMessages.length; 
+                    if(this.state.me.role === 'Admin') document.getElementById('stat-msgs').innerText = this.state.msgCount; 
+                    this.renderCurrentRoomChat(); 
+
+                    if(this.state.gameHostUid === this.state.me.uid && this.state.draw.active && this.state.draw.word) {
+                        snap.docChanges().forEach(change => {
+                            if(change.type === 'added') {
+                                const m = change.doc.data();
+                                if(m.roomId === 'games' && m.fromUid !== this.state.me.uid && m.fromUid !== 'system') {
+                                    const cleanTxt = m.text.replace(/<[^>]*>?/gm, '').toLowerCase().trim();
+                                    if(cleanTxt === this.state.draw.word) {
+                                        this.sendSystemMessage(`🎉 <b>${m.name}</b> HA INDOVINATO LA PAROLA: <b class="text-yellow-300 text-lg uppercase">${this.state.draw.word}</b>! 🎉`, 'games');
+                                        this.stopDrawGame();
+                                    }
+                                }
+                            }
+                        });
+                    }
+                });
+                
+                onSnapshot(this.getCol('messages_pvt'), snap => { 
+                    this.state.allPvtMessages = []; 
+                    snap.forEach(d => this.state.allPvtMessages.push({id: d.id, ...d.data()})); 
+                    snap.docChanges().forEach(change => {
+                        if (change.type === 'added') {
+                            const m = change.doc.data();
+                            if (m.toUid === this.state.me.uid && m.timestamp > this.state.loginTime) {
+                                const sender = this.state.users.find(u => u.uid === m.fromUid);
+                                if (sender) {
+                                    const w = document.getElementById('pvt-window');
+                                    const isWindowOpen = w.classList.contains('active');
+                                    if (!isWindowOpen) {
+                                        this.startPrivateChatWithUser(sender);
+                                        this.showToast(`💬 Nuovo messaggio da ${sender.name}`, "info");
+                                        this.playBeep();
+                                    } else if (this.state.privateChatTarget && this.state.privateChatTarget.uid !== sender.uid) {
+                                        this.showToast(`💬 Nuovo messaggio da ${sender.name}`, "info");
+                                        this.playBeep();
+                                    } else {
+                                        this.playBeep();
+                                    }
+                                }
+                            }
+                        }
+                    });
+                    if(this.state.privateChatTarget) this.renderPrivateChat(); 
+                });
+                
+                onSnapshot(this.getCol('online_users'), snap => { 
+                    this.state.users = []; 
+                    const now = Date.now();
+                    const ghostThreshold = 150000; 
+                    
+                    snap.forEach(d => { 
+                        const u = {uid: d.id, ...d.data()};
+                        const lastPing = u.lastActive || u.timestamp || 0;
+                        const isGhost = (now - lastPing) > ghostThreshold;
+                        
+                        if(!isGhost) {
+                            this.state.users.push(u); 
+                        } else {
+                            if(Math.random() > 0.95) { deleteDoc(doc(this.getCol('online_users'), u.uid)).catch(()=>null); }
+                        }
+                    }); 
+                    
+                    this.state.users.sort((a, b) => { if (a.uid === this.state.me.uid) return -1; if (b.uid === this.state.me.uid) return 1; const roleWeight = { 'Admin': 3, 'Staff': 2, 'User': 1, 'Guest': 0 }; return roleWeight[b.role] - roleWeight[a.role]; });
+                    this.renderSidebar();
+                    if(this.state.me.role === 'Admin') { document.getElementById('stat-users').innerText = this.state.users.length; this.adminRenderLiveUsers(); }
+                });
+                
+                onSnapshot(this.getCol('cam_requests'), snap => { snap.docChanges().forEach(change => { if (change.type === 'added') { const req = change.doc.data(); if(req.to === this.state.me.uid && req.status === 'pending') { if(!this.state.me.camActive) { updateDoc(doc(this.getCol('cam_requests'), change.doc.id), { status: 'rejected' }); return; } this.playBeep(); this.showToast(`🎥 ${req.fromName} ti chiede di vedere la tua cam!`, "request", `<div class="flex gap-2 w-full mt-2" id="req-${change.doc.id}"><button onclick="app.answerCamRequest('${change.doc.id}', '${req.from}', true)" class="flex-1 bg-green-500 text-white py-1 rounded text-xs font-bold">Mostra</button><button onclick="app.answerCamRequest('${change.doc.id}', '${req.from}', false)" class="flex-1 bg-red-500 text-white py-1 rounded text-xs font-bold">Nega</button></div>`); } } }); });
+                onSnapshot(this.getCol('radio_stations'), snap => { this.state.radioStations = []; snap.forEach(d => this.state.radioStations.push({id: d.id, ...d.data()})); if(this.state.radioStations.length === 0) this.state.radioStations = [ { name: "Rask Cloud Radio", url: "https://icecast.radiofrance.fr/fip-midfi.mp3" } ]; document.getElementById('station-select').innerHTML = this.state.radioStations.map(s => `<option value="${s.url}">${s.name}</option>`).join(''); if(this.state.me.role === 'Admin') this.adminRenderRadio(); });
+                onSnapshot(this.getCol('live_reactions'), snap => { snap.docChanges().forEach(change => { if (change.type === 'added') { const data = change.doc.data(); if(this.state.currentRoom === 'games' && (Date.now() - data.timestamp < 10000)) { this.showFloatingReaction(data.emoji); } } }); });
+            },
+
+            // --- PALCO EVENTI E GIOCHI ---
+            async claimHost() {
+                const isHost = this.state.gameHostUid === this.state.me.uid;
+                if(isHost) {
+                    if(this.state.draw.active) await this.stopDrawGame();
+                    await setDoc(doc(this.getCol('rooms_data'), 'games_stage'), { hostUid: null, hostName: null, bulletin: '', drawMode: false, canvasData: '' });
+                    if(this.state.me.camActive) this.toggleCam();
+                } else {
+                    if(this.state.gameHostUid) return this.showToast("Il palco è già occupato!", "error");
+                    await setDoc(doc(this.getCol('rooms_data'), 'games_stage'), { hostUid: this.state.me.uid, hostName: this.state.me.name, bulletin: 'Benvenuti allo show di ' + this.state.me.name + '!', drawMode: false, canvasData: '' });
+                    if(!this.state.me.camActive) this.toggleCam();
+                }
+            },
+            async saveBulletin() { const txt = document.getElementById('host-bulletin-input').value.trim(); await updateDoc(doc(this.getCol('rooms_data'), 'games_stage'), { bulletin: txt }); this.showToast("Bacheca Aggiornata", "success"); },
+            updateStageUI(data) {
+                const hostBtn = document.getElementById('btn-become-host'); const editArea = document.getElementById('host-bulletin-edit-area'); const displayArea = document.getElementById('host-bulletin-display'); const stagePlayer = document.getElementById('stage-player'); const placeholder = document.getElementById('game-placeholder');
+                const stageVolCtrl = document.getElementById('stage-vol-ctrl-container');
+                const drawPanel = document.getElementById('host-draw-panel');
+                const bulletinPanel = document.getElementById('bulletin-panel');
+                const canvas = document.getElementById('stage-canvas');
+                const wordDisplay = document.getElementById('draw-word-display');
+                
+                displayArea.innerText = data.bulletin || 'Nessun messaggio.';
+                
+                if(data.hostUid === this.state.me.uid) {
+                    hostBtn.innerText = "Scendi dal Palco"; hostBtn.className = "w-full bg-red-600 hover:bg-red-500 text-white py-3 rounded-xl font-black text-xs uppercase shadow-lg shrink-0"; hostBtn.onclick = () => app.claimHost();
+                    editArea.classList.remove('hidden'); displayArea.classList.add('hidden'); document.getElementById('host-bulletin-input').value = data.bulletin || '';
+                    stageVolCtrl.classList.add('hidden'); 
+                    drawPanel.classList.remove('hidden');
+                    bulletinPanel.classList.add('hidden');
+                    if(!this.state.draw.ctx) this.initStageCanvas();
+                    if(this.state.localStream && !data.drawMode) { stagePlayer.srcObject = this.state.localStream; stagePlayer.classList.remove('hidden'); placeholder.classList.add('hidden'); document.getElementById('local-video-container').style.display = 'none'; }
+                } else if(data.hostUid) {
+                    editArea.classList.add('hidden'); displayArea.classList.remove('hidden');
+                    drawPanel.classList.add('hidden');
+                    bulletinPanel.classList.remove('hidden');
+                    if(this.state.currentCall && this.state.currentCall.peer === data.hostUid) { 
+                        hostBtn.innerText = `IN ONDA: ${data.hostName.toUpperCase()}`; hostBtn.className = "w-full bg-green-600 text-white py-3 rounded-xl font-black text-xs uppercase shadow-lg shrink-0"; hostBtn.onclick = null;
+                        stageVolCtrl.classList.remove('hidden'); 
+                    } else { 
+                        hostBtn.innerText = `GUARDA SHOW DI ${data.hostName.toUpperCase()}`; hostBtn.className = "w-full btn-brand text-white py-3 rounded-xl font-black text-xs uppercase shadow-lg shrink-0"; hostBtn.onclick = () => app.requestCam(data.hostUid); 
+                        stageVolCtrl.classList.add('hidden');
+                    }
+                } else {
+                    hostBtn.innerText = "Sali Sul Palco"; hostBtn.className = "w-full btn-brand text-white py-3 rounded-xl font-black text-xs uppercase shadow-lg shrink-0"; hostBtn.onclick = () => app.claimHost();
+                    editArea.classList.add('hidden'); displayArea.classList.remove('hidden'); displayArea.innerText = 'Il palco è vuoto. Aspettiamo un Host!';
+                    drawPanel.classList.add('hidden');
+                    bulletinPanel.classList.remove('hidden');
+                    stagePlayer.classList.add('hidden'); stagePlayer.srcObject = null; placeholder.classList.remove('hidden');
+                    stageVolCtrl.classList.add('hidden');
+                    if(this.state.me.camActive) { document.getElementById('local-video-container').style.display = 'block'; }
+                }
+
+                if(data.drawMode) {
+                    placeholder.classList.add('hidden');
+                    stagePlayer.classList.add('hidden');
+                    canvas.classList.remove('hidden');
+                    if(data.hostUid !== this.state.me.uid) {
+                        wordDisplay.classList.remove('hidden');
+                        wordDisplay.innerText = "Indovina la parola in chat!";
+                        if(data.canvasData) {
+                            if(!this.state.draw.ctx) this.initStageCanvas();
+                            const img = new Image();
+                            img.onload = () => { this.state.draw.ctx.clearRect(0,0, canvas.width, canvas.height); this.state.draw.ctx.drawImage(img, 0, 0); };
+                            img.src = data.canvasData;
+                        } else {
+                            this.clearCanvas(false);
+                        }
+                    } else {
+                        wordDisplay.classList.remove('hidden');
+                        wordDisplay.innerText = `Parola: ${this.state.draw.word}`;
+                    }
+                } else {
+                    canvas.classList.add('hidden');
+                    wordDisplay.classList.add('hidden');
+                    if(data.hostUid && !data.drawMode) {
+                        if(this.state.currentCall && this.state.currentCall.peer === data.hostUid) { stagePlayer.classList.remove('hidden'); placeholder.classList.add('hidden'); }
+                        else if (data.hostUid === this.state.me.uid && this.state.localStream) { stagePlayer.classList.remove('hidden'); placeholder.classList.add('hidden'); }
+                        else { stagePlayer.classList.add('hidden'); placeholder.classList.remove('hidden'); }
+                    }
+                }
+            },
+            async sendReaction(emoji) { if(this.state.currentRoom !== 'games') return; await addDoc(this.getCol('live_reactions'), { emoji, uid: this.state.me.uid, timestamp: Date.now() }); },
+            showFloatingReaction(emoji) { const area = document.getElementById('stage-reaction-area'); const el = document.createElement('div'); el.className = 'floating-reaction'; el.innerText = emoji; el.style.left = `${10 + Math.random() * 80}%`; area.appendChild(el); setTimeout(() => el.remove(), 2500); },
+
+            // --- FORZA 4 (PVT GAME) ---
+            getF4GameId() {
+                if(!this.state.privateChatTarget) return null;
+                const uid1 = this.state.me.uid; const uid2 = this.state.privateChatTarget.uid;
+                return uid1 < uid2 ? `${uid1}_${uid2}` : `${uid2}_${uid1}`;
+            },
+            async togglePvtGame() {
+                const gameArea = document.getElementById('pvt-game-area');
+                const msgArea = document.getElementById('pvt-messages');
+                const formArea = document.getElementById('pvt-form');
+                
+                if(this.state.f4.active) {
+                    // Chiudi Gioco
+                    this.state.f4.active = false;
+                    gameArea.classList.remove('active');
+                    msgArea.classList.remove('hidden');
+                    formArea.classList.remove('hidden');
+                    if(this.state.f4.unsub) { this.state.f4.unsub(); this.state.f4.unsub = null; }
+                } else {
+                    // Apri Gioco
+                    this.state.f4.active = true;
+                    gameArea.classList.add('active');
+                    msgArea.classList.add('hidden');
+                    formArea.classList.add('hidden');
+                    
+                    document.getElementById('f4-p1-name').innerText = this.state.me.uid < this.state.privateChatTarget.uid ? "Tu" : this.state.privateChatTarget.name;
+                    document.getElementById('f4-p2-name').innerText = this.state.me.uid < this.state.privateChatTarget.uid ? this.state.privateChatTarget.name : "Tu";
+                    
+                    const gameId = this.getF4GameId();
+                    this.state.f4.gameId = gameId;
+                    
+                    // Listener Firebase
+                    this.state.f4.unsub = onSnapshot(doc(this.getCol('private_games'), gameId), (docSnap) => {
+                        if(docSnap.exists()) {
+                            this.syncF4State(docSnap.data());
+                        } else {
+                            // Inizializza nuova partita (uid1 è sempre Red/p1)
+                            const isP1 = this.state.me.uid < this.state.privateChatTarget.uid;
+                            const newGame = { p1: isP1 ? this.state.me.uid : this.state.privateChatTarget.uid, p2: isP1 ? this.state.privateChatTarget.uid : this.state.me.uid, turn: isP1 ? this.state.me.uid : this.state.privateChatTarget.uid, board: Array(42).fill(null), status: 'playing', winCells: [] };
+                            setDoc(doc(this.getCol('private_games'), gameId), newGame).catch(()=>null);
+                        }
+                    });
+                }
+            },
+            syncF4State(data) {
+                this.state.f4.board = data.board;
+                this.state.f4.turn = data.turn;
+                this.state.f4.p1 = data.p1;
+                this.state.f4.p2 = data.p2;
+                this.state.f4.status = data.status;
+                
+                const isMyTurn = this.state.f4.turn === this.state.me.uid;
+                const iAmP1 = this.state.f4.p1 === this.state.me.uid;
+                
+                const statEl = document.getElementById('f4-status');
+                const btnReset = document.getElementById('f4-reset-btn');
+                
+                if(data.status === 'playing') {
+                    btnReset.classList.add('hidden');
+                    statEl.innerText = isMyTurn ? "Tocca a TE" : "Attendi...";
+                    statEl.className = `text-[10px] font-black uppercase px-3 py-1 rounded border ${isMyTurn ? 'bg-brand text-white border-indigo-400 shadow-[0_0_10px_rgba(79,70,229,0.5)]' : 'bg-slate-800 text-slate-400 border-slate-700'}`;
+                } else if (data.status === 'draw') {
+                    btnReset.classList.remove('hidden');
+                    statEl.innerText = "PAREGGIO!";
+                    statEl.className = "text-[10px] font-black uppercase text-slate-300 bg-slate-700 px-3 py-1 rounded border border-slate-600";
+                } else {
+                    btnReset.classList.remove('hidden');
+                    const iWon = data.status === (iAmP1 ? 'win_p1' : 'win_p2');
+                    statEl.innerText = iWon ? "HAI VINTO! 🎉" : "HAI PERSO 💀";
+                    statEl.className = `text-[10px] font-black uppercase px-3 py-1 rounded border ${iWon ? 'bg-green-600/20 text-green-400 border-green-500/50' : 'bg-red-600/20 text-red-400 border-red-500/50'}`;
+                }
+                
+                this.renderF4Board(data.winCells || []);
+            },
+            renderF4Board(winCells) {
+                const grid = document.getElementById('f4-grid');
+                grid.innerHTML = '';
+                for(let i=0; i<42; i++) {
+                    const val = this.state.f4.board[i];
+                    const isWin = winCells.includes(i);
+                    let colorClass = '';
+                    if(val === 'R') colorClass = 'red';
+                    if(val === 'Y') colorClass = 'yellow';
+                    if(isWin) colorClass += ' win';
+                    grid.innerHTML += `<div class="f4-cell-mini ${colorClass}" onclick="app.playF4Move(${i % 7})"></div>`;
+                }
+            },
+            async playF4Move(col) {
+                if(this.state.f4.status !== 'playing' || this.state.f4.turn !== this.state.me.uid) return;
+                
+                let targetIdx = -1;
+                const board = [...this.state.f4.board];
+                
+                // Trova prima riga libera in quella colonna dal basso (righe: 0-5, col: 0-6)
+                for(let r = 5; r >= 0; r--) {
+                    const idx = r * 7 + col;
+                    if(board[idx] === null) { targetIdx = idx; break; }
+                }
+                
+                if(targetIdx === -1) return; // Colonna piena
+                
+                const iAmP1 = this.state.f4.p1 === this.state.me.uid;
+                const myToken = iAmP1 ? 'R' : 'Y';
+                board[targetIdx] = myToken;
+                
+                // Controllo vittoria locale prima di syncare
+                const winCells = this.checkF4WinLocal(board, Math.floor(targetIdx / 7), col, myToken);
+                let newStatus = 'playing';
+                if(winCells) {
+                    newStatus = iAmP1 ? 'win_p1' : 'win_p2';
+                } else if (!board.includes(null)) {
+                    newStatus = 'draw';
+                }
+                
+                const nextTurn = this.state.privateChatTarget.uid;
+                
+                await updateDoc(doc(this.getCol('private_games'), this.state.f4.gameId), {
+                    board: board,
+                    turn: nextTurn,
+                    status: newStatus,
+                    winCells: winCells || []
+                });
+            },
+            checkF4WinLocal(board, r, c, token) {
+                const dirs = [ [0, 1], [1, 0], [1, 1], [1, -1] ]; // Orizz, Vert, Diag giù, Diag su
+                for(let [dr, dc] of dirs) {
+                    let count = 1; let cells = [r * 7 + c];
+                    // Avanti
+                    for(let i=1; i<4; i++) {
+                        const nr = r + dr * i, nc = c + dc * i;
+                        if(nr>=0 && nr<6 && nc>=0 && nc<7 && board[nr*7+nc] === token) { count++; cells.push(nr*7+nc); } else break;
+                    }
+                    // Indietro
+                    for(let i=1; i<4; i++) {
+                        const nr = r - dr * i, nc = c - dc * i;
+                        if(nr>=0 && nr<6 && nc>=0 && nc<7 && board[nr*7+nc] === token) { count++; cells.push(nr*7+nc); } else break;
+                    }
+                    if(count >= 4) return cells;
+                }
+                return null;
+            },
+            async resetF4Game() {
+                if(!this.state.f4.gameId) return;
+                const iAmP1 = this.state.me.uid < this.state.privateChatTarget.uid;
+                await updateDoc(doc(this.getCol('private_games'), this.state.f4.gameId), {
+                    board: Array(42).fill(null),
+                    turn: this.state.f4.p1, // Inizia sempre P1 (Rosso)
+                    status: 'playing',
+                    winCells: []
+                });
+            },
+
+            // --- CHAT E STANZE ---
+            renderRoomsList() { 
+                const c = document.getElementById('rooms-list'); 
+                c.innerHTML = this.state.rooms.map(r => { 
+                    if (this.state.me.role === 'Guest' && r.role !== 'Guest') return ''; 
+                    if (r.role === 'Staff' && !['Staff', 'Admin'].includes(this.state.me.role)) return ''; 
+                    const act = this.state.currentRoom === r.id ? 'active' : 'inactive'; 
+                    const lockIcon = (r.isLocked && !['Admin', 'Staff'].includes(this.state.me.role)) ? '🔒 ' : '';
+                    return `<button onclick="app.changeRoom('${r.id}')" class="room-btn ${act}"><span>${lockIcon}${r.name}</span> <span class="${r.color || 'bg-slate-600'} text-white px-1.5 rounded text-[9px] shadow-sm">${r.badgeText}</span></button>`; 
+                }).join(''); 
+            },
+            
+            async changeRoom(id, force = false) { 
+                const targetRoom = this.state.rooms.find(r => r.id === id);
+                if(!targetRoom) return;
+
+                if(targetRoom.isLocked && !['Admin', 'Staff'].includes(this.state.me.role) && !this.state.unlockedRooms.includes(id) && !force) {
+                    this.state.pendingRoomId = id;
+                    document.getElementById('room-pin-input').value = '';
+                    this.openModal('room-password-modal');
+                    return;
+                }
+
+                this.state.currentRoom = id;
+                this.renderRoomsList(); 
+                if(this.state.isLoggedIn && this.state.me.uid) {
+                    await updateDoc(doc(this.getCol('online_users'), this.state.me.uid), { currentRoom: id }).catch(()=>null);
+                }
+                if(id === 'games') { 
+                    document.getElementById('game-stage').classList.remove('hidden'); 
+                    setTimeout(() => window.dispatchEvent(new Event('resize')), 100); 
+                } else { 
+                    document.getElementById('game-stage').classList.add('hidden'); 
+                    if(this.state.me.camActive) document.getElementById('local-video-container').style.display = 'block'; 
+                } 
+                this.renderCurrentRoomChat();
+                this.scrollToBottom(true); 
+            },
+
+            submitRoomPassword() {
+                const targetRoom = this.state.rooms.find(r => r.id === this.state.pendingRoomId);
+                const pin = document.getElementById('room-pin-input').value;
+                if(targetRoom && targetRoom.password === pin) {
+                    this.state.unlockedRooms.push(targetRoom.id);
+                    this.closeModal('room-password-modal');
+                    this.changeRoom(targetRoom.id, true);
+                    this.showToast("Accesso Consentito", "success");
+                } else {
+                    this.showToast("Password Errata", "error");
+                }
+            },
+
+            scrollToBottom(force = false) { const c = document.getElementById('msg-container'); const isScrolledToBottom = c.scrollHeight - c.scrollTop <= c.clientHeight + 150; if (force || isScrolledToBottom) { setTimeout(() => { c.scrollTop = c.scrollHeight; }, 50); } },
+
+            setReplyTo(msgId) {
+                const msg = this.state.allMessages.find(m => m.id === msgId);
+                if(!msg) return;
+                let cleanText = msg.text.replace(/<[^>]*>?/gm, '');
+                if(msg.text.includes('<img')) cleanText = "📷 Immagine";
+                if(msg.text.includes('<audio')) cleanText = "🎤 Nota Vocale";
+                if(msg.text.includes('<iframe')) cleanText = "📺 Video";
+                this.state.replyingTo = { id: msg.id, name: msg.name, text: cleanText };
+                document.getElementById('reply-preview-name').innerText = msg.name;
+                document.getElementById('reply-preview-text').innerText = cleanText;
+                document.getElementById('reply-preview-container').classList.remove('hidden');
+                document.getElementById('msg-input').focus();
+            },
+            cancelReply() {
+                this.state.replyingTo = null;
+                document.getElementById('reply-preview-container').classList.add('hidden');
+            },
+
+            handleChatSubmit(e) { if(e) e.preventDefault(); const input = document.getElementById('msg-input'); const text = input.value.trim(); if(!text) return; this.sendChatMessage(text, false); input.value = ''; input.style.height = 'auto'; document.getElementById('emoji-picker').classList.remove('active'); },
+            
+            async sendChatMessage(text, isSystemHtml = false) {
+                if(this.state.me.muted) return; if(this.state.serverConfig.chatLocked && !['Admin', 'Staff'].includes(this.state.me.role)) return;
+                let finalTxt = text;
+                if(!isSystemHtml) {
+                    finalTxt = this.sanitize(text).replace(/&lt;b&gt;/g, '<b>').replace(/&lt;\/b&gt;/g, '</b>'); 
+                    const ytRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:[^\/\n\s]+\/\S+\/|(?:v|e(?:mbed)?)\/|\S*?[?&]v=)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
+                    let hasYoutube = false;
+                    finalTxt = finalTxt.replace(ytRegex, (match, id) => { hasYoutube = true; return `<div class="mt-2 w-full max-w-[300px] aspect-video rounded-xl overflow-hidden shadow-lg border border-slate-300"><iframe width="100%" height="100%" src="https://www.youtube.com/embed/${id}" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen></iframe></div>`; });
+                    if(!hasYoutube) { const urlRegex = /(https?:\/\/[^\s]+)/g; finalTxt = finalTxt.replace(urlRegex, (url) => { if(url.match(/\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i)) return `<img src="${url}" class="chat-image" loading="lazy">`; return `<a href="${url}" target="_blank" class="text-brand underline font-bold" style="word-break: break-all;">${url}</a>`; }); }
+                    if(this.state.serverConfig.badWords) { const badWords = this.state.serverConfig.badWords.split(',').map(w => w.trim().toLowerCase()).filter(w => w); badWords.forEach(w => { const regex = new RegExp(`\\b${w}\\b`, 'gi'); finalTxt = finalTxt.replace(regex, '***'); }); }
+                }
+                
+                const payload = { roomId: this.state.currentRoom, text: finalTxt, name: this.state.me.name, fromUid: this.state.me.uid, color: this.state.me.color, size: document.getElementById('text-size').value, txtColor: document.getElementById('text-color').value, avatarUrl: this.state.me.avatarUrl, timestamp: Date.now() };
+                if(this.state.replyingTo && !isSystemHtml) { payload.replyTo = this.state.replyingTo; this.cancelReply(); }
+                await addDoc(this.getCol('messages'), payload);
+            },
+
+            renderCurrentRoomChat() {
+                const c = document.getElementById('msg-container'); const ignoredUids = this.state.ignoredUsers.map(u => u.uid);
+                const roomMsgs = this.state.allMessages.filter(m => m.roomId === this.state.currentRoom && !ignoredUids.includes(m.fromUid) && m.timestamp >= this.state.loginTime).sort((a,b) => a.timestamp - b.timestamp).slice(-60);
+                const roomName = this.state.rooms.find(r=>r.id===this.state.currentRoom)?.name || "Stanza";
+                
+                let html = `<div class="flex justify-center mb-6 mt-2"><span class="bg-indigo-50 text-indigo-500 text-[10px] px-6 py-2 rounded-full font-black uppercase tracking-widest border border-indigo-100/50 shadow-sm">Benvenuto in ${roomName}</span></div>`;
+                html += roomMsgs.map(m => {
+                    const time = new Date(m.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+                    const avatarHtml = m.avatarUrl ? `<img src="${m.avatarUrl}" class="chat-avatar" loading="lazy">` : `<div class="chat-avatar"></div>`;
+                    let quoteHtml = '';
+                    if (m.replyTo) { quoteHtml = `<div class="chat-quote"><b>${m.replyTo.name}</b>: ${m.replyTo.text}</div>`; }
+                    return `<div class="chat-line group">
+                        <span class="chat-timestamp">${time}</span>
+                        ${avatarHtml}
+                        <div class="chat-content-area">
+                            ${quoteHtml}
+                            <div class="flex items-center flex-wrap">
+                                <span class="chat-name" onclick="app.openUserMenu(event, '${m.fromUid}')" style="color:${m.color}">${m.name}:</span>
+                                <span class="chat-text" style="font-size:${m.size||'14px'}; color:${m.txtColor||'#0f172a'}">${m.text}</span>
+                                <button onclick="app.setReplyTo('${m.id}')" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-brand text-[10px] ml-2 transition">↩️ Rispondi</button>
+                            </div>
+                        </div>
+                    </div>`;
+                }).join('');
+                
+                c.innerHTML = html; this.scrollToBottom(false);
+            },
+
+            // --- MEDIA E EMOJI ---
+            renderEmojis() { document.getElementById('emoji-picker').innerHTML = this.state.emojis.map(e => `<button type="button" class="emoji-btn" onclick="app.addEmoji('${e}')">${e}</button>`).join(''); },
+            toggleEmojiPicker(e) { if(e) e.stopPropagation(); document.getElementById('emoji-picker').classList.toggle('active'); },
+            addEmoji(c) { const i = document.getElementById('msg-input'); i.value += c; i.focus(); document.getElementById('emoji-picker').classList.remove('active'); },
+            insertBold() { const i = document.getElementById('msg-input'); i.value += "<b></b>"; i.focus(); },
+            compressImage(file, callback) {
+                if(!file.type.startsWith('image/')) { this.showToast("File non è un'immagine valida", "error"); return; }
+                const reader = new FileReader();
+                reader.onload = (e) => { const img = new Image(); img.onload = () => { const canvas = document.createElement('canvas'); let w = img.width, h = img.height; const max = 800; if(w > max || h > max) { if(w > h) { h = (max/w)*h; w = max; } else { w = (max/h)*w; h = max; } } canvas.width = w; canvas.height = h; const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, w, h); callback(canvas.toDataURL('image/jpeg', 0.6)); }; img.onerror = () => this.showToast("Impossibile elaborare l'immagine", "error"); img.src = e.target.result; };
+                reader.onerror = () => this.showToast("Errore lettura file", "error");
+                reader.readAsDataURL(file);
+            },
+            triggerImageUpload() { document.getElementById('img-upload').click(); },
+            setupImageUpload() { document.getElementById('img-upload').onchange = async (e) => { if(this.state.me.muted) return; const f = e.target.files[0]; if (!f) return; if(f.size > 5 * 1024 * 1024) return this.showToast("Max 5MB", "error"); this.showToast("Caricamento in corso...", "info"); try { const storageRef = ref(this.state.storage, `chat_images/${Date.now()}_${f.name}`); await uploadBytesResumable(storageRef, f); const downloadURL = await getDownloadURL(storageRef); this.sendChatMessage(`<img src="${downloadURL}" class="chat-image" loading="lazy">`, true); } catch(err) { this.compressImage(f, (compressedBase64) => { this.sendChatMessage(`<img src="${compressedBase64}" class="chat-image" loading="lazy">`, true); }); } e.target.value = ''; }; },
+            
+            async toggleVoiceRecord() {
+                if(this.state.me.muted) return this.showToast("Sei mutato.", "error");
+                const btn = document.getElementById('btn-voice-record');
+                if (this.state.isRecording) {
+                    if(this.state.mediaRecorder && this.state.mediaRecorder.state !== 'inactive') { this.state.mediaRecorder.stop(); }
+                    this.state.isRecording = false;
+                    btn.classList.remove('text-red-500', 'bg-red-500/20');
+                    return;
+                }
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                    this.state.mediaRecorder = new MediaRecorder(stream);
+                    this.state.audioChunks = [];
+                    this.state.mediaRecorder.ondataavailable = e => { if (e.data.size > 0) this.state.audioChunks.push(e.data); };
+                    this.state.mediaRecorder.onstop = async () => {
+                        stream.getTracks().forEach(t => t.stop());
+                        if (this.state.audioChunks.length === 0) return;
+                        const audioBlob = new Blob(this.state.audioChunks, { type: 'audio/webm' });
+                        this.showToast("Invio nota vocale...", "info");
+                        try {
+                            const storageRef = ref(this.state.storage, `chat_audio/${Date.now()}_voice.webm`);
+                            await uploadBytesResumable(storageRef, audioBlob);
+                            const url = await getDownloadURL(storageRef);
+                            this.sendChatMessage(`<audio controls src="${url}" class="h-10 mt-2 max-w-[240px] rounded-full"></audio>`, true);
+                        } catch (err) { this.showToast("Errore caricamento audio", "error"); }
+                    };
+                    this.state.mediaRecorder.start();
+                    this.state.isRecording = true;
+                    btn.classList.add('text-red-500', 'bg-red-500/20');
+                    this.showToast("Registrazione avviata. Ripremi per inviare.", "info");
+                } catch (e) { this.showToast("Permesso microfono negato", "error"); }
+            },
+
+            // MENU UTENTE E SIDEBAR
+            openUserMenu(event, uid) { 
+                event.stopPropagation(); if(uid === this.state.me.uid) return; 
+                const user = this.state.users.find(u => u.uid === uid) || { uid: uid, name: "Utente" }; this.state.selectedUserForMenu = user; 
+                let menuHtml = `<div class="user-menu-header">${user.name}</div><div class="user-menu-item" onclick="app.startPrivateChat()">💬 Messaggio Privato</div>`; 
+                if(['Admin', 'Staff'].includes(this.state.me.role)) { 
+                    menuHtml += `<div class="user-menu-item danger" onclick="app.kickUser('${uid}')">🚪 Espelli in Lobby</div>${this.state.me.role === 'Admin' ? `<div class="user-menu-item danger" onclick="app.disconnectUser('${uid}')">🔌 Disconnetti dal Server</div>` : ''}<div class="user-menu-item danger" onclick="app.quickMuteUser('${user.name}')">🔇 Muta Utente</div><div class="user-menu-item danger" onclick="app.quickBanUser('${user.name}')">🔨 Banna Utente</div>`; 
+                }
+                const menu = document.getElementById('user-menu-modal');
+                menu.innerHTML = menuHtml;
+                const menuW = 180, menuH = 200;
+                let top = event.clientY, left = event.clientX;
+                if(left + menuW > window.innerWidth) left = window.innerWidth - menuW - 8;
+                if(top + menuH > window.innerHeight) top = window.innerHeight - menuH - 8;
+                menu.style.top = `${top}px`; menu.style.left = `${left}px`;
+                menu.classList.add('active'); 
+            },
+            closeUserMenu() { document.getElementById('user-menu-modal').classList.remove('active'); },
+            
+            async kickUser(uid) { this.closeUserMenu(); await addDoc(this.getCol('room_kicks'), { targetUid: uid, type: 'kick_room', timestamp: Date.now() }); this.showToast("Utente rispedito in Lobby.", "success"); },
+            async disconnectUser(uid) { this.closeUserMenu(); await addDoc(this.getCol('room_kicks'), { targetUid: uid, type: 'kick_server', timestamp: Date.now() }); this.showToast("Utente disconnesso forzatamente.", "success"); },
+
+            startPrivateChat() { this.startPrivateChatWithUser(this.state.selectedUserForMenu); },
+            startPrivateChatWithUser(user) { 
+                if(!user) return; 
+                this.state.privateChatTarget = user; 
+                const w = document.getElementById('pvt-window'); 
+                w.classList.add('active'); 
+                this.bringToFront(w); 
+                const isCamActive = user.camActive;
+                let camBtnHtml = isCamActive
+                    ? `<button onclick="app.requestCam('${user.uid}')" class="text-green-300 hover:text-green-100 mr-2 p-1.5 bg-white/10 hover:bg-white/20 rounded flex items-center transition" title="Invia richiesta Cam"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></button>`
+                    : `<button class="text-white/30 mr-2 p-1.5 flex items-center cursor-not-allowed" title="Cam spenta"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></button>`;
+                document.getElementById('pvt-title-area').innerHTML = `${camBtnHtml} <span class="text-xs font-black uppercase truncate">Privato: ${user.name}</span>`;
+                this.renderPrivateChat(); 
+                
+                // Se era aperta la F4, ricarica col nuovo utente
+                if(this.state.f4.active) { this.state.f4.active = false; this.togglePvtGame(); }
+                
+                if(document.getElementById('user-menu-modal')) this.closeUserMenu(); 
+            },
+            closePrivateChat() { 
+                this.state.privateChatTarget = null; 
+                document.getElementById('pvt-window').classList.remove('active'); 
+                if(this.state.f4.active) this.togglePvtGame(); 
+            },
+            async sendPrivateMessage(e) { e.preventDefault(); const t = document.getElementById('pvt-input').value.trim(); if(!t || !this.state.privateChatTarget) return; await addDoc(this.getCol('messages_pvt'), { text: this.sanitize(t), name: this.state.me.name, fromUid: this.state.me.uid, toUid: this.state.privateChatTarget.uid, timestamp: Date.now() }); document.getElementById('pvt-input').value = ''; },
+            renderPrivateChat() { const t = this.state.privateChatTarget; if(!t) return; const c = document.getElementById('pvt-messages'); const msgs = this.state.allPvtMessages.filter(m => ((m.fromUid === this.state.me.uid && m.toUid === t.uid) || (m.fromUid === t.uid && m.toUid === this.state.me.uid)) && m.timestamp >= this.state.loginTime).sort((a,b) => a.timestamp - b.timestamp); c.innerHTML = msgs.map(m => `<div class="pvt-msg ${m.fromUid === this.state.me.uid ? 'me' : 'them'}">${m.text}</div>`).join(''); setTimeout(() => { c.scrollTop = c.scrollHeight; }, 10); },
+
+            renderSidebar() {
+                document.getElementById('user-sidebar').innerHTML = this.state.users.map(u => { 
+                    const isMe = u.uid === this.state.me.uid; 
+                    const meBadge = isMe ? `<span class="text-[8px] bg-white/30 text-white font-black px-1.5 py-0.5 rounded ml-2">TU</span>` : ''; 
+                    const isSameRoom = u.currentRoom === this.state.currentRoom;
+                    const showCamBtn = u.camActive && !isMe && isSameRoom;
+                    return `<div class="user-card-compact" onclick="app.openUserMenu(event, '${u.uid}')"><div class="user-card-avatar"><img src="${u.avatarUrl}"></div><div class="flex-1 min-w-0"><p class="user-card-name truncate" style="color:${u.color}">${u.name}${meBadge}</p><p class="user-card-status">ON CLOUD ${u.role==='Admin'?'👑':''}</p></div>${showCamBtn ? `<button onclick="event.stopPropagation(); app.requestCam('${u.uid}')" class="header-btn px-1.5 py-0.5 bg-green-500/20 text-green-400 border-green-500/30 text-[9px] rounded font-bold">CAM</button>` : ''}</div>`; 
+                }).join('');
+            },
+            toggleSidebar() { document.getElementById('sidebar-right').classList.toggle('open'); },
+            
+            // --- WEBCAM, HARDWARE E CONTROLLI AUDIO ---
+            async populateMediaDevices() {
+                try {
+                    await navigator.mediaDevices.getUserMedia({audio:true, video:true});
+                    const devices = await navigator.mediaDevices.enumerateDevices();
+                    const vSelect = document.getElementById('select-video-source');
+                    const aSelect = document.getElementById('select-audio-source');
+                    vSelect.innerHTML = '<option value="">Predefinita</option>'; aSelect.innerHTML = '<option value="">Predefinito</option>';
+                    devices.forEach(d => {
+                        if(d.kind === 'videoinput') vSelect.innerHTML += `<option value="${d.deviceId}">${d.label || 'Camera Rilevata'}</option>`;
+                        if(d.kind === 'audioinput') aSelect.innerHTML += `<option value="${d.deviceId}">${d.label || 'Microfono Rilevato'}</option>`;
+                    });
+                    this.showToast("Hardware rilevato correttamente", "success");
+                } catch(e) { this.showToast("Errore lettura hardware o permessi negati", "error"); }
+            },
+
+            initPeerJS() { 
+                if(this.state.peer && !this.state.peer.destroyed) { this.state.peer.destroy(); }
+                this.state.peer = new Peer(this.state.me.uid);
+                this.state.peer.on('error', err => {
+                    console.warn("PeerJS Error:", err.type, err.message);
+                    if(err.type === 'unavailable-id') { this.showToast("Errore connessione video P2P (ID in uso)", "error"); } 
+                    else if(err.type === 'network' || err.type === 'server-error') { this.showToast("Connessione P2P interrotta, riconnessione...", "info"); setTimeout(() => this.initPeerJS(), 3000); }
+                });
+                this.state.peer.on('call', call => { 
+                    call.answer();
+                    this.state.currentCall = call;
+                    this.playBeep(); 
+                    call.on('stream', remoteStream => { 
+                        if(this.state.currentRoom === 'games' && this.state.gameHostUid === call.peer) {
+                            const sp = document.getElementById('stage-player'); sp.srcObject = remoteStream; sp.classList.remove('hidden'); document.getElementById('game-placeholder').classList.add('hidden');
+                            document.getElementById('btn-become-host').innerText = "IN ONDA";
+                            document.getElementById('btn-become-host').className = "w-full bg-green-600 text-white py-3 rounded-xl font-black text-xs uppercase shadow-lg shrink-0";
+                        } else {
+                            const win = document.getElementById('watch-video-container');
+                            document.getElementById('remote-v-player').srcObject = remoteStream;
+                            document.getElementById('watching-name').innerText = "Live";
+                            win.classList.add('active');
+                            this.bringToFront(win); 
+                        }
+                    }); 
+                    call.on('close', () => this.closeRemoteStream()); 
+                }); 
+            },
+            async requestCam(targetUid) { this.showToast("Invio richiesta...", "info"); await addDoc(this.getCol('cam_requests'), { from: this.state.me.uid, fromName: this.state.me.name, to: targetUid, status: 'pending', timestamp: Date.now() }); },
+            answerCamRequest(reqId, fromUid, accepted) { const el = document.getElementById(`req-${reqId}`); if(el) el.parentElement.remove(); updateDoc(doc(this.getCol('cam_requests'), reqId), { status: accepted ? 'accepted' : 'rejected' }); if(accepted && this.state.localStream) { this.showToast("Trasmissione P2P avviata", "success"); this.state.peer.call(fromUid, this.state.localStream); } },
+            closeRemoteStream() { document.getElementById('watch-video-container').classList.remove('active'); if(this.state.currentCall) this.state.currentCall.close(); document.getElementById('remote-v-player').srcObject = null; this.state.currentCall = null; },
+
+            async toggleCam() { 
+                const v = document.getElementById('v-player');
+                const c = document.getElementById('local-video-container');
+                const btnHeader = document.getElementById('header-btn-cam');
+                
+                if (this.state.localStream) { 
+                    this.state.localStream.getTracks().forEach(t => t.stop());
+                    this.state.localStream = null;
+                    v.srcObject = null;
+                    c.classList.remove('active');
+                    c.style.display = 'none';
+                    btnHeader.classList.remove('cam-on');
+                    btnHeader.title = "Attiva Cam";
+                    this.state.me.camActive = false;
+                    this.state.micGainNode = null;
+
+                    if(this.state.localAudioCtx) { this.state.localAudioCtx.close().catch(()=>null); this.state.localAudioCtx = null; }
+
+                    if(this.state.me.uid) updateDoc(doc(this.getCol('online_users'), this.state.me.uid), { camActive: false }).catch(()=>null);
+                    if(this.state.gameHostUid === this.state.me.uid) { document.getElementById('stage-player').srcObject = null; document.getElementById('stage-player').classList.add('hidden'); document.getElementById('game-placeholder').classList.remove('hidden'); }
+                    return; 
+                }
+
+                try { 
+                    const vId = document.getElementById('select-video-source').value;
+                    const aId = document.getElementById('select-audio-source').value;
+                    const constraints = { video: vId ? { deviceId: { exact: vId } } : true, audio: aId ? { deviceId: { exact: aId } } : true };
+                    const stream = await navigator.mediaDevices.getUserMedia(constraints); 
+                    
+                    if (stream.getAudioTracks().length > 0) {
+                        try {
+                            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                            this.state.localAudioCtx = audioCtx;
+                            const source = audioCtx.createMediaStreamSource(stream);
+                            const gainNode = audioCtx.createGain();
+                            const destination = audioCtx.createMediaStreamDestination();
+                            source.connect(gainNode);
+                            gainNode.connect(destination);
+                            this.state.micGainNode = gainNode;
+                            const originalAudioTrack = stream.getAudioTracks()[0];
+                            const newAudioTrack = destination.stream.getAudioTracks()[0];
+                            stream.removeTrack(originalAudioTrack);
+                            stream.addTrack(newAudioTrack);
+                        } catch(audioErr) { console.warn("Web Audio API non supportate.", audioErr); }
+                    }
+
+                    this.state.localStream = stream;
+                    btnHeader.classList.add('cam-on');
+                    btnHeader.title = "Disattiva Cam";
+                    this.state.me.camActive = true;
+                    document.getElementById('btn-toggle-video').classList.remove('off');
+                    document.getElementById('btn-toggle-audio').classList.remove('off');
+                    document.getElementById('mic-volume-slider').value = 100;
+                    if(this.state.me.uid) updateDoc(doc(this.getCol('online_users'), this.state.me.uid), { camActive: true }).catch(()=>null);
+                    
+                    if(this.state.currentRoom === 'games' && this.state.gameHostUid === this.state.me.uid) {
+                        const sp = document.getElementById('stage-player'); sp.srcObject = stream; sp.classList.remove('hidden'); document.getElementById('game-placeholder').classList.add('hidden'); c.style.display = 'none';
+                    } else {
+                        v.srcObject = stream; c.style.display = 'block'; c.classList.add('active'); this.bringToFront(c);
+                    }
+                } catch(e) { this.showToast("Impossibile accedere ad Audio/Video", "error"); } 
+            },
+            toggleVideoTrack() { if(this.state.localStream) { const t = this.state.localStream.getVideoTracks()[0]; if(t) { t.enabled = !t.enabled; document.getElementById('btn-toggle-video').classList.toggle('off', !t.enabled); } } },
+            toggleAudioTrack() { if(this.state.localStream) { const t = this.state.localStream.getAudioTracks()[0]; if(t) { t.enabled = !t.enabled; document.getElementById('btn-toggle-audio').classList.toggle('off', !t.enabled); document.getElementById('mic-volume-slider').value = t.enabled ? 100 : 0; if(this.state.micGainNode) this.state.micGainNode.gain.value = t.enabled ? 1 : 0; } } },
+            
+            setMicGain(val) { if(this.state.micGainNode) { this.state.micGainNode.gain.value = val / 100; } const btn = document.getElementById('btn-toggle-audio'); if (btn) { if (val == 0) btn.classList.add('off'); else btn.classList.remove('off'); } },
+            setRemoteVolume(val) { const v = document.getElementById('remote-v-player'); if(v) v.volume = parseFloat(val); },
+            setStageVolume(val) { const s = document.getElementById('stage-player'); if(s) s.volume = parseFloat(val); },
+            setRadioVolume(val) { const r = document.getElementById('radio-stream'); if(r) r.volume = parseFloat(val); },
+
+            radioError() { this.state.isRadioPlaying = false; document.getElementById('radio-metadata').innerText = "Errore stream"; document.getElementById('radio-visualizer').style.opacity = '0'; this.showToast("Errore: stream radio non disponibile", "error"); },
+            
+            toggleRadio() {
+                const r = document.getElementById('radio-stream');
+                const sel = document.getElementById('station-select');
+                const viz = document.getElementById('radio-visualizer');
+                if(!this.state.isRadioPlaying) {
+                    r.src = sel.value;
+                    r.play().catch(() => this.radioError());
+                    this.state.isRadioPlaying = true;
+                    document.getElementById('radio-metadata').innerText = sel.options[sel.selectedIndex]?.text || "In onda";
+                    viz.style.opacity = '1';
+                } else {
+                    r.pause(); r.removeAttribute('src'); r.load();
+                    this.state.isRadioPlaying = false;
+                    document.getElementById('radio-metadata').innerText = "In Pausa";
+                    viz.style.opacity = '0';
+                }
+            },
+
+            changeStation() {
+                if(this.state.isRadioPlaying) {
+                    const r = document.getElementById('radio-stream'); const sel = document.getElementById('station-select');
+                    r.pause(); r.src = sel.value; r.play().catch(() => this.radioError()); document.getElementById('radio-metadata').innerText = sel.options[sel.selectedIndex]?.text || "In onda";
+                }
+            },
+
+            // WINDOWS E UI DRAGGABLE
+            makeDraggable(elmnt, handle) { 
+                let startX = 0, startY = 0, initialLeft = 0, initialTop = 0; 
+                const dragStart = (e) => { 
+                    this.bringToFront(elmnt); 
+                    const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX; 
+                    const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY; 
+                    startX = clientX; startY = clientY; 
+                    initialLeft = elmnt.offsetLeft; initialTop = elmnt.offsetTop; 
+                    document.addEventListener('mousemove', dragMove); 
+                    document.addEventListener('touchmove', dragMove, { passive: false }); 
+                    document.addEventListener('mouseup', dragEnd); 
+                    document.addEventListener('touchend', dragEnd); 
+                }; 
+                const dragMove = (e) => { 
+                    if (e.cancelable) e.preventDefault(); 
+                    const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX; 
+                    const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY; 
+                    let nTop = initialTop + (clientY - startY);
+                    let nLeft = initialLeft + (clientX - startX);
+                    nTop = Math.max(0, Math.min(nTop, window.innerHeight - 40));
+                    nLeft = Math.max(-elmnt.offsetWidth + 40, Math.min(nLeft, window.innerWidth - 40));
+                    elmnt.style.top = `${nTop}px`; 
+                    elmnt.style.left = `${nLeft}px`; 
+                    elmnt.style.bottom = "auto"; elmnt.style.right = "auto"; 
+                }; 
+                const dragEnd = () => { document.removeEventListener('mousemove', dragMove); document.removeEventListener('touchmove', dragMove); document.removeEventListener('mouseup', dragEnd); document.removeEventListener('touchend', dragEnd); }; 
+                handle.addEventListener('mousedown', dragStart); handle.addEventListener('touchstart', dragStart, { passive: false }); 
+            },
+            
+            makeResizable(elmnt, handle, minW = 120, minH = 120) {
+                let startX, startY, startW, startH;
+                const initResize = (e) => {
+                    e.preventDefault();
+                    this.bringToFront(elmnt);
+                    startX = e.clientX; startY = e.clientY;
+                    startW = parseInt(getComputedStyle(elmnt).width, 10);
+                    startH = parseInt(getComputedStyle(elmnt).height, 10);
+                    document.addEventListener('mousemove', doDrag);
+                    document.addEventListener('mouseup', stopDrag);
+                };
+                const doDrag = (e) => {
+                    const newW = Math.max(minW, startW + e.clientX - startX);
+                    const newH = Math.max(minH, startH + e.clientY - startY);
+                    elmnt.style.width = newW + 'px';
+                    elmnt.style.height = newH + 'px';
+                };
+                const stopDrag = () => { document.removeEventListener('mousemove', doDrag); document.removeEventListener('mouseup', stopDrag); };
+                handle.addEventListener('mousedown', initResize);
+            },
+
+            bringToFront(elmnt) { document.querySelectorAll('.video-window, .pvt-window').forEach(w => w.style.zIndex = "3500"); elmnt.style.zIndex = "3501"; },
+
+            init() {
+                this.loadTheme();
+                this.renderEmojis();
+                document.getElementById('auth-form').addEventListener('submit', (e) => this.handleAuth(e));
+                document.getElementById('chat-box').addEventListener('submit', (e) => this.handleChatSubmit(e));
+
+                const radioEl = document.getElementById('radio-stream');
+                if(radioEl) radioEl.addEventListener('error', () => this.radioError());
+
+                const msgInput = document.getElementById('msg-input');
+                msgInput.addEventListener('input', function() { this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px'; if(this.value === '') this.style.height = 'auto'; });
+                msgInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.handleChatSubmit(); } });
+
+                document.addEventListener('click', (e) => {
+                    if(!e.target.closest('.emoji-picker') && !e.target.closest('button[onclick="app.toggleEmojiPicker(event)"]')) { document.getElementById('emoji-picker').classList.remove('active'); }
+                    if(!e.target.closest('.user-menu-modal') && !e.target.closest('.chat-name') && !e.target.closest('.user-card-compact')) { document.getElementById('user-menu-modal').classList.remove('active'); }
+                });
+
+                this.setupImageUpload();
+
+                const draggables = [
+                    {c: "local-video-container", d: "drag-local", r: "resize-local"},
+                    {c: "watch-video-container", d: "drag-watch", r: "resize-watch"},
+                    {c: "pvt-window", d: "drag-pvt", r: "resize-pvt"}
+                ];
+                draggables.forEach(item => {
+                    const c = document.getElementById(item.c);
+                    const d = document.getElementById(item.d);
+                    const r = item.r ? document.getElementById(item.r) : null;
+                    if(c && d) this.makeDraggable(c, d);
+                    if(c && r) this.makeResizable(c, r, item.c === 'pvt-window' ? 250 : 250);
+                });
+            }
+        };
+
+        window.app.init();
+    </script>
+</body>
+</html>
