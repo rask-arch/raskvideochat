@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>RaskVideochat - Ultimate Stable</title>
+    <title>RaskVideochat - Core Stable</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎥</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
 
     <style>
-        /* === RESET, CORE & CSS VARIABLES === */
+        /* === RESET E VARIABILI === */
         :root {
             --brand-col-1: #4338ca;
             --brand-col-2: #4f46e5;
@@ -18,68 +18,33 @@
         }
         
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        body { background-color: #0f172a; color: #1e293b; font-family: 'Plus Jakarta Sans', sans-serif; margin: 0; overflow: hidden; height: 100dvh; display: flex; flex-direction: column; overscroll-behavior: none; transition: background-color 0.3s ease; }
+        body { background-color: #0f172a; color: #1e293b; font-family: 'Plus Jakarta Sans', sans-serif; margin: 0; overflow: hidden; height: 100dvh; display: flex; flex-direction: column; overscroll-behavior: none; }
         
         #app-bg-container { position: fixed; inset: 0; z-index: -2; background: radial-gradient(circle at top right, #2e1065, #020617 70%); background-size: cover; background-position: center; transition: background 0.5s ease; }
-        .app-backdrop { position: absolute; inset: 0; background: rgba(241, 245, 249, 0.85); backdrop-filter: blur(5px); z-index: -1; transition: background 0.3s ease; }
+        .app-backdrop { position: absolute; inset: 0; background: rgba(241, 245, 249, 0.85); backdrop-filter: blur(5px); z-index: -1; }
         .brand-gradient { background: linear-gradient(135deg, var(--brand-col-1) 0%, var(--brand-col-2) 50%, var(--brand-col-3) 100%); transition: background 0.5s ease; }
-        .text-brand { color: var(--brand-col-2); transition: color 0.5s ease; }
-        .border-brand { border-color: var(--brand-col-2); transition: border-color 0.5s ease; }
+        .text-brand { color: var(--brand-col-2); }
+        .border-brand { border-color: var(--brand-col-2); }
+        .btn-brand { background-color: var(--brand-col-2); color: white; transition: background-color 0.3s; }
+        .btn-brand:hover { background-color: var(--brand-col-1); }
 
-        /* === LIGHT THEME OVERRIDES === */
-        body.light-theme { background-color: #f8fafc; color: #0f172a; }
-        body.light-theme #app-bg-container { background: radial-gradient(circle at top right, #e2e8f0, #f8fafc 80%); }
-        body.light-theme .app-backdrop { background: rgba(255, 255, 255, 0.95); }
-        body.light-theme .text-white:not(header .text-white, .btn-brand, .toast, .admin-nav-item, .v-btn, .text-white\/70, .text-white\/50, .text-white\/40, .pvt-header .text-white) { color: #0f172a !important; }
-        body.light-theme .bg-slate-900 { background: #ffffff !important; border-color: #e2e8f0 !important; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
-        body.light-theme .bg-slate-800 { background: #f1f5f9 !important; border-color: #e2e8f0 !important; }
-        body.light-theme .admin-sidebar { background: #f8fafc; border-right: 1px solid #e2e8f0; }
-        body.light-theme .admin-nav-item { color: #475569; }
-        body.light-theme .admin-nav-item:hover { background: #e2e8f0; color: #0f172a; }
-        body.light-theme .admin-nav-item.active { background: #ffffff; color: var(--brand-col-2); border-left-color: var(--brand-col-2); }
-        body.light-theme .admin-content { background: #f1f5f9; }
-        body.light-theme .admin-table th { border-bottom-color: #cbd5e1; color: #475569; }
-        body.light-theme .admin-table td { border-bottom-color: #e2e8f0; color: #0f172a; }
-        body.light-theme .admin-table tr:hover { background: #f8fafc; }
-        body.light-theme .text-slate-400 { color: #64748b; }
-        body.light-theme .stage-host-part { background: #ffffff; border-color: #e2e8f0; }
-        body.light-theme .sidebar-right { background: linear-gradient(180deg, #f8fafc 0%, #e2e8f0 100%); border-left: 1px solid #cbd5e1; }
-        body.light-theme .sidebar-right .text-white, body.light-theme .sidebar-right .text-white\/70, body.light-theme .sidebar-right .text-white\/40 { color: #0f172a !important; }
-        body.light-theme .user-card-compact { background: rgba(0,0,0,0.03); border-color: rgba(0,0,0,0.05); }
-        body.light-theme .user-card-compact:hover { background: rgba(0,0,0,0.08); border-color: rgba(0,0,0,0.1); }
-        body.light-theme .user-card-name { color: #0f172a; }
-        body.light-theme .user-card-status { color: #475569; }
-        body.light-theme .room-btn.inactive { background: rgba(0,0,0,0.04); color: #475569; }
-        body.light-theme .room-btn.inactive:hover { background: rgba(0,0,0,0.08); }
-        body.light-theme .bg-black\/20 { background: rgba(0,0,0,0.05); }
-        body.light-theme .border-white\/10 { border-color: rgba(0,0,0,0.1); }
-        body.light-theme #msg-container { background-color: rgba(255,255,255,0.85); }
-        body.light-theme #stage-canvas { border: 1px solid #cbd5e1; box-shadow: 0 4px 10px rgba(0,0,0,0.1); } /* FIX #UI-01 */
-
-        /* === UI BUTTONS === */
+        /* === COMPONENTI UI === */
         .nav-btn { background: rgba(255, 255, 255, 0.08); border: 1px solid rgba(255, 255, 255, 0.15); width: 38px; height: 38px; border-radius: 12px; color: white; transition: all 0.2s; display: flex; align-items: center; justify-content: center; flex-shrink: 0; cursor: pointer; }
         .nav-btn svg { width: 18px; height: 18px; opacity: 0.9; }
         .nav-btn:hover { background: rgba(255, 255, 255, 0.18); border-color: rgba(255, 255, 255, 0.3); transform: translateY(-1px); }
         .nav-btn.admin { background: rgba(239, 68, 68, 0.15); border-color: rgba(239, 68, 68, 0.25); color: #fca5a5; }
-        .nav-btn.admin:hover { background: rgba(239, 68, 68, 0.3); }
         .nav-btn.cam-on { background: rgba(34, 197, 94, 0.2); border-color: rgba(34, 197, 94, 0.4); color: #86efac; }
-        .nav-btn.cam-on:hover { background: rgba(34, 197, 94, 0.3); }
         
-        .btn-brand { background-color: var(--brand-col-2); color: white; transition: background-color 0.3s; }
-        .btn-brand:hover { background-color: var(--brand-col-1); }
-
-        /* === TOAST NOTIFICATIONS === */
         #toast-container { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); z-index: 10000; display: flex; flex-direction: column; gap: 8px; pointer-events: none; width: 90%; max-width: 350px; }
         .toast { background: rgba(15, 23, 42, 0.95); color: white; padding: 12px 20px; border-radius: 12px; font-size: 13px; font-weight: 600; box-shadow: 0 10px 30px rgba(0,0,0,0.3); animation: toastSlideUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); display: flex; align-items: center; justify-content: space-between; gap: 10px; pointer-events: auto; border-left: 4px solid transparent; }
         .toast.success { border-left-color: #22c55e; } .toast.error { border-left-color: #ef4444; } .toast.info { border-left-color: #3b82f6; } .toast.request { border-left-color: #f59e0b; flex-direction: column; align-items: flex-start; gap: 8px; }
         @keyframes toastSlideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* === MODALS === */
         .modal-overlay { position: fixed; inset: 0; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); z-index: 9000; display: none; align-items: center; justify-content: center; animation: fadeIn 0.2s ease-out; }
         .modal-overlay.active { display: flex; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        
-        /* === ADMIN PANEL === */
+
+        /* === PANNELLO ADMIN === */
         #admin-panel { position: fixed; inset: 0; z-index: 9999; background: #0f172a; color: #f8fafc; display: none; flex-direction: row; }
         #admin-panel.active { display: flex; }
         .admin-sidebar { width: 250px; background: #1e293b; border-right: 1px solid #334155; display: flex; flex-direction: column; flex-shrink: 0; }
@@ -93,7 +58,7 @@
         .admin-table tr:hover { background: #1e293b; }
         .toggle-switch { position: relative; display: inline-block; width: 40px; height: 22px; } .toggle-switch input { opacity: 0; width: 0; height: 0; } .toggle-slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #334155; transition: .4s; border-radius: 22px; } .toggle-slider:before { position: absolute; content: ""; height: 16px; width: 16px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; } input:checked + .toggle-slider { background-color: var(--brand-col-2); } input:checked + .toggle-slider:before { transform: translateX(18px); }
 
-        /* === AUTH SCREEN === */
+        /* === LOGIN SCREEN === */
         #auth-screen { position: fixed; inset: 0; z-index: 8000; display: flex; align-items: center; justify-content: center; transition: opacity 0.8s ease, visibility 0.8s; overflow: hidden; background: #020617; }
         #auth-screen.hidden { opacity: 0; visibility: hidden; pointer-events: none; }
         #auth-bg-container { position: absolute; inset: 0; z-index: 1; overflow: hidden; }
@@ -101,8 +66,8 @@
         #auth-bg-container::after { content: ''; position: absolute; inset: 0; background: rgba(30, 27, 75, 0.5); mix-blend-mode: overlay; z-index: 2; }
         .auth-card { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(20px); width: 100%; max-width: 400px; padding: 2.5rem; border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8); position: relative; z-index: 10; animation: cardEntrance 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.6s both; }
         @keyframes cardEntrance { 0% { opacity: 0; transform: scale(0.85) translateY(50px); filter: blur(12px); } 100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); } }
-        
-        /* === VIDEO WINDOWS === */
+
+        /* === FINESTRE VIDEO E CHAT PRIVATA === */
         .video-window { position: fixed; background: #000; border: 3px solid white; border-radius: 16px; overflow: hidden; display: none; box-shadow: 0 15px 40px rgba(0,0,0,0.4); z-index: 3500; min-width: 120px; min-height: 120px; touch-action: none; transition: box-shadow 0.2s; }
         .video-window.active { display: block; } .mirror { transform: scaleX(-1); }
         .drag-handle { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; cursor: move; touch-action: none; }
@@ -112,13 +77,11 @@
         #local-video-container { width: 160px; height: 160px; bottom: 20px; right: 20px; border-color: var(--brand-col-2); }
         #watch-video-container { width: 180px; height: 180px; top: 80px; left: 20px; border-color: #ec4899; }
         
-        /* CONTROLLI AUDIO */
         .video-controls { position: absolute; bottom: 5px; left: 5px; right: 5px; display: flex; align-items: center; justify-content: space-between; z-index: 50; padding: 4px; background: rgba(0,0,0,0.6); border-radius: 8px; backdrop-filter: blur(4px); gap: 4px; }
         .remote-vol-controls { position: absolute; bottom: 5px; left: 50%; transform: translateX(-50%); width: 80%; display: flex; align-items: center; justify-content: center; z-index: 50; padding: 6px; background: rgba(0,0,0,0.6); border-radius: 8px; backdrop-filter: blur(4px); gap: 6px; opacity: 0; transition: opacity 0.3s; }
         #watch-video-container:hover .remote-vol-controls { opacity: 1; }
         .stage-vol-ctrl { position: absolute; top: 8px; right: 8px; background: rgba(0,0,0,0.6); backdrop-filter: blur(4px); border-radius: 8px; padding: 6px 10px; z-index: 50; display: flex; align-items: center; gap: 6px; opacity: 0; transition: opacity 0.3s; border: 1px solid rgba(255,255,255,0.1); }
         .stage-video-part:hover .stage-vol-ctrl { opacity: 1; }
-
         .v-btn { background: transparent; border: none; color: white; width: 24px; height: 24px; border-radius: 4px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: background 0.2s; }
         .v-btn:hover { background: rgba(255,255,255,0.2); } .v-btn.off { color: #ef4444; position: relative; } .v-btn.off::after { content: ''; position: absolute; width: 100%; height: 2px; background: #ef4444; transform: rotate(45deg); }
         .vol-slider-cont { display: flex; align-items: center; flex: 1; padding: 0 5px; } 
@@ -126,7 +89,7 @@
         
         @media (max-width: 768px) { #local-video-container { width: 130px; height: 130px; top: 60px; right: 10px; bottom: auto; } #watch-video-container { width: 130px; height: 130px; top: 200px; right: 10px; left: auto; } .remote-vol-controls, .stage-vol-ctrl { opacity: 1; } }
 
-        /* GAME STAGE */
+        /* === PALCO EVENTI (Solo Video/Audio) === */
         #game-stage { background: #020617; position: relative; overflow: hidden; flex-shrink: 0; transition: all 0.3s ease; display: flex; flex-direction: row; height: 280px; border-bottom: 1px solid #334155; } 
         #game-stage.hidden { display: none !important; }
         .stage-video-part { width: 280px; height: 280px; flex-shrink: 0; position: relative; background: #000; display: flex; align-items: center; justify-content: center; overflow: hidden; border-right: 1px solid #1e293b; }
@@ -136,10 +99,7 @@
         .floating-reaction { position: absolute; bottom: 0; font-size: 32px; animation: floatUp 2.5s ease-in-out forwards; pointer-events: none; z-index: 100; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.5)); }
         @keyframes floatUp { 0% { transform: translateY(0) scale(0.5); opacity: 0; } 20% { opacity: 1; transform: translateY(-30px) scale(1.2); } 100% { transform: translateY(-200px) scale(1); opacity: 0; } }
 
-        /* Canvas Draw & Guess */
-        #stage-canvas { cursor: crosshair; touch-action: none; background-color: white; border-radius: 8px; box-shadow: inset 0 0 10px rgba(0,0,0,0.2); }
-
-        /* Chat & Sidebar */
+        /* === CHAT & SIDEBAR === */
         .custom-scroll::-webkit-scrollbar { width: 4px; } .custom-scroll::-webkit-scrollbar-track { background: transparent; } .custom-scroll::-webkit-scrollbar-thumb { background: rgba(0, 0, 0, 0.2); border-radius: 10px; }
         #msg-container { background-color: rgba(255,255,255,0.6); backdrop-filter: blur(5px); transition: background-color 0.3s ease; scroll-behavior: smooth; }
         
@@ -191,17 +151,6 @@
         .pvt-msg { margin-bottom: 8px; font-size: 12px; padding: 6px 10px; border-radius: 8px; max-width: 85%; word-break: break-word; }
         .pvt-msg.me { background: #db2777; color: white; align-self: flex-end; }
         .pvt-msg.them { background: white; color: #831843; border: 1px solid #fbcfe8; align-self: flex-start; }
-        
-        /* === FORZA 4 STYLES === */
-        .pvt-game-area { display: none; flex: 1; background: #0f172a; flex-direction: column; align-items: center; justify-content: center; padding: 10px; position: relative; }
-        .pvt-game-area.active { display: flex; }
-        .f4-board-mini { background-color: #2563eb; padding: 8px; border-radius: 12px; display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; width: 100%; max-width: 280px; box-shadow: inset 0 0 10px rgba(0,0,0,0.3), 0 10px 20px rgba(0,0,0,0.4); }
-        .f4-cell-mini { aspect-ratio: 1; border-radius: 50%; background-color: #1e293b; cursor: pointer; transition: all 0.2s; box-shadow: inset 0 4px 6px rgba(0,0,0,0.6); }
-        .f4-cell-mini:hover:not(.red):not(.yellow) { background-color: #334155; }
-        .f4-cell-mini.red { background-color: #ef4444; box-shadow: inset 0 -2px 4px rgba(0,0,0,0.3), 0 0 10px rgba(239,68,68,0.5); }
-        .f4-cell-mini.yellow { background-color: #eab308; box-shadow: inset 0 -2px 4px rgba(0,0,0,0.3), 0 0 10px rgba(234,179,8,0.5); }
-        .f4-cell-mini.win { border: 3px solid white; animation: pulseWinF4 1s infinite alternate; }
-        @keyframes pulseWinF4 { from { transform: scale(1); } to { transform: scale(1.1); filter: brightness(1.2); } }
 
         .toolbar-icon { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; font-weight: 900; font-size: 12px; cursor: pointer; transition: all 0.2s; }
         .toolbar-icon:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -210,7 +159,7 @@
         .avatar-edit-btn:hover { transform: scale(1.1); }
     </style>
 </head>
-<body class="dark-theme">
+<body>
     
     <div id="app-bg-container"></div>
     <div class="app-backdrop"></div>
@@ -225,7 +174,7 @@
         <div class="auth-card">
             <div class="text-center mb-6">
                 <h1 class="text-2xl font-black text-slate-900 tracking-tight app-title-display">RaskVideochat</h1>
-                <p class="text-xs font-bold text-brand uppercase tracking-widest mt-1">Ultimate Stable</p>
+                <p class="text-xs font-bold text-brand uppercase tracking-widest mt-1">Core Stable</p>
             </div>
             
             <div class="flex border-b border-slate-200 mb-6">
@@ -251,7 +200,7 @@
         <header class="brand-gradient px-4 py-3 sm:px-6 flex justify-between items-center z-[150] shadow-xl relative border-b border-white/10 shrink-0">
             <div class="flex items-center gap-3 sm:gap-4">
                 <div class="w-9 h-9 sm:w-10 sm:h-10 bg-white/15 rounded-xl flex items-center justify-center backdrop-blur-md border border-white/20 shadow-inner"><svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M15.9 14.3H15L4.93 14.3C3.87 14.3 3 13.43 3 12.37V4.93C3 3.87 3.87 3 4.93 3H15.06C16.12 3 17 3.87 17 4.93V7.9L21 4V13.3L17 9.4V12.37C17 13.43 16.13 14.3 15.9 14.3Z"/></svg></div>
-                <div class="hidden sm:block"><h1 class="text-white font-extrabold text-lg sm:text-xl tracking-tight leading-none app-title-display">RaskVideochat</h1><p class="text-white/40 text-[9px] font-bold uppercase tracking-[0.2em] mt-0.5">Ultimate Stable</p></div>
+                <div class="hidden sm:block"><h1 class="text-white font-extrabold text-lg sm:text-xl tracking-tight leading-none app-title-display">RaskVideochat</h1><p class="text-white/40 text-[9px] font-bold uppercase tracking-[0.2em] mt-0.5">Core Stable</p></div>
             </div>
 
             <!-- RADIO CONTROL -->
@@ -266,8 +215,6 @@
             </div>
 
             <div class="flex items-center gap-2 ml-auto">
-                <button onclick="app.toggleTheme()" class="nav-btn" title="Cambia Tema" id="theme-toggle-btn">☀️</button>
-                <div class="h-6 w-[1px] bg-white/20 mx-1 hidden sm:block"></div>
                 <button onclick="app.toggleCam()" id="header-btn-cam" class="nav-btn" title="Attiva Cam"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></button>
                 <div class="h-6 w-[1px] bg-white/20 mx-1 hidden sm:block"></div>
                 <button onclick="app.openModal('rules-modal')" class="nav-btn hidden sm:flex" title="Regole Community"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20M4 19.5V3a1 1 0 0 1 1-1h15v15H6.5a1 1 0 0 0-1 1z"/></svg></button>
@@ -282,13 +229,10 @@
         <div class="flex-1 flex overflow-hidden relative">
             <main class="flex-1 flex flex-col bg-transparent overflow-hidden">
                 
-                <!-- GAME STAGE -->
+                <!-- PALCO EVENTI -->
                 <div id="game-stage" class="hidden">
                     <div class="stage-video-part" id="stage-reaction-area">
                         <video id="stage-player" class="w-full h-full object-cover hidden" autoplay playsinline></video>
-                        <canvas id="stage-canvas" class="w-full h-full absolute inset-0 z-20 hidden"></canvas>
-                        <div id="draw-word-display" class="absolute top-3 left-1/2 transform -translate-x-1/2 bg-slate-900/90 text-white px-4 py-1.5 rounded-full text-[10px] font-black tracking-widest uppercase z-30 hidden border border-white/20 backdrop-blur-md shadow-xl"></div>
-
                         <div class="stage-vol-ctrl hidden" id="stage-vol-ctrl-container">
                             <span class="text-[9px] text-white font-bold uppercase">Volume Host</span>
                             <input type="range" class="w-16 h-1" min="0" max="1" step="0.05" value="1" oninput="app.setStageVolume(this.value)">
@@ -298,27 +242,6 @@
                     
                     <div class="stage-host-part">
                         <button id="btn-become-host" onclick="app.claimHost()" class="w-full btn-brand text-white py-3 rounded-xl font-black text-xs uppercase shadow-lg transition-all shrink-0">Sali Sul Palco</button>
-                        
-                        <div id="host-draw-panel" class="hidden flex-col gap-2 bg-slate-800 rounded-lg border border-slate-700 p-2 mt-1 shadow-inner relative z-30">
-                            <div class="flex justify-between items-center gap-2">
-                                <input type="text" id="draw-word-input" class="flex-1 bg-slate-900 text-white text-[10px] px-2 py-1.5 rounded outline-none border border-slate-700 focus:border-brand transition" placeholder="Parola segreta...">
-                                <button onclick="app.startDrawGame()" id="btn-start-draw" class="bg-brand text-white px-3 py-1.5 rounded text-[10px] font-black uppercase tracking-wider hover:bg-indigo-500">Disegna</button>
-                                <button onclick="app.stopDrawGame()" id="btn-stop-draw" class="bg-red-600 text-white px-3 py-1.5 rounded text-[10px] font-black uppercase tracking-wider hidden hover:bg-red-500">Ferma</button>
-                            </div>
-                            <div id="draw-tools" class="hidden justify-between items-center mt-1 border-t border-slate-700 pt-2">
-                                <div class="flex gap-1.5">
-                                    <button class="w-5 h-5 rounded-full bg-black border-2 border-slate-500 focus:border-white transition" onclick="app.setDrawColor('#000000')"></button>
-                                    <button class="w-5 h-5 rounded-full bg-red-500 border-2 border-slate-500 focus:border-white transition" onclick="app.setDrawColor('#ef4444')"></button>
-                                    <button class="w-5 h-5 rounded-full bg-blue-500 border-2 border-slate-500 focus:border-white transition" onclick="app.setDrawColor('#3b82f6')"></button>
-                                    <button class="w-5 h-5 rounded-full bg-green-500 border-2 border-slate-500 focus:border-white transition" onclick="app.setDrawColor('#22c55e')"></button>
-                                    <button class="w-5 h-5 rounded-full bg-white flex items-center justify-center text-[10px] border-2 border-slate-500 focus:border-brand transition" onclick="app.setDrawColor('#ffffff')">🧹</button>
-                                </div>
-                                <div class="flex items-center gap-2">
-                                    <input type="range" id="brush-size" min="2" max="20" value="5" class="w-16 h-1 bg-slate-600 rounded outline-none cursor-pointer">
-                                    <button onclick="app.clearCanvas(true)" class="bg-slate-700 hover:bg-slate-600 text-white px-2 py-1 rounded text-[8px] font-bold uppercase transition">Pulisci</button>
-                                </div>
-                            </div>
-                        </div>
 
                         <div class="flex-1 bg-slate-900 rounded-lg border border-slate-700 p-3 flex flex-col relative overflow-hidden shadow-inner mt-1" id="bulletin-panel">
                             <div class="text-[9px] text-brand font-black uppercase mb-2 tracking-widest border-b border-slate-800 pb-1">Bacheca Host</div>
@@ -334,7 +257,8 @@
                 </div>
 
                 <!-- CHAT -->
-                <div id="msg-container" class="flex-1 p-3 overflow-y-auto custom-scroll backdrop-blur-sm relative" style="background-color: rgba(255,255,255,0.6);"></div>
+                <!-- Rimosso background in inline per lasciar operare il CSS che assicura consistenza -->
+                <div id="msg-container" class="flex-1 p-3 overflow-y-auto custom-scroll backdrop-blur-sm relative"></div>
                 
                 <div class="px-3 py-2 brand-gradient flex items-center gap-4 shrink-0 shadow-inner border-y border-white/10">
                     <div class="flex items-center gap-2"><label class="text-[9px] font-black text-white/70 uppercase">Colore Txt</label><input type="color" id="text-color" value="#1e293b" class="w-5 h-5 border border-white/30 p-0 bg-transparent cursor-pointer rounded"></div>
@@ -342,7 +266,6 @@
                     <div class="h-4 w-[1px] bg-white/20 mx-1"></div>
                     <button onclick="app.insertBold()" class="toolbar-icon bg-white/10 text-white hover:bg-white/30 border border-white/20" title="Grassetto">B</button>
                     <button onclick="app.triggerImageUpload()" class="toolbar-icon bg-white/10 text-white hover:bg-white/30 border border-white/20 flex gap-1 px-2 w-auto" title="Aggiungi Immagine"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span class="text-[10px] uppercase">Img</span></button>
-                    <!-- Voice note button removed as requested -->
                 </div>
 
                 <div class="p-3 border-t border-slate-200/50 bg-white/90 backdrop-blur shrink-0 pb-safe relative">
@@ -474,6 +397,15 @@
             <div id="adm-tab-security" class="hidden space-y-6">
                 <h3 class="text-2xl font-bold mb-6 text-white">Sicurezza & Moderazione</h3>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8"><div class="bg-slate-800 p-6 rounded-xl border border-slate-700 flex items-center justify-between"><div><h4 class="text-white font-bold text-sm">Blocco Chat Pubblica</h4><p class="text-slate-400 text-xs">Impedisce ai non-staff di scrivere.</p></div><label class="toggle-switch"><input type="checkbox" id="adm-lock-chat" onchange="app.adminUpdateServerConfig('chatLocked', this.checked)"><span class="toggle-slider"></span></label></div><div class="bg-slate-800 p-6 rounded-xl border border-slate-700 flex items-center justify-between"><div><h4 class="text-white font-bold text-sm">Blocco Accesso Ospiti</h4><p class="text-slate-400 text-xs">Impedisce ai guest di loggare.</p></div><label class="toggle-switch"><input type="checkbox" id="adm-lock-guests" onchange="app.adminUpdateServerConfig('guestsLocked', this.checked)"><span class="toggle-slider"></span></label></div></div>
+                
+                <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 mb-8">
+                    <h4 class="text-white font-bold text-sm mb-2">Filtro Parole Censure (Separate da virgola)</h4>
+                    <div class="flex gap-2">
+                        <input type="text" id="adm-bad-words" class="flex-1 bg-slate-900 border border-slate-600 text-white text-sm p-3 rounded-lg" placeholder="es: scemo, idiota, stupido">
+                        <button onclick="app.adminSaveBadWords()" class="bg-brand hover:bg-indigo-500 text-white px-6 py-3 rounded-lg font-bold shadow-lg">Salva Filtro</button>
+                    </div>
+                </div>
+
                 <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 mb-8"><h4 class="text-white font-bold text-sm mb-2">Invia Broadcast Globale</h4><div class="flex gap-2"><input type="text" id="adm-broadcast-text" class="flex-1 bg-slate-900 border border-slate-600 text-white text-sm p-3 rounded-lg" placeholder="Es: Manutenzione server!"><button onclick="app.adminSendBroadcast()" class="bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-lg font-bold uppercase shadow-lg">Invia Alert</button></div></div>
                 <div class="grid grid-cols-2 gap-6"><div class="bg-slate-800 p-5 rounded-xl border border-yellow-500/30"><h4 class="text-xs font-black uppercase text-yellow-400 mb-3 tracking-widest">Utenti Mutati</h4><div class="flex gap-2 mb-4"><input type="text" id="adm-mute-name" class="flex-1 bg-slate-900 border border-slate-700 text-xs text-white p-2 rounded" placeholder="Nome utente..."><button onclick="app.adminMuteUserBtn()" class="bg-yellow-600 text-white px-3 rounded text-xs">Muta</button></div><div class="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden"><table class="admin-table"><tbody id="admin-muted-list"></tbody></table></div></div><div class="bg-slate-800 p-5 rounded-xl border border-red-500/30"><h4 class="text-xs font-black uppercase text-red-400 mb-3 tracking-widest">Blacklist (Ban)</h4><div class="flex gap-2 mb-4"><input type="text" id="adm-ban-name" class="flex-1 bg-slate-900 border border-slate-700 text-xs text-white p-2 rounded" placeholder="Nome utente..."><button onclick="app.adminBanUserBtn()" class="bg-red-600 text-white px-3 rounded text-xs">Ban</button></div><div class="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden"><table class="admin-table"><tbody id="admin-banned-list"></tbody></table></div></div></div>
             </div>
@@ -549,36 +481,20 @@
         <div class="resize-handle" id="resize-watch"></div>
     </div>
 
-    <!-- PVT CHAT & GAMES WINDOW -->
+    <!-- PVT CHAT WINDOW -->
     <div id="pvt-window" class="pvt-window" onmousedown="app.bringToFront(this)">
         <div class="pvt-header" id="drag-pvt">
             <div id="pvt-title-area" class="flex items-center min-w-0 flex-1"></div>
             <div class="flex gap-1">
-                <button onclick="app.togglePvtGame()" class="text-white/80 hover:text-white p-1 hover:bg-white/20 rounded transition" title="Gioca a Forza 4">🎮</button>
                 <button onclick="app.closePrivateChat()" class="text-white/80 hover:text-white p-1 hover:bg-white/20 rounded transition ml-1">✕</button>
             </div>
         </div>
         
-        <!-- Chat Area -->
         <div id="pvt-messages" class="pvt-messages custom-scroll"></div>
         <form id="pvt-form" class="pvt-input-area" onsubmit="app.sendPrivateMessage(event)">
-            <input type="text" id="pvt-input" placeholder="Scrivi..." class="flex-1 bg-slate-100 border-0 rounded-lg px-3 py-2 text-xs outline-none">
+            <input type="text" id="pvt-input" placeholder="Scrivi in privato..." class="flex-1 bg-slate-100 border-0 rounded-lg px-3 py-2 text-xs outline-none">
             <button type="submit" class="bg-pink-600 text-white px-3 py-2 rounded-lg text-xs font-bold">Invia</button>
         </form>
-
-        <!-- Forza 4 Game Area -->
-        <div id="pvt-game-area" class="pvt-game-area">
-            <div class="w-full flex justify-between items-center mb-4 px-2">
-                <div class="flex items-center gap-2"><div class="w-3 h-3 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.8)]"></div><span class="text-[10px] text-slate-300 font-bold uppercase truncate max-w-[80px]" id="f4-p1-name">P1</span></div>
-                <div id="f4-status" class="text-[10px] font-black uppercase text-white bg-slate-800 px-3 py-1 rounded border border-slate-700">Caricamento...</div>
-                <div class="flex items-center gap-2"><span class="text-[10px] text-slate-300 font-bold uppercase truncate max-w-[80px]" id="f4-p2-name">P2</span><div class="w-3 h-3 rounded-full bg-yellow-400 shadow-[0_0_8px_rgba(234,179,8,0.8)]"></div></div>
-            </div>
-            <div id="f4-grid" class="f4-board-mini">
-                <!-- JS Injected -->
-            </div>
-            <button onclick="app.resetF4Game()" id="f4-reset-btn" class="mt-4 bg-slate-700 hover:bg-slate-600 text-white text-[10px] font-bold px-4 py-2 rounded hidden uppercase tracking-widest transition">Nuova Partita</button>
-        </div>
-        
         <div class="resize-handle" id="resize-pvt"></div>
     </div>
     
@@ -593,9 +509,7 @@
         window.app = {
             state: {
                 isLoggedIn: false, db: null, storage: null, appId: 'raskvideochat', peer: null, currentCall: null, localStream: null,
-                micGainNode: null, localAudioCtx: null, theme: 'dark',
-                draw: { isDrawing: false, color: '#000000', size: 5, ctx: null, active: false, word: '', syncTimer: null },
-                f4: { active: false, unsub: null, gameId: null, board: Array(42).fill(null), turn: null, p1: null, p2: null, status: 'idle' },
+                micGainNode: null, localAudioCtx: null, 
                 isRadioPlaying: false, radioStations: [], serverConfig: { chatLocked: false, guestsLocked: false, badWords: "", appTitle: "RaskVideochat", appBgUrl: "", color1: "#4338ca", color2: "#7e22ce" },
                 me: { uid: null, name: "", color: "#64748b", camActive: false, role: "User", gender: "M", avatarUrl: null, muted: false, currentRoom: 'lobby' },
                 users: [], allMessages: [], allPvtMessages: [], registeredUsers: [], ignoredUsers: [], soundsEnabled: true,
@@ -622,137 +536,6 @@
             openModal(id) { document.getElementById(id).classList.add('active'); if(id==='profile-modal'){ document.getElementById('edit-prof-name').value = this.state.me.name; document.getElementById('prof-avatar-preview').src = this.state.me.avatarUrl; } },
             closeModal(id) { document.getElementById(id).classList.remove('active'); },
             closeOnOverlay(e, el) { if(e.target === el) el.classList.remove('active'); },
-
-            // --- DRAW & GUESS LOGIC ---
-            initStageCanvas() {
-                const canvas = document.getElementById('stage-canvas');
-                const parent = canvas.parentElement;
-                // FIX #DG-02: Fallback dimensions if parent is hidden
-                canvas.width = parent.clientWidth > 0 ? parent.clientWidth : 280; 
-                canvas.height = parent.clientHeight > 0 ? parent.clientHeight : 280;
-                this.state.draw.ctx = canvas.getContext('2d');
-                this.state.draw.ctx.lineCap = 'round';
-                this.state.draw.ctx.lineJoin = 'round';
-                this.clearCanvas(false);
-
-                let isDown = false;
-                const startDraw = (e) => {
-                    if(!this.state.draw.active || this.state.gameHostUid !== this.state.me.uid) return;
-                    isDown = true; draw(e);
-                };
-                const stopDraw = () => { isDown = false; this.state.draw.ctx.beginPath(); if(this.state.draw.active) this.throttleSyncCanvas(); };
-                const draw = (e) => {
-                    if(!isDown || !this.state.draw.active) return;
-                    const rect = canvas.getBoundingClientRect();
-                    const clientX = e.clientX || (e.touches && e.touches[0].clientX);
-                    const clientY = e.clientY || (e.touches && e.touches[0].clientY);
-                    const x = clientX - rect.left;
-                    const y = clientY - rect.top;
-
-                    const ctx = this.state.draw.ctx;
-                    ctx.lineWidth = document.getElementById('brush-size') ? document.getElementById('brush-size').value : 5;
-                    ctx.strokeStyle = this.state.draw.color;
-
-                    ctx.lineTo(x, y);
-                    ctx.stroke();
-                    ctx.beginPath();
-                    ctx.moveTo(x, y);
-                    this.throttleSyncCanvas();
-                };
-
-                canvas.addEventListener('mousedown', startDraw);
-                canvas.addEventListener('mousemove', draw);
-                canvas.addEventListener('mouseup', stopDraw);
-                canvas.addEventListener('mouseout', stopDraw);
-                canvas.addEventListener('touchstart', (e) => { e.preventDefault(); startDraw(e); }, {passive:false});
-                canvas.addEventListener('touchmove', (e) => { e.preventDefault(); draw(e); }, {passive:false});
-                canvas.addEventListener('touchend', stopDraw);
-                
-                window.addEventListener('resize', () => {
-                    if(this.state.draw.ctx && canvas.offsetWidth > 0) {
-                        const tempCanvas = document.createElement('canvas');
-                        tempCanvas.width = canvas.width; tempCanvas.height = canvas.height;
-                        tempCanvas.getContext('2d').drawImage(canvas, 0, 0);
-                        canvas.width = canvas.parentElement.clientWidth;
-                        canvas.height = canvas.parentElement.clientHeight;
-                        this.state.draw.ctx.lineCap = 'round'; this.state.draw.ctx.lineJoin = 'round';
-                        this.state.draw.ctx.fillStyle = '#ffffff'; this.state.draw.ctx.fillRect(0,0,canvas.width, canvas.height);
-                        this.state.draw.ctx.drawImage(tempCanvas, 0, 0);
-                    }
-                });
-            },
-            throttleSyncCanvas() {
-                if(this.state.draw.syncTimer) return;
-                this.state.draw.syncTimer = setTimeout(() => {
-                    if(this.state.gameHostUid === this.state.me.uid) {
-                        const dataUrl = document.getElementById('stage-canvas').toDataURL('image/webp', 0.5);
-                        updateDoc(doc(this.getCol('rooms_data'), 'games_stage'), { canvasData: dataUrl }).catch(()=>null);
-                    }
-                    this.state.draw.syncTimer = null;
-                }, 800);
-            },
-            clearCanvas(sync = false) {
-                if(!this.state.draw.ctx) return;
-                const canvas = document.getElementById('stage-canvas');
-                this.state.draw.ctx.fillStyle = '#ffffff';
-                this.state.draw.ctx.fillRect(0, 0, canvas.width, canvas.height);
-                if(sync && this.state.gameHostUid === this.state.me.uid) {
-                    updateDoc(doc(this.getCol('rooms_data'), 'games_stage'), { canvasData: '' }).catch(()=>null);
-                }
-            },
-            setDrawColor(c) { this.state.draw.color = c; },
-            async startDrawGame() {
-                const word = document.getElementById('draw-word-input').value.trim();
-                if(!word) return this.showToast("Inserisci una parola!", "error");
-                
-                if(!this.state.draw.ctx) this.initStageCanvas();
-                this.state.draw.active = true;
-                this.state.draw.word = word.toLowerCase();
-                document.getElementById('btn-start-draw').classList.add('hidden');
-                document.getElementById('btn-stop-draw').classList.remove('hidden');
-                document.getElementById('draw-tools').classList.remove('hidden');
-                document.getElementById('draw-word-input').disabled = true;
-
-                this.clearCanvas(false);
-                if(this.state.me.camActive) this.toggleCam();
-                
-                const dataUrl = document.getElementById('stage-canvas').toDataURL('image/webp', 0.5);
-                await updateDoc(doc(this.getCol('rooms_data'), 'games_stage'), { drawMode: true, canvasData: dataUrl });
-                this.sendSystemMessage(`🎨 <b>${this.state.me.name}</b> sta disegnando sul palco! Indovina la parola in chat per vincere!`, 'games');
-            },
-            async stopDrawGame() {
-                this.state.draw.active = false;
-                this.state.draw.word = '';
-                document.getElementById('btn-start-draw').classList.remove('hidden');
-                document.getElementById('btn-stop-draw').classList.add('hidden');
-                document.getElementById('draw-tools').classList.add('hidden');
-                document.getElementById('draw-word-input').disabled = false;
-                document.getElementById('draw-word-input').value = '';
-
-                await updateDoc(doc(this.getCol('rooms_data'), 'games_stage'), { drawMode: false, canvasData: '' });
-            },
-            async sendSystemMessage(txt, room) {
-                await addDoc(this.getCol('messages'), {
-                    roomId: room,
-                    text: `<div class="bg-indigo-600 text-white p-3 rounded-lg w-full text-center shadow-md border border-indigo-400 font-bold text-xs">⭐ SYSTEM ALERT:<br>${txt}</div>`,
-                    name: "SYSTEM", fromUid: "system", timestamp: Date.now()
-                });
-            },
-
-            // --- THEME ---
-            toggleTheme() {
-                this.state.theme = this.state.theme === 'dark' ? 'light' : 'dark';
-                const body = document.body;
-                const btn = document.getElementById('theme-toggle-btn');
-                if (this.state.theme === 'light') { body.classList.add('light-theme'); btn.innerText = "🌙"; } 
-                else { body.classList.remove('light-theme'); btn.innerText = "☀️"; }
-                localStorage.setItem('rask_theme', this.state.theme);
-                this.scrollToBottom(true);
-            },
-            loadTheme() {
-                const saved = localStorage.getItem('rask_theme');
-                if(saved === 'light') { this.state.theme = 'light'; document.body.classList.add('light-theme'); document.getElementById('theme-toggle-btn').innerText = "🌙"; }
-            },
 
             async initFirebase() {
                 if(this.state.db) return getAuth();
@@ -879,9 +662,8 @@
                 }, 45000);
 
                 window.addEventListener('beforeunload', () => { 
-                    // FIX #AV-01: Host disconnect cleanup
                     if(this.state.gameHostUid === this.state.me.uid) {
-                        updateDoc(doc(this.getCol('rooms_data'), 'games_stage'), { hostUid: null, hostName: null, drawMode: false, canvasData: '' }).catch(()=>null);
+                        updateDoc(doc(this.getCol('rooms_data'), 'games_stage'), { hostUid: null, hostName: null }).catch(()=>null);
                     }
                     deleteDoc(doc(this.getCol('online_users'), this.state.me.uid)); 
                     if(this.state.peer) this.state.peer.destroy(); 
@@ -937,6 +719,7 @@
                     document.getElementById('adm-color-1').value = this.state.serverConfig.color1 || '#4338ca';
                     document.getElementById('adm-color-2').value = this.state.serverConfig.color2 || '#7e22ce';
                 }
+                document.getElementById('adm-bad-words').value = this.state.serverConfig.badWords || '';
             },
             closeAdminPanel() { document.getElementById('admin-panel').classList.remove('active'); },
 
@@ -958,6 +741,11 @@
                 const col2 = document.getElementById('adm-color-2').value;
                 await setDoc(doc(this.getCol('server_settings'), 'config'), { appTitle: title, appBgUrl: bgUrl, color1: col1, color2: col2 }, { merge: true });
                 this.showToast("Personalizzazione Salvata", "success");
+            },
+            adminSaveBadWords() {
+                const bw = document.getElementById('adm-bad-words').value;
+                this.adminUpdateServerConfig('badWords', bw);
+                this.showToast("Filtro parole aggiornato.", "success");
             },
             applyAppearanceSettings() {
                 const config = this.state.serverConfig;
@@ -1013,7 +801,8 @@
                             } 
                             if(document.getElementById('adm-lock-chat')) { 
                                 document.getElementById('adm-lock-chat').checked = this.state.serverConfig.chatLocked; 
-                                document.getElementById('adm-lock-guests').checked = this.state.serverConfig.guestsLocked; 
+                                document.getElementById('adm-lock-guests').checked = this.state.serverConfig.guestsLocked;
+                                document.getElementById('adm-bad-words').value = this.state.serverConfig.badWords || '';
                             } 
                         } 
                     }); 
@@ -1059,50 +848,44 @@
                 onSnapshot(this.getCol('muted_users'), snap => { this.state.mutedUsers = []; let amIMuted = false; snap.forEach(d => { const data = d.data(); this.state.mutedUsers.push({id: d.id, ...data}); if(this.state.isLoggedIn && data.username.toLowerCase() === this.state.me.name.toLowerCase()) amIMuted = true; }); this.state.me.muted = amIMuted; if(this.state.me.role === 'Admin') this.adminRenderMuted(); const input = document.getElementById('msg-input'); if(amIMuted) { input.placeholder = "🔇 SEI STATO MUTATO DALLO STAFF"; input.disabled = true; } else if (!this.state.serverConfig.chatLocked) { input.placeholder = "Scrivi un messaggio..."; input.disabled = false; } });
                 onSnapshot(this.getCol('banned_users'), snap => { this.state.bannedUsers = []; snap.forEach(d => { const data = d.data(); this.state.bannedUsers.push({id: d.id, ...data}); if(this.state.isLoggedIn && data.username.toLowerCase() === this.state.me.name.toLowerCase()) { if(this.state.heartbeatInterval) clearInterval(this.state.heartbeatInterval); document.body.innerHTML = '<div style="display:flex;height:100vh;align-items:center;justify-content:center;background:#000;color:red;font-weight:bold;font-size:24px;">SEI STATO BANNATO DEFINITIVAMENTE.</div>'; setTimeout(() => window.location.reload(), 3000); } }); if(this.state.me.role === 'Admin') this.adminRenderBanned(); });
                 
+                // MESSAGGI CHAT GLOBALE (Modificato per NON resettare gli iframe YouTube)
                 onSnapshot(this.getCol('messages'), snap => { 
-                    this.state.allMessages = []; 
-                    snap.forEach(d => this.state.allMessages.push({id: d.id, ...d.data()})); 
-                    this.state.msgCount = this.state.allMessages.length; 
+                    this.state.msgCount = snap.size;
                     if(this.state.me.role === 'Admin') document.getElementById('stat-msgs').innerText = this.state.msgCount; 
-                    this.renderCurrentRoomChat(); 
-
-                    if(this.state.gameHostUid === this.state.me.uid && this.state.draw.active && this.state.draw.word) {
-                        snap.docChanges().forEach(change => {
-                            if(change.type === 'added') {
-                                const m = change.doc.data();
-                                if(m.roomId === 'games' && m.fromUid !== this.state.me.uid && m.fromUid !== 'system') {
-                                    const cleanTxt = m.text.replace(/<[^>]*>?/gm, '').toLowerCase().trim();
-                                    // FIX #DG-01: Controllo esatto invece di includes
-                                    if(cleanTxt === this.state.draw.word) {
-                                        this.sendSystemMessage(`🎉 <b>${m.name}</b> HA INDOVINATO LA PAROLA: <b class="text-yellow-300 text-lg uppercase">${this.state.draw.word}</b>! 🎉`, 'games');
-                                        this.stopDrawGame();
-                                    }
-                                }
+                    
+                    snap.docChanges().forEach(change => {
+                        if (change.type === 'added') {
+                            const m = {id: change.doc.id, ...change.doc.data()};
+                            this.state.allMessages.push(m);
+                            
+                            const ignoredUids = this.state.ignoredUsers.map(u => u.uid);
+                            if (m.roomId === this.state.currentRoom && !ignoredUids.includes(m.fromUid) && m.timestamp >= this.state.loginTime) {
+                                this.appendSingleMessage(m);
                             }
-                        });
-                    }
+                        }
+                    });
                 });
                 
+                // MESSAGGI PRIVATI (Notifiche e Auto-apertura)
                 onSnapshot(this.getCol('messages_pvt'), snap => { 
                     this.state.allPvtMessages = []; 
                     snap.forEach(d => this.state.allPvtMessages.push({id: d.id, ...d.data()})); 
+                    
                     snap.docChanges().forEach(change => {
                         if (change.type === 'added') {
                             const m = change.doc.data();
                             if (m.toUid === this.state.me.uid && m.timestamp > this.state.loginTime) {
                                 const sender = this.state.users.find(u => u.uid === m.fromUid);
                                 if (sender) {
+                                    this.playBeep();
+                                    this.showToast(`💬 Nuovo messaggio da ${sender.name}`, "info");
+                                    
                                     const w = document.getElementById('pvt-window');
-                                    const isWindowOpen = w.classList.contains('active');
-                                    if (!isWindowOpen) {
+                                    // Se la chat non è già aperta per questo utente, aprila o sostituiscila
+                                    if (!w.classList.contains('active') || (this.state.privateChatTarget && this.state.privateChatTarget.uid !== sender.uid)) {
                                         this.startPrivateChatWithUser(sender);
-                                        this.showToast(`💬 Nuovo messaggio da ${sender.name}`, "info");
-                                        this.playBeep();
-                                    } else if (this.state.privateChatTarget && this.state.privateChatTarget.uid !== sender.uid) {
-                                        this.showToast(`💬 Nuovo messaggio da ${sender.name}`, "info");
-                                        this.playBeep();
                                     } else {
-                                        this.playBeep();
+                                        this.renderPrivateChat(); // aggiorna se è già la stessa
                                     }
                                 }
                             }
@@ -1138,16 +921,15 @@
                 onSnapshot(this.getCol('live_reactions'), snap => { snap.docChanges().forEach(change => { if (change.type === 'added') { const data = change.doc.data(); if(this.state.currentRoom === 'games' && (Date.now() - data.timestamp < 10000)) { this.showFloatingReaction(data.emoji); } } }); });
             },
 
-            // --- PALCO EVENTI E GIOCHI ---
+            // --- PALCO EVENTI ---
             async claimHost() {
                 const isHost = this.state.gameHostUid === this.state.me.uid;
                 if(isHost) {
-                    if(this.state.draw.active) await this.stopDrawGame();
-                    await setDoc(doc(this.getCol('rooms_data'), 'games_stage'), { hostUid: null, hostName: null, bulletin: '', drawMode: false, canvasData: '' });
+                    await setDoc(doc(this.getCol('rooms_data'), 'games_stage'), { hostUid: null, hostName: null, bulletin: ''});
                     if(this.state.me.camActive) this.toggleCam();
                 } else {
                     if(this.state.gameHostUid) return this.showToast("Il palco è già occupato!", "error");
-                    await setDoc(doc(this.getCol('rooms_data'), 'games_stage'), { hostUid: this.state.me.uid, hostName: this.state.me.name, bulletin: 'Benvenuti allo show di ' + this.state.me.name + '!', drawMode: false, canvasData: '' });
+                    await setDoc(doc(this.getCol('rooms_data'), 'games_stage'), { hostUid: this.state.me.uid, hostName: this.state.me.name, bulletin: 'Benvenuti allo show di ' + this.state.me.name + '!'});
                     if(!this.state.me.camActive) this.toggleCam();
                 }
             },
@@ -1155,10 +937,7 @@
             updateStageUI(data) {
                 const hostBtn = document.getElementById('btn-become-host'); const editArea = document.getElementById('host-bulletin-edit-area'); const displayArea = document.getElementById('host-bulletin-display'); const stagePlayer = document.getElementById('stage-player'); const placeholder = document.getElementById('game-placeholder');
                 const stageVolCtrl = document.getElementById('stage-vol-ctrl-container');
-                const drawPanel = document.getElementById('host-draw-panel');
                 const bulletinPanel = document.getElementById('bulletin-panel');
-                const canvas = document.getElementById('stage-canvas');
-                const wordDisplay = document.getElementById('draw-word-display');
                 
                 displayArea.innerText = data.bulletin || 'Nessun messaggio.';
                 
@@ -1166,13 +945,10 @@
                     hostBtn.innerText = "Scendi dal Palco"; hostBtn.className = "w-full bg-red-600 hover:bg-red-500 text-white py-3 rounded-xl font-black text-xs uppercase shadow-lg shrink-0"; hostBtn.onclick = () => app.claimHost();
                     editArea.classList.remove('hidden'); displayArea.classList.add('hidden'); document.getElementById('host-bulletin-input').value = data.bulletin || '';
                     stageVolCtrl.classList.add('hidden'); 
-                    drawPanel.classList.remove('hidden');
-                    bulletinPanel.classList.add('hidden');
-                    if(!this.state.draw.ctx) this.initStageCanvas();
-                    if(this.state.localStream && !data.drawMode) { stagePlayer.srcObject = this.state.localStream; stagePlayer.classList.remove('hidden'); placeholder.classList.add('hidden'); document.getElementById('local-video-container').style.display = 'none'; }
+                    bulletinPanel.classList.remove('hidden');
+                    if(this.state.localStream) { stagePlayer.srcObject = this.state.localStream; stagePlayer.classList.remove('hidden'); placeholder.classList.add('hidden'); document.getElementById('local-video-container').style.display = 'none'; }
                 } else if(data.hostUid) {
                     editArea.classList.add('hidden'); displayArea.classList.remove('hidden');
-                    drawPanel.classList.add('hidden');
                     bulletinPanel.classList.remove('hidden');
                     if(this.state.currentCall && this.state.currentCall.peer === data.hostUid) { 
                         hostBtn.innerText = `IN ONDA: ${data.hostName.toUpperCase()}`; hostBtn.className = "w-full bg-green-600 text-white py-3 rounded-xl font-black text-xs uppercase shadow-lg shrink-0"; hostBtn.onclick = null;
@@ -1184,187 +960,20 @@
                 } else {
                     hostBtn.innerText = "Sali Sul Palco"; hostBtn.className = "w-full btn-brand text-white py-3 rounded-xl font-black text-xs uppercase shadow-lg shrink-0"; hostBtn.onclick = () => app.claimHost();
                     editArea.classList.add('hidden'); displayArea.classList.remove('hidden'); displayArea.innerText = 'Il palco è vuoto. Aspettiamo un Host!';
-                    drawPanel.classList.add('hidden');
                     bulletinPanel.classList.remove('hidden');
                     stagePlayer.classList.add('hidden'); stagePlayer.srcObject = null; placeholder.classList.remove('hidden');
                     stageVolCtrl.classList.add('hidden');
                     if(this.state.me.camActive) { document.getElementById('local-video-container').style.display = 'block'; }
                 }
 
-                if(data.drawMode) {
-                    placeholder.classList.add('hidden');
-                    stagePlayer.classList.add('hidden');
-                    canvas.classList.remove('hidden');
-                    if(data.hostUid !== this.state.me.uid) {
-                        wordDisplay.classList.remove('hidden');
-                        wordDisplay.innerText = "Indovina la parola in chat!";
-                        if(data.canvasData) {
-                            if(!this.state.draw.ctx) this.initStageCanvas();
-                            const img = new Image();
-                            img.onload = () => { this.state.draw.ctx.clearRect(0,0, canvas.width, canvas.height); this.state.draw.ctx.drawImage(img, 0, 0); };
-                            img.src = data.canvasData;
-                        } else {
-                            this.clearCanvas(false);
-                        }
-                    } else {
-                        wordDisplay.classList.remove('hidden');
-                        wordDisplay.innerText = `Parola: ${this.state.draw.word}`;
-                    }
-                } else {
-                    canvas.classList.add('hidden');
-                    wordDisplay.classList.add('hidden');
-                    if(data.hostUid && !data.drawMode) {
-                        if(this.state.currentCall && this.state.currentCall.peer === data.hostUid) { stagePlayer.classList.remove('hidden'); placeholder.classList.add('hidden'); }
-                        else if (data.hostUid === this.state.me.uid && this.state.localStream) { stagePlayer.classList.remove('hidden'); placeholder.classList.add('hidden'); }
-                        else { stagePlayer.classList.add('hidden'); placeholder.classList.remove('hidden'); }
-                    }
+                if(data.hostUid) {
+                    if(this.state.currentCall && this.state.currentCall.peer === data.hostUid) { stagePlayer.classList.remove('hidden'); placeholder.classList.add('hidden'); }
+                    else if (data.hostUid === this.state.me.uid && this.state.localStream) { stagePlayer.classList.remove('hidden'); placeholder.classList.add('hidden'); }
+                    else { stagePlayer.classList.add('hidden'); placeholder.classList.remove('hidden'); }
                 }
             },
             async sendReaction(emoji) { if(this.state.currentRoom !== 'games') return; await addDoc(this.getCol('live_reactions'), { emoji, uid: this.state.me.uid, timestamp: Date.now() }); },
             showFloatingReaction(emoji) { const area = document.getElementById('stage-reaction-area'); const el = document.createElement('div'); el.className = 'floating-reaction'; el.innerText = emoji; el.style.left = `${10 + Math.random() * 80}%`; area.appendChild(el); setTimeout(() => el.remove(), 2500); },
-
-            // --- FORZA 4 (PVT GAME) ---
-            getF4GameId() {
-                if(!this.state.privateChatTarget) return null;
-                const uid1 = this.state.me.uid; const uid2 = this.state.privateChatTarget.uid;
-                return uid1 < uid2 ? `${uid1}_${uid2}` : `${uid2}_${uid1}`;
-            },
-            async togglePvtGame() {
-                const gameArea = document.getElementById('pvt-game-area');
-                const msgArea = document.getElementById('pvt-messages');
-                const formArea = document.getElementById('pvt-form');
-                
-                if(this.state.f4.active) {
-                    this.state.f4.active = false;
-                    gameArea.classList.remove('active');
-                    msgArea.classList.remove('hidden');
-                    formArea.classList.remove('hidden');
-                    if(this.state.f4.unsub) { this.state.f4.unsub(); this.state.f4.unsub = null; }
-                } else {
-                    this.state.f4.active = true;
-                    gameArea.classList.add('active');
-                    msgArea.classList.add('hidden');
-                    formArea.classList.add('hidden');
-                    
-                    document.getElementById('f4-p1-name').innerText = this.state.me.uid < this.state.privateChatTarget.uid ? "Tu" : this.state.privateChatTarget.name;
-                    document.getElementById('f4-p2-name').innerText = this.state.me.uid < this.state.privateChatTarget.uid ? this.state.privateChatTarget.name : "Tu";
-                    
-                    const gameId = this.getF4GameId();
-                    this.state.f4.gameId = gameId;
-                    
-                    this.state.f4.unsub = onSnapshot(doc(this.getCol('private_games'), gameId), (docSnap) => {
-                        if(docSnap.exists()) {
-                            this.syncF4State(docSnap.data());
-                        } else {
-                            const isP1 = this.state.me.uid < this.state.privateChatTarget.uid;
-                            const newGame = { p1: isP1 ? this.state.me.uid : this.state.privateChatTarget.uid, p2: isP1 ? this.state.privateChatTarget.uid : this.state.me.uid, turn: isP1 ? this.state.me.uid : this.state.privateChatTarget.uid, board: Array(42).fill(null), status: 'playing', winCells: [] };
-                            setDoc(doc(this.getCol('private_games'), gameId), newGame).catch(()=>null);
-                        }
-                    });
-                }
-            },
-            syncF4State(data) {
-                this.state.f4.board = data.board;
-                this.state.f4.turn = data.turn;
-                this.state.f4.p1 = data.p1;
-                this.state.f4.p2 = data.p2;
-                this.state.f4.status = data.status;
-                
-                const isMyTurn = this.state.f4.turn === this.state.me.uid;
-                const iAmP1 = this.state.f4.p1 === this.state.me.uid;
-                
-                const statEl = document.getElementById('f4-status');
-                const btnReset = document.getElementById('f4-reset-btn');
-                
-                if(data.status === 'playing') {
-                    btnReset.classList.add('hidden');
-                    statEl.innerText = isMyTurn ? "Tocca a TE" : "Attendi...";
-                    statEl.className = `text-[10px] font-black uppercase px-3 py-1 rounded border ${isMyTurn ? 'bg-brand text-white border-indigo-400 shadow-[0_0_10px_rgba(79,70,229,0.5)]' : 'bg-slate-800 text-slate-400 border-slate-700'}`;
-                } else if (data.status === 'draw') {
-                    btnReset.classList.remove('hidden');
-                    statEl.innerText = "PAREGGIO!";
-                    statEl.className = "text-[10px] font-black uppercase text-slate-300 bg-slate-700 px-3 py-1 rounded border border-slate-600";
-                } else {
-                    btnReset.classList.remove('hidden');
-                    const iWon = data.status === (iAmP1 ? 'win_p1' : 'win_p2');
-                    statEl.innerText = iWon ? "HAI VINTO! 🎉" : "HAI PERSO 💀";
-                    statEl.className = `text-[10px] font-black uppercase px-3 py-1 rounded border ${iWon ? 'bg-green-600/20 text-green-400 border-green-500/50' : 'bg-red-600/20 text-red-400 border-red-500/50'}`;
-                }
-                
-                this.renderF4Board(data.winCells || []);
-            },
-            renderF4Board(winCells) {
-                const grid = document.getElementById('f4-grid');
-                grid.innerHTML = '';
-                for(let i=0; i<42; i++) {
-                    const val = this.state.f4.board[i];
-                    const isWin = winCells.includes(i);
-                    let colorClass = '';
-                    if(val === 'R') colorClass = 'red';
-                    if(val === 'Y') colorClass = 'yellow';
-                    if(isWin) colorClass += ' win';
-                    grid.innerHTML += `<div class="f4-cell-mini ${colorClass}" onclick="app.playF4Move(${i % 7})"></div>`;
-                }
-            },
-            async playF4Move(col) {
-                if(this.state.f4.status !== 'playing' || this.state.f4.turn !== this.state.me.uid) return;
-                
-                let targetIdx = -1;
-                const board = [...this.state.f4.board];
-                
-                for(let r = 5; r >= 0; r--) {
-                    const idx = r * 7 + col;
-                    if(board[idx] === null) { targetIdx = idx; break; }
-                }
-                
-                if(targetIdx === -1) return; 
-                
-                const iAmP1 = this.state.f4.p1 === this.state.me.uid;
-                const myToken = iAmP1 ? 'R' : 'Y';
-                board[targetIdx] = myToken;
-                
-                const winCells = this.checkF4WinLocal(board, Math.floor(targetIdx / 7), col, myToken);
-                let newStatus = 'playing';
-                if(winCells) {
-                    newStatus = iAmP1 ? 'win_p1' : 'win_p2';
-                } else if (!board.includes(null)) {
-                    newStatus = 'draw';
-                }
-                
-                const nextTurn = this.state.privateChatTarget.uid;
-                
-                await updateDoc(doc(this.getCol('private_games'), this.state.f4.gameId), {
-                    board: board,
-                    turn: nextTurn,
-                    status: newStatus,
-                    winCells: winCells || []
-                });
-            },
-            checkF4WinLocal(board, r, c, token) {
-                const dirs = [ [0, 1], [1, 0], [1, 1], [1, -1] ]; 
-                for(let [dr, dc] of dirs) {
-                    let count = 1; let cells = [r * 7 + c];
-                    for(let i=1; i<4; i++) {
-                        const nr = r + dr * i, nc = c + dc * i;
-                        if(nr>=0 && nr<6 && nc>=0 && nc<7 && board[nr*7+nc] === token) { count++; cells.push(nr*7+nc); } else break;
-                    }
-                    for(let i=1; i<4; i++) {
-                        const nr = r - dr * i, nc = c - dc * i;
-                        if(nr>=0 && nr<6 && nc>=0 && nc<7 && board[nr*7+nc] === token) { count++; cells.push(nr*7+nc); } else break;
-                    }
-                    if(count >= 4) return cells;
-                }
-                return null;
-            },
-            async resetF4Game() {
-                if(!this.state.f4.gameId) return;
-                await updateDoc(doc(this.getCol('private_games'), this.state.f4.gameId), {
-                    board: Array(42).fill(null),
-                    turn: this.state.f4.p1, 
-                    status: 'playing',
-                    winCells: []
-                });
-            },
 
             // --- CHAT E STANZE ---
             renderRoomsList() { 
@@ -1402,7 +1011,6 @@
                     if(this.state.me.camActive) document.getElementById('local-video-container').style.display = 'block'; 
                 } 
                 this.renderCurrentRoomChat();
-                this.scrollToBottom(true); 
             },
 
             submitRoomPassword() {
@@ -1425,7 +1033,6 @@
                 if(!msg) return;
                 let cleanText = msg.text.replace(/<[^>]*>?/gm, '');
                 if(msg.text.includes('<img')) cleanText = "📷 Immagine";
-                if(msg.text.includes('<audio')) cleanText = "🎤 Nota Vocale";
                 if(msg.text.includes('<iframe')) cleanText = "📺 Video";
                 this.state.replyingTo = { id: msg.id, name: msg.name, text: cleanText };
                 document.getElementById('reply-preview-name').innerText = msg.name;
@@ -1457,32 +1064,46 @@
                 await addDoc(this.getCol('messages'), payload);
             },
 
+            // Ottimizzazione Chat: Svuota tutto e ripopola SOLO al cambio stanza
             renderCurrentRoomChat() {
-                const c = document.getElementById('msg-container'); const ignoredUids = this.state.ignoredUsers.map(u => u.uid);
-                const roomMsgs = this.state.allMessages.filter(m => m.roomId === this.state.currentRoom && !ignoredUids.includes(m.fromUid) && m.timestamp >= this.state.loginTime).sort((a,b) => a.timestamp - b.timestamp).slice(-60);
+                const c = document.getElementById('msg-container');
+                c.innerHTML = '';
                 const roomName = this.state.rooms.find(r=>r.id===this.state.currentRoom)?.name || "Stanza";
+                c.innerHTML = `<div class="flex justify-center mb-6 mt-2"><span class="bg-indigo-50 text-indigo-500 text-[10px] px-6 py-2 rounded-full font-black uppercase tracking-widest border border-indigo-100/50 shadow-sm">Benvenuto in ${roomName}</span></div>`;
                 
-                let html = `<div class="flex justify-center mb-6 mt-2"><span class="bg-indigo-50 text-indigo-500 text-[10px] px-6 py-2 rounded-full font-black uppercase tracking-widest border border-indigo-100/50 shadow-sm">Benvenuto in ${roomName}</span></div>`;
-                html += roomMsgs.map(m => {
-                    const time = new Date(m.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
-                    const avatarHtml = m.avatarUrl ? `<img src="${m.avatarUrl}" class="chat-avatar" loading="lazy">` : `<div class="chat-avatar"></div>`;
-                    let quoteHtml = '';
-                    if (m.replyTo) { quoteHtml = `<div class="chat-quote"><b>${m.replyTo.name}</b>: ${m.replyTo.text}</div>`; }
-                    return `<div class="chat-line group">
-                        <span class="chat-timestamp">${time}</span>
-                        ${avatarHtml}
-                        <div class="chat-content-area">
-                            ${quoteHtml}
-                            <div class="flex items-center flex-wrap">
-                                <span class="chat-name" onclick="app.openUserMenu(event, '${m.fromUid}')" style="color:${m.color}">${m.name}:</span>
-                                <span class="chat-text" style="font-size:${m.size||'14px'}; color:${m.txtColor||'#0f172a'}">${m.text}</span>
-                                <button onclick="app.setReplyTo('${m.id}')" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-brand text-[10px] ml-2 transition">↩️ Rispondi</button>
-                            </div>
+                const ignoredUids = this.state.ignoredUsers.map(u => u.uid);
+                const roomMsgs = this.state.allMessages
+                    .filter(m => m.roomId === this.state.currentRoom && !ignoredUids.includes(m.fromUid) && m.timestamp >= this.state.loginTime)
+                    .sort((a,b) => a.timestamp - b.timestamp)
+                    .slice(-60);
+                
+                roomMsgs.forEach(m => this.appendSingleMessage(m, c));
+                this.scrollToBottom(true);
+            },
+
+            // Aggiunge un singolo messaggio in fondo. Non distrugge gli iFrame sopra!
+            appendSingleMessage(m, container = document.getElementById('msg-container')) {
+                const time = new Date(m.timestamp).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+                const avatarHtml = m.avatarUrl ? `<img src="${m.avatarUrl}" class="chat-avatar" loading="lazy">` : `<div class="chat-avatar"></div>`;
+                let quoteHtml = '';
+                if (m.replyTo) { quoteHtml = `<div class="chat-quote"><b>${m.replyTo.name}</b>: ${m.replyTo.text}</div>`; }
+
+                const div = document.createElement('div');
+                div.className = "chat-line group";
+                div.innerHTML = `
+                    <span class="chat-timestamp">${time}</span>
+                    ${avatarHtml}
+                    <div class="chat-content-area">
+                        ${quoteHtml}
+                        <div class="flex items-center flex-wrap">
+                            <span class="chat-name" onclick="app.openUserMenu(event, '${m.fromUid}')" style="color:${m.color}">${m.name}:</span>
+                            <span class="chat-text" style="font-size:${m.size||'14px'}; color:${m.txtColor||'#0f172a'}">${m.text}</span>
+                            <button onclick="app.setReplyTo('${m.id}')" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-brand text-[10px] ml-2 transition">↩️ Rispondi</button>
                         </div>
-                    </div>`;
-                }).join('');
-                
-                c.innerHTML = html; this.scrollToBottom(false);
+                    </div>
+                `;
+                container.appendChild(div);
+                this.scrollToBottom(false);
             },
 
             // --- MEDIA E EMOJI ---
@@ -1512,7 +1133,6 @@
                 menu.innerHTML = menuHtml;
                 const menuW = 180, menuH = 200;
                 let top = event.clientY, left = event.clientX;
-                // FIX: Check boundaries to avoid menu going off-screen
                 if(left + menuW > window.innerWidth) left = window.innerWidth - menuW - 8;
                 if(top + menuH > window.innerHeight) top = window.innerHeight - menuH - 8;
                 menu.style.top = `${top}px`; menu.style.left = `${left}px`;
@@ -1537,13 +1157,11 @@
                 document.getElementById('pvt-title-area').innerHTML = `${camBtnHtml} <span class="text-xs font-black uppercase truncate">Privato: ${user.name}</span>`;
                 this.renderPrivateChat(); 
                 
-                if(this.state.f4.active) { this.state.f4.active = false; this.togglePvtGame(); }
                 if(document.getElementById('user-menu-modal')) this.closeUserMenu(); 
             },
             closePrivateChat() { 
                 this.state.privateChatTarget = null; 
                 document.getElementById('pvt-window').classList.remove('active'); 
-                if(this.state.f4.active) this.togglePvtGame(); 
             },
             async sendPrivateMessage(e) { e.preventDefault(); const t = document.getElementById('pvt-input').value.trim(); if(!t || !this.state.privateChatTarget) return; await addDoc(this.getCol('messages_pvt'), { text: this.sanitize(t), name: this.state.me.name, fromUid: this.state.me.uid, toUid: this.state.privateChatTarget.uid, timestamp: Date.now() }); document.getElementById('pvt-input').value = ''; },
             renderPrivateChat() { const t = this.state.privateChatTarget; if(!t) return; const c = document.getElementById('pvt-messages'); const msgs = this.state.allPvtMessages.filter(m => ((m.fromUid === this.state.me.uid && m.toUid === t.uid) || (m.fromUid === t.uid && m.toUid === this.state.me.uid)) && m.timestamp >= this.state.loginTime).sort((a,b) => a.timestamp - b.timestamp); c.innerHTML = msgs.map(m => `<div class="pvt-msg ${m.fromUid === this.state.me.uid ? 'me' : 'them'}">${m.text}</div>`).join(''); setTimeout(() => { c.scrollTop = c.scrollHeight; }, 10); },
@@ -1623,7 +1241,6 @@
                     this.state.me.camActive = false;
                     this.state.micGainNode = null;
 
-                    // FIX: Memory leak cleanup for AudioContext
                     if(this.state.localAudioCtx) { this.state.localAudioCtx.close().catch(()=>null); this.state.localAudioCtx = null; }
 
                     if(this.state.me.uid) updateDoc(doc(this.getCol('online_users'), this.state.me.uid), { camActive: false }).catch(()=>null);
@@ -1747,7 +1364,6 @@
                     document.addEventListener('mouseup', stopDrag);
                 };
                 const doDrag = (e) => {
-                    // FIX: Ensure minimum dimensions properly
                     const newW = Math.max(minW, startW + e.clientX - startX);
                     const newH = Math.max(minH, startH + e.clientY - startY);
                     elmnt.style.width = newW + 'px';
@@ -1760,7 +1376,6 @@
             bringToFront(elmnt) { document.querySelectorAll('.video-window, .pvt-window').forEach(w => w.style.zIndex = "3500"); elmnt.style.zIndex = "3501"; },
 
             init() {
-                this.loadTheme();
                 this.renderEmojis();
                 document.getElementById('auth-form').addEventListener('submit', (e) => this.handleAuth(e));
                 document.getElementById('chat-box').addEventListener('submit', (e) => this.handleChatSubmit(e));
