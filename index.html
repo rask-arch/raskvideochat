@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>RaskVideochat - Public Beta 1.0</title>
+    <title>RaskVideochat - Release 1.0.1</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎥</text></svg>">
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
@@ -225,7 +225,7 @@
         <div class="auth-card">
             <div class="text-center mb-6">
                 <h1 class="text-2xl font-black text-slate-900 tracking-tight app-title-display">RaskVideochat</h1>
-                <p class="text-xs font-bold text-brand uppercase tracking-widest mt-1">Public Beta 1.0</p>
+                <p class="text-xs font-bold text-brand uppercase tracking-widest mt-1">Release 1.0.1</p>
             </div>
             
             <div class="flex border-b border-slate-200 mb-6">
@@ -240,7 +240,6 @@
                 <button type="submit" class="w-full btn-brand text-white py-4 rounded-xl font-black text-sm uppercase tracking-wider shadow-lg flex justify-center items-center transition"><span id="btn-text">Accedi</span></button>
                 <div class="relative flex py-4 items-center"><div class="flex-grow border-t border-slate-200"></div><span class="flex-shrink-0 mx-4 text-slate-400 text-[10px] uppercase font-bold">OPPURE</span><div class="flex-grow border-t border-slate-200"></div></div>
                 <button type="button" onclick="app.loginAsGuest()" class="w-full bg-white border-2 border-slate-200 hover:bg-slate-50 text-slate-600 py-3 rounded-xl font-bold text-sm uppercase tracking-wider flex justify-center items-center transition"><span id="btn-guest-text">Entra come Ospite</span></button>
-                <button type="button" onclick="app.quickAdminLogin()" class="w-full bg-slate-900 hover:bg-black text-white py-3 rounded-xl font-bold text-sm uppercase tracking-wider flex justify-center items-center transition mt-3">👑 Login Admin Veloce</button>
             </form>
         </div>
     </div>
@@ -251,7 +250,7 @@
         <header class="brand-gradient px-4 py-3 sm:px-6 flex justify-between items-center z-[150] shadow-xl relative border-b border-white/10 shrink-0">
             <div class="flex items-center gap-3 sm:gap-4">
                 <div class="w-9 h-9 sm:w-10 sm:h-10 bg-white/15 rounded-xl flex items-center justify-center backdrop-blur-md border border-white/20 shadow-inner"><svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M15.9 14.3H15L4.93 14.3C3.87 14.3 3 13.43 3 12.37V4.93C3 3.87 3.87 3 4.93 3H15.06C16.12 3 17 3.87 17 4.93V7.9L21 4V13.3L17 9.4V12.37C17 13.43 16.13 14.3 15.9 14.3Z"/></svg></div>
-                <div class="hidden sm:block"><h1 class="text-white font-extrabold text-lg sm:text-xl tracking-tight leading-none app-title-display">RaskVideochat</h1><p class="text-white/40 text-[9px] font-bold uppercase tracking-[0.2em] mt-0.5">Public Beta 1.0</p></div>
+                <div class="hidden sm:block"><h1 class="text-white font-extrabold text-lg sm:text-xl tracking-tight leading-none app-title-display">RaskVideochat</h1><p class="text-white/40 text-[9px] font-bold uppercase tracking-[0.2em] mt-0.5">Release 1.0.1</p></div>
             </div>
 
             <!-- RADIO CONTROL -->
@@ -607,14 +606,6 @@
                 heartbeatInterval: null
             },
 
-            quickAdminLogin() {
-                document.getElementById('auth-username').value = 'admin';
-                document.getElementById('auth-password').value = 'adminraskvideochat';
-                this.setAuthMode('login');
-                const fakeEvent = { preventDefault: () => {} };
-                this.handleAuth(fakeEvent);
-            },
-
             getCol(name) { return collection(this.state.db, 'artifacts', this.state.appId, 'public', 'data', name); },
             showToast(msg, type = 'info', extraHtml = '') {
                 const c = document.getElementById('toast-container');
@@ -635,6 +626,7 @@
             initStageCanvas() {
                 const canvas = document.getElementById('stage-canvas');
                 const parent = canvas.parentElement;
+                // FIX #DG-02: Seleziona dimensioni minime se il container è invisibile (width = 0)
                 canvas.width = parent.clientWidth > 0 ? parent.clientWidth : 280; 
                 canvas.height = parent.clientHeight > 0 ? parent.clientHeight : 280;
                 this.state.draw.ctx = canvas.getContext('2d');
@@ -764,23 +756,18 @@
             async initFirebase() {
                 if(this.state.db) return getAuth();
                 
-                let firebaseConfig;
-                if (typeof __firebase_config !== 'undefined') {
-                    firebaseConfig = JSON.parse(__firebase_config);
-                } else {
-                    // Configurazione Firebase ufficiale per GitHub Pages
-                    firebaseConfig = { 
-                        apiKey: "AIzaSyClYDNrtEL3B6KbVnm0kNXOMPut53-WD4s", 
-                        authDomain: "raskvideochat.firebaseapp.com", 
-                        projectId: "raskvideochat", 
-                        storageBucket: "raskvideochat.firebasestorage.app", 
-                        messagingSenderId: "834892043839", 
-                        appId: "1:834892043839:web:66c0dfdc89150112454a8a",
-                        measurementId: "G-RDCL3N8391"
-                    };
-                }
+                // Integrazione della tua Firebase Config personale definitiva
+                const firebaseConfig = { 
+                    apiKey: "AIzaSyClYDNrtEL3B6KbVnm0kNXOMPut53-WD4s", 
+                    authDomain: "raskvideochat.firebaseapp.com", 
+                    projectId: "raskvideochat", 
+                    storageBucket: "raskvideochat.firebasestorage.app", 
+                    messagingSenderId: "834892043839", 
+                    appId: "1:834892043839:web:66c0dfdc89150112454a8a",
+                    measurementId: "G-RDCL3N8391"
+                };
                 
-                this.state.appId = typeof __app_id !== 'undefined' ? __app_id : 'raskvideochat';
+                this.state.appId = 'raskvideochat';
                 const fbApp = initializeApp(firebaseConfig); 
                 const auth = getAuth(fbApp); 
                 this.state.db = getFirestore(fbApp); 
@@ -788,10 +775,7 @@
                 
                 let signedIn = false;
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) { 
-                    try { 
-                        await signInWithCustomToken(auth, __initial_auth_token); 
-                        signedIn = true; 
-                    } catch (e) {} 
+                    try { await signInWithCustomToken(auth, __initial_auth_token); signedIn = true; } catch (e) {} 
                 }
                 if (!signedIn) { await signInAnonymously(auth); }
                 
@@ -831,26 +815,12 @@
                         else { this.setAuthMode(this.state.authMode); return this.showToast("Utente non trovato", "error"); }
                         await this.finalizeLogin(auth, u, finalRole, finalGender);
                     }
-                } catch (err) { 
-                    if (typeof __firebase_config === 'undefined' || (err.code && err.code.includes('api-key'))) {
-                        alert("⚠️ SITO SCOLLEGATO DAL DATABASE! ⚠️\n\nStai provando il sito fuori da Canvas (es. su GitHub Pages), ma non hai ancora inserito le tue chiavi Firebase.\n\nTorna dall'IA e chiedi: 'Come collego Firebase?'");
-                    } else {
-                        this.showToast("Errore server", "error"); 
-                    }
-                    this.setAuthMode(this.state.authMode); 
-                }
+                } catch (err) { this.showToast("Errore server", "error"); this.setAuthMode(this.state.authMode); }
             },
 
             async loginAsGuest() {
                 document.getElementById('btn-guest-text').innerText = "Accesso...";
-                try { const auth = await this.initFirebase(); if(this.state.serverConfig.guestsLocked) { document.getElementById('btn-guest-text').innerText = "Entra come Ospite"; return this.showToast("LOCKDOWN: Registrazioni ospiti chiuse.", "error"); } await this.finalizeLogin(auth, `Ospite_${Math.floor(Math.random()*1000)}`, 'Guest', 'M'); } catch (err) { 
-                    if (typeof __firebase_config === 'undefined' || (err.code && err.code.includes('api-key'))) {
-                        alert("⚠️ SITO SCOLLEGATO DAL DATABASE! ⚠️\n\nStai provando il sito fuori da Canvas (es. su GitHub Pages), ma non hai ancora inserito le tue chiavi Firebase.\n\nTorna dall'IA e chiedi: 'Come collego Firebase?'");
-                    } else {
-                        this.showToast("Errore", "error"); 
-                    }
-                    document.getElementById('btn-guest-text').innerText = "Entra come Ospite"; 
-                }
+                try { const auth = await this.initFirebase(); if(this.state.serverConfig.guestsLocked) { document.getElementById('btn-guest-text').innerText = "Entra come Ospite"; return this.showToast("LOCKDOWN: Registrazioni ospiti chiuse.", "error"); } await this.finalizeLogin(auth, `Ospite_${Math.floor(Math.random()*1000)}`, 'Guest', 'M'); } catch (err) { this.showToast("Errore", "error"); document.getElementById('btn-guest-text').innerText = "Entra come Ospite"; }
             },
             
             async finalizeLogin(auth, username, role, gender) {
@@ -878,6 +848,7 @@
                     }
                 }, 45000);
 
+                // FIX #AV-01: Disconnessione sicura dell'host se abbandona la pagina
                 window.addEventListener('beforeunload', () => { 
                     if(this.state.gameHostUid === this.state.me.uid) {
                         updateDoc(doc(this.getCol('rooms_data'), 'games_stage'), { hostUid: null, hostName: null, drawMode: false, canvasData: '' }).catch(()=>null);
@@ -1070,7 +1041,8 @@
                             if(change.type === 'added') {
                                 const m = change.doc.data();
                                 if(m.roomId === 'games' && m.fromUid !== this.state.me.uid && m.fromUid !== 'system') {
-                                    const cleanTxt = m.text.replace(/<[^>]*>?/gm, '').toLowerCase().trim();
+                                    // FIX #DG-01: Controllo parola esatta rimuovendo punteggiatura
+                                    const cleanTxt = m.text.replace(/<[^>]*>?/gm, '').toLowerCase().replace(/[.,!?]/g, '').trim();
                                     if(cleanTxt === this.state.draw.word) {
                                         this.sendSystemMessage(`🎉 <b>${m.name}</b> HA INDOVINATO LA PAROLA: <b class="text-yellow-300 text-lg uppercase">${this.state.draw.word}</b>! 🎉`, 'games');
                                         this.stopDrawGame();
@@ -1761,79 +1733,4 @@
                 }; 
                 const dragMove = (e) => { 
                     if (e.cancelable) e.preventDefault(); 
-                    const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX; 
-                    const clientY = e.type.includes('touch') ? e.touches[0].clientY : e.clientY; 
-                    let nTop = initialTop + (clientY - startY);
-                    let nLeft = initialLeft + (clientX - startX);
-                    nTop = Math.max(0, Math.min(nTop, window.innerHeight - 40));
-                    nLeft = Math.max(-elmnt.offsetWidth + 40, Math.min(nLeft, window.innerWidth - 40));
-                    elmnt.style.top = `${nTop}px`; 
-                    elmnt.style.left = `${nLeft}px`; 
-                    elmnt.style.bottom = "auto"; elmnt.style.right = "auto"; 
-                }; 
-                const dragEnd = () => { document.removeEventListener('mousemove', dragMove); document.removeEventListener('touchmove', dragMove); document.removeEventListener('mouseup', dragEnd); document.removeEventListener('touchend', dragEnd); }; 
-                handle.addEventListener('mousedown', dragStart); handle.addEventListener('touchstart', dragStart, { passive: false }); 
-            },
-            
-            makeResizable(elmnt, handle, minW = 120, minH = 120) {
-                let startX, startY, startW, startH;
-                const initResize = (e) => {
-                    e.preventDefault();
-                    this.bringToFront(elmnt);
-                    startX = e.clientX; startY = e.clientY;
-                    startW = parseInt(getComputedStyle(elmnt).width, 10);
-                    startH = parseInt(getComputedStyle(elmnt).height, 10);
-                    document.addEventListener('mousemove', doDrag);
-                    document.addEventListener('mouseup', stopDrag);
-                };
-                const doDrag = (e) => {
-                    const newW = Math.max(minW, startW + e.clientX - startX);
-                    const newH = Math.max(minH, startH + e.clientY - startY);
-                    elmnt.style.width = newW + 'px';
-                    elmnt.style.height = newH + 'px';
-                };
-                const stopDrag = () => { document.removeEventListener('mousemove', doDrag); document.removeEventListener('mouseup', stopDrag); };
-                handle.addEventListener('mousedown', initResize);
-            },
-
-            bringToFront(elmnt) { document.querySelectorAll('.video-window, .pvt-window').forEach(w => w.style.zIndex = "3500"); elmnt.style.zIndex = "3501"; },
-
-            init() {
-                this.loadTheme();
-                this.renderEmojis();
-                document.getElementById('auth-form').addEventListener('submit', (e) => this.handleAuth(e));
-                document.getElementById('chat-box').addEventListener('submit', (e) => this.handleChatSubmit(e));
-
-                const radioEl = document.getElementById('radio-stream');
-                if(radioEl) radioEl.addEventListener('error', () => this.radioError());
-
-                const msgInput = document.getElementById('msg-input');
-                msgInput.addEventListener('input', function() { this.style.height = 'auto'; this.style.height = (this.scrollHeight) + 'px'; if(this.value === '') this.style.height = 'auto'; });
-                msgInput.addEventListener('keydown', (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); this.handleChatSubmit(); } });
-
-                document.addEventListener('click', (e) => {
-                    if(!e.target.closest('.emoji-picker') && !e.target.closest('button[onclick="app.toggleEmojiPicker(event)"]')) { document.getElementById('emoji-picker').classList.remove('active'); }
-                    if(!e.target.closest('.user-menu-modal') && !e.target.closest('.chat-name') && !e.target.closest('.user-card-compact')) { document.getElementById('user-menu-modal').classList.remove('active'); }
-                });
-
-                this.setupImageUpload();
-
-                const draggables = [
-                    {c: "local-video-container", d: "drag-local", r: "resize-local"},
-                    {c: "watch-video-container", d: "drag-watch", r: "resize-watch"},
-                    {c: "pvt-window", d: "drag-pvt", r: "resize-pvt"}
-                ];
-                draggables.forEach(item => {
-                    const c = document.getElementById(item.c);
-                    const d = document.getElementById(item.d);
-                    const r = item.r ? document.getElementById(item.r) : null;
-                    if(c && d) this.makeDraggable(c, d);
-                    if(c && r) this.makeResizable(c, r, item.c === 'pvt-window' ? 250 : 250);
-                });
-            }
-        };
-
-        window.app.init();
-    </script>
-</body>
-</html>
+                    const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
