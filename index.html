@@ -361,8 +361,8 @@
                         <button type="button" onclick="app.cancelReply()" class="text-slate-400 hover:text-red-500 font-bold w-6 h-6 flex items-center justify-center rounded-full hover:bg-red-50">✕</button>
                     </div>
 
-                    <!-- FIX #2: form con id e handler agganciato via JS in setup() -->
-                    <form id="chat-box" class="flex gap-2 items-end max-w-4xl mx-auto">
+                    <!-- FIX: onsubmit inline + listener in setup() per doppia sicurezza -->
+                    <form id="chat-box" onsubmit="app.handleChatSubmit(event)" class="flex gap-2 items-end max-w-4xl mx-auto">
                         <button type="button" onclick="app.toggleEmojiPicker(event)" class="p-2 text-slate-400 hover:text-brand transition"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.828 14.828a4 4 0 0 1-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg></button>
                         <!-- FIX #10: textarea con auto-resize gestito in setup() -->
                         <textarea id="msg-input" placeholder="Scrivi un messaggio... (Invio per inviare, Shift+Invio per a capo)" rows="1" class="flex-1 bg-slate-100 border-0 rounded-2xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand/20 transition resize-none max-h-32" style="overflow-y:auto;"></textarea>
@@ -570,7 +570,7 @@
 
         window.app = {
             state: {
-                isLoggedIn: false, db: null, storage: null, appId: 'raskvideochat', peer: null, currentCall: null, localStream: null,
+                isLoggedIn: false, db: null, auth: null, storage: null, appId: 'raskvideochat', peer: null, currentCall: null, localStream: null,
                 micGainNode: null, localAudioCtx: null, theme: 'dark',
                 draw: { isDrawing: false, color: '#000000', size: 5, ctx: null, active: false, word: '', syncTimer: null },
                 f4: { active: false, unsub: null, gameId: null, board: Array(42).fill(null), turn: null, p1: null, p2: null, status: 'idle' },
@@ -734,9 +734,12 @@
                 // FIX #3: renderEmojis chiamata qui
                 this.renderEmojis();
 
-                // FIX #2: Chat form submit handler
+                // Chat form: listener JS come fallback (il form ha già onsubmit inline)
                 const chatForm = document.getElementById('chat-box');
-                if(chatForm) chatForm.addEventListener('submit', (e) => this.handleChatSubmit(e));
+                if(chatForm && !chatForm.dataset.listenerAdded) {
+                    chatForm.dataset.listenerAdded = 'true';
+                    chatForm.addEventListener('submit', (e) => this.handleChatSubmit(e));
+                }
 
                 // FIX #10 + #11: Textarea auto-resize + Enter per inviare
                 const msgInput = document.getElementById('msg-input');
@@ -801,7 +804,8 @@
             // FIREBASE INIT
             // =============================
             async initFirebase() {
-                if(this.state.db) return getAuth();
+                // FIX: Se già inizializzato, ritorna l'auth salvato nello state — non getAuth() senza argomento
+                if(this.state.db && this.state.auth) return this.state.auth;
                 const firebaseConfig = {
                     apiKey: "AIzaSyClYDNrtEL3B6KbVnm0kNXOMPut53-WD4s",
                     authDomain: "raskvideochat.firebaseapp.com",
@@ -816,6 +820,7 @@
                 const auth = getAuth(fbApp);
                 this.state.db = getFirestore(fbApp);
                 this.state.storage = getStorage(fbApp);
+                this.state.auth = auth; // FIX: salva l'istanza auth
                 let signedIn = false;
                 if(typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     try { await signInWithCustomToken(auth, __initial_auth_token); signedIn = true; } catch(e) {}
@@ -836,6 +841,8 @@
                 const tabReg = document.getElementById('tab-btn-register');
                 const btnText = document.getElementById('btn-text');
                 const genderGroup = document.getElementById('gender-group');
+                // FIX: il submit button padre - non btn-text che è uno span
+                const submitBtn = document.querySelector('#auth-form button[type="submit"]');
                 const activeClass = "flex-1 pb-3 text-[11px] font-black uppercase tracking-widest border-b-2 border-brand text-brand transition";
                 const inactiveClass = "flex-1 pb-3 text-[11px] font-black uppercase tracking-widest border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition";
                 if(mode === 'login') {
@@ -845,7 +852,8 @@
                     tabReg.className = activeClass; tabLog.className = inactiveClass;
                     btnText.innerText = "Registra Account"; genderGroup.style.display = 'block';
                 }
-                document.getElementById('btn-text').disabled = false;
+                // FIX: riabilita il bottone submit correttamente
+                if(submitBtn) submitBtn.disabled = false;
             },
 
             getUserColor(role, gender) {
@@ -859,9 +867,11 @@
                 e.preventDefault();
                 const u = document.getElementById('auth-username').value.trim();
                 const p = document.getElementById('auth-password').value.trim();
-                if(!u || !p) return this.showToast("Dati mancanti", "error");
+                if(!u || !p) return this.showToast("Inserisci username e password", "error");
                 const btnEl = document.getElementById('btn-text');
+                const submitBtn = document.querySelector('#auth-form button[type="submit"]');
                 btnEl.innerText = "Verifica...";
+                if(submitBtn) submitBtn.disabled = true; // Previene doppio click
                 try {
                     const auth = await this.initFirebase();
                     const bansSnap = await getDocs(this.getCol('banned_users'));
@@ -890,8 +900,8 @@
                     }
                 } catch(err) {
                     console.error("Auth error:", err);
-                    this.showToast("Errore server: " + (err.message || "Riprova"), "error");
-                    this.setAuthMode(this.state.authMode);
+                    this.showToast("Errore: " + (err.message || "Riprova tra poco"), "error");
+                    this.setAuthMode(this.state.authMode); // resetta testo + riabilita bottone
                 }
             },
 
@@ -1352,7 +1362,7 @@
                         ];
                         baseRooms.forEach(async r => await setDoc(doc(this.getCol('rooms'), r.id), r));
                     } else {
-                        this.state.rooms = loadedRooms.sort((a, b) => a.name.localeCompare(b.name));
+                        this.state.rooms = loadedRooms.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
                         this.renderRoomsList();
                         if(this.state.me.role === 'Admin') {
                             const statRooms = document.getElementById('stat-rooms');
@@ -2466,10 +2476,13 @@
 
         // =============================
         // AVVIO APPLICAZIONE
+        // FIX: I moduli ES sono deferred — il DOM è già pronto quando questo codice esegue.
+        // DOMContentLoaded è già scattato, il listener non si triggererebbe mai.
+        // Chiamiamo setup() direttamente.
         // =============================
-        document.addEventListener('DOMContentLoaded', () => {
-            app.setup();
-        });
+        app.setup();
     </script>
 </body>
 </html>
+
+                    const clientX = e.type.includes('touch') ? e.touches[0].clientX : e.clientX;
