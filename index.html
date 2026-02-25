@@ -599,12 +599,9 @@
     <!-- JAVASCRIPT                                                    -->
     <!-- ============================================================ -->
     <script type="module">
-	import { signInAnonymously } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js"; 
+	
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
-        import {
-            getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword,
-            signOut, onAuthStateChanged, browserLocalPersistence, setPersistence
-        } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously } from "[https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js](https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js)";
         import {
             getFirestore, collection, addDoc, onSnapshot, doc, setDoc,
             deleteDoc, updateDoc, getDocs, getDoc, query, where, orderBy, limit
@@ -901,7 +898,7 @@
                 this.state.db = getFirestore(fbApp);
                 this.state.storage = getStorage(fbApp);
                 this.state.auth = auth;
-
+f
                 // Anonymous sign-in for Firestore access (not for user identity)
                 try {
                     if (!auth.currentUser) {
@@ -1017,23 +1014,27 @@
                     this.showToast('Errore: ' + (err.message || 'Riprova'), 'error');
                 }
             },
-
-            async function loginAsGuest() {
+	window.loginAsGuest = async function() {
   try {
     const auth = getAuth();
+    
+    // 1. Accedi in modo anonimo tramite Firebase Auth
     const userCredential = await signInAnonymously(auth);
     
+    // 2. Salva il profilo temporaneo su Firestore
     await setDoc(doc(db, "users", userCredential.user.uid), {
       username: "Ospite_" + Math.floor(Math.random() * 1000),
       role: "user",
       createdAt: new Date()
     });
     
+    console.log("Accesso ospite completato!");
+    
   } catch (error) {
-    console.error("Errore login ospite:", error);
+    console.error("Errore durante l'accesso ospite:", error);
+    alert("Errore accesso ospite: " + error.message);
   }
-}
-
+};		
             async finalizeLogin(uid, username, role, gender, avatarUrl, bio) {
                 if (this.state.heartbeatInterval) { clearInterval(this.state.heartbeatInterval); this.state.heartbeatInterval = null; }
 
