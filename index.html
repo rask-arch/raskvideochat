@@ -598,18 +598,29 @@
     <!-- ============================================================ -->
     <!-- JAVASCRIPT                                                    -->
     <!-- ============================================================ -->
-    <script type="module">
-	
-        import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
-        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously } from "[https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js](https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js)";
-        import {
-            getFirestore, collection, addDoc, onSnapshot, doc, setDoc,
-            deleteDoc, updateDoc, getDocs, getDoc, query, where, orderBy, limit
-        } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
-        import {
-            getStorage, ref, uploadBytesResumable, getDownloadURL
-        } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js';
-
+       <script type="module">
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
+<!-- ... existing code ... -->
+        window.loginAsGuest = async function() {
+            try {
+                const auth = getAuth();
+                // 1. Accedi in modo anonimo tramite Firebase Auth
+                const userCredential = await signInAnonymously(auth);
+                
+                // 2. Salva il profilo temporaneo su Firestore
+                await setDoc(doc(db, "users", userCredential.user.uid), {
+                    username: "Ospite_" + Math.floor(Math.random() * 1000),
+                    role: "user",
+                    createdAt: new Date()
+                });
+                
+                console.log("Accesso ospite completato!");
+                
+            } catch (error) {
+                console.error("Errore durante l'accesso ospite:", error);
+                alert("Errore accesso ospite: " + error.message);
+            }
+        };
         // ============================================================
         // APP OBJECT
         // ============================================================
