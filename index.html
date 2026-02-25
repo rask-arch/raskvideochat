@@ -598,7 +598,7 @@
     <!-- ============================================================ -->
     <!-- JAVASCRIPT                                                    -->
     <!-- ============================================================ -->
-       <script type="module">
+    <script type="module">
         import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
 <!-- ... existing code ... -->
         window.loginAsGuest = async function() {
@@ -621,6 +621,7 @@
                 alert("Errore accesso ospite: " + error.message);
             }
         };
+
         // ============================================================
         // APP OBJECT
         // ============================================================
@@ -909,7 +910,7 @@
                 this.state.db = getFirestore(fbApp);
                 this.state.storage = getStorage(fbApp);
                 this.state.auth = auth;
-f
+
                 // Anonymous sign-in for Firestore access (not for user identity)
                 try {
                     if (!auth.currentUser) {
@@ -1025,27 +1026,30 @@ f
                     this.showToast('Errore: ' + (err.message || 'Riprova'), 'error');
                 }
             },
-	window.loginAsGuest = async function() {
-  try {
-    const auth = getAuth();
-    
-    // 1. Accedi in modo anonimo tramite Firebase Auth
-    const userCredential = await signInAnonymously(auth);
-    
-    // 2. Salva il profilo temporaneo su Firestore
-    await setDoc(doc(db, "users", userCredential.user.uid), {
-      username: "Ospite_" + Math.floor(Math.random() * 1000),
-      role: "user",
-      createdAt: new Date()
-    });
-    
-    console.log("Accesso ospite completato!");
-    
-  } catch (error) {
-    console.error("Errore durante l'accesso ospite:", error);
-    alert("Errore accesso ospite: " + error.message);
-  }
-};		
+
+            async loginAsGuest() {
+                const btn = document.getElementById('btn-guest');
+                btn.disabled = true; btn.innerText = 'Accesso...';
+                try {
+                    await this.initFirebase();
+                    if (this.state.serverConfig.guestsLocked) {
+                        btn.disabled = false; btn.innerText = 'Entra come Ospite';
+                        return this.showToast('LOCKDOWN: Accesso ospiti chiuso.', 'error');
+                    }
+                    const gName = `Ospite_${Math.floor(Math.random() * 9000 + 1000)}`;
+                    const email = this.usernameToEmail(gName);
+                    const gPass = `guest_${Date.now()}_${Math.random().toString(36).slice(2)}`;
+                    const cred = await createUserWithEmailAndPassword(this.state.auth, email, gPass);
+                    const uid = cred.user.uid;
+                    const avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${uid}`;
+                    await setDoc(doc(this.getCol('user_profiles'), uid), { name: gName, nameLower: gName.toLowerCase(), gender: 'M', role: 'Guest', avatarUrl, bio: '', createdAt: Date.now() });
+                    await this.finalizeLogin(uid, gName, 'Guest', 'M', avatarUrl, '');
+                } catch (err) {
+                    btn.disabled = false; btn.innerText = 'Entra come Ospite';
+                    this.showToast('Errore di connessione', 'error');
+                }
+            },
+
             async finalizeLogin(uid, username, role, gender, avatarUrl, bio) {
                 if (this.state.heartbeatInterval) { clearInterval(this.state.heartbeatInterval); this.state.heartbeatInterval = null; }
 
