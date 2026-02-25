@@ -310,7 +310,7 @@
                     </div>
                 </div>
 
-                <!-- SEARCH BAR (hidden by default, Ctrl+F) -->
+                <!-- SEARCH BAR -->
                 <div id="msg-search-bar">
                     <input type="text" id="search-input" placeholder="🔍 Cerca nei messaggi..." oninput="app.searchMessages(this.value)">
                     <button onclick="app.closeSearch()" class="text-slate-400 hover:text-red-500 font-bold w-7 h-7 flex items-center justify-center rounded-full hover:bg-red-50 text-sm flex-shrink-0">✕</button>
@@ -510,7 +510,7 @@
         <div class="resize-handle" id="resize-watch"></div>
     </div>
 
-    <!-- PVT CHAT WINDOW (Giochi rimossi) -->
+    <!-- PVT CHAT WINDOW -->
     <div id="pvt-window" class="pvt-window" onmousedown="app.bringToFront(this)">
         <div class="pvt-header" id="drag-pvt">
             <div id="pvt-title-area" class="flex items-center min-w-0 flex-1"></div>
@@ -774,7 +774,7 @@
             },
 
             async handleAuth(e) {
-                e.preventDefault();
+                if(e) e.preventDefault();
                 const u = document.getElementById('auth-username').value.trim();
                 const p = document.getElementById('auth-password').value.trim();
                 if(!u || !p) return this.showToast("Inserisci username e password", "error");
@@ -1928,58 +1928,157 @@
                 if(rp) rp.srcObject = null;
                 this.state.currentCall = null;
             },
-
-            async toggleCam() {
-                const v = document.getElementById('v-player');
-                const c = document.getElementById('local-video-container');
-                const btnHeader = document.getElementById('header-btn-cam');
-
-                if(this.state.localStream) {
-                    this.state.localStream.getTracks().forEach(t => t.stop());
-                    this.state.localStream = null;
-                    if(v) v.srcObject = null;
-                    c.classList.remove('active'); c.style.display = 'none';
-                    btnHeader.classList.remove('cam-on'); btnHeader.title = "Attiva Cam";
-                    this.state.me.camActive = false;
-                    this.state.micGainNode = null;
-                    if(this.state.localAudioCtx) { this.state.localAudioCtx.close().catch(() => null); this.state.localAudioCtx = null; }
-                    if(this.state.me.uid) updateDoc(doc(this.getCol('online_users'), this.state.me.uid), { camActive: false }).catch(() => null);
-                    if(this.state.gameHostUid === this.state.me.uid) {
-                        const sp = document.getElementById('stage-player');
-                        if(sp) { sp.srcObject = null; sp.classList.add('hidden'); }
-                        document.getElementById('game-placeholder').classList.remove('hidden');
-                    }
-                    return;
+            
+            toggleAudioTrack() {
+                if(!this.state.localStream) return;
+                const audioTrack = this.state.localStream.getAudioTracks()[0];
+                if(audioTrack) {
+                    audioTrack.enabled = !audioTrack.enabled;
+                    const btn = document.getElementById('btn-toggle-audio');
+                    if(audioTrack.enabled) btn.classList.remove('off');
+                    else btn.classList.add('off');
                 }
+            },
 
-                try {
-                    const vId = document.getElementById('select-video-source').value;
-                    const aId = document.getElementById('select-audio-source').value;
-                    const constraints = { video: vId ? { deviceId: { exact: vId } } : true, audio: aId ? { deviceId: { exact: aId } } : true };
-                    const stream = await navigator.mediaDevices.getUserMedia(constraints);
+            toggleVideoTrack() {
+                if(!this.state.localStream) return;
+                const videoTrack = this.state.localStream.getVideoTracks()[0];
+                if(videoTrack) {
+                    videoTrack.enabled = !videoTrack.enabled;
+                    const btn = document.getElementById('btn-toggle-video');
+                    if(videoTrack.enabled) btn.classList.remove('off');
+                    else btn.classList.add('off');
+                }
+            },
 
-                    if(stream.getAudioTracks().length > 0) {
-                        try {
-                            const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-                            this.state.localAudioCtx = audioCtx;
-                            const source = audioCtx.createMediaStreamSource(stream);
-                            const gainNode = audioCtx.createGain();
-                            const destination = audioCtx.createMediaStreamDestination();
-                            source.connect(gainNode); gainNode.connect(destination);
-                            this.state.micGainNode = gainNode;
-                            const origAudioTrack = stream.getAudioTracks()[0];
-                            const newAudioTrack = destination.stream.getAudioTracks()[0];
-                            stream.removeTrack(origAudioTrack); stream.addTrack(newAudioTrack);
-                        } catch(audioErr) { console.warn("Web Audio API non disponibile:", audioErr); }
+            setMicGain(val) {
+                if(this.state.micGainNode && this.state.localAudioCtx) {
+                    this.state.micGainNode.gain.setTargetAtTime(val / 100, this.state.localAudioCtx.currentTime, 0.1);
+                }
+            },
+
+            setRemoteVolume(val) {
+                const v = document.getElementById('remote-v-player');
+                if(v) v.volume = val;
+            },
+
+            setStageVolume(val) {
+                const v = document.getElementById('stage-player');
+                if(v) v.volume = val;
+            },
+
+            toggleRadio() {
+                const audio = document.getElementById('radio-stream');
+                const icon = document.getElementById('radio-icon');
+                const viz = document.getElementById('radio-visualizer');
+                if(this.state.isRadioPlaying) {
+                    audio.pause();
+                    this.state.isRadioPlaying = false;
+                    viz.style.opacity = '0';
+                    icon.innerHTML = '<path d="m11.596 8.697-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.363 3.692a.802.802 0 0 1 0 1.393z"/>'; // Play
+                } else {
+                    if(!audio.src) this.changeStation();
+                    audio.play().catch(()=> this.showToast("Errore riproduzione radio", "error"));
+                    this.state.isRadioPlaying = true;
+                    viz.style.opacity = '1';
+                    icon.innerHTML = '<path d="M5.5 3.5A1.5 1.5 0 0 1 7 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5zm5 0A1.5 1.5 0 0 1 12 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5z"/>'; // Pause
+                }
+            },
+
+            changeStation() {
+                const sel = document.getElementById('station-select');
+                const audio = document.getElementById('radio-stream');
+                const meta = document.getElementById('radio-metadata');
+                if(!sel || !sel.value) return;
+                audio.src = sel.value;
+                meta.innerText = sel.options[sel.selectedIndex].text;
+                if(this.state.isRadioPlaying) audio.play();
+            },
+
+            setRadioVolume(val) {
+                const audio = document.getElementById('radio-stream');
+                if(audio) audio.volume = val;
+            },
+
+            toggleSearch() {
+                const sb = document.getElementById('msg-search-bar');
+                this.state.searchOpen = !this.state.searchOpen;
+                if(this.state.searchOpen) {
+                    sb.classList.add('active');
+                    document.getElementById('search-input').focus();
+                } else {
+                    this.closeSearch();
+                }
+            },
+
+            closeSearch() {
+                this.state.searchOpen = false;
+                document.getElementById('msg-search-bar').classList.remove('active');
+                document.getElementById('search-input').value = '';
+                this.searchMessages('');
+            },
+
+            searchMessages(query) {
+                const term = query.toLowerCase().trim();
+                const msgs = document.querySelectorAll('.chat-line');
+                msgs.forEach(m => {
+                    if(!term) {
+                        m.classList.remove('search-hidden', 'search-highlight');
+                        return;
                     }
+                    const txt = m.querySelector('.chat-text').innerText.toLowerCase();
+                    const name = m.querySelector('.chat-name').innerText.toLowerCase();
+                    if(txt.includes(term) || name.includes(term)) {
+                        m.classList.remove('search-hidden');
+                        m.classList.add('search-highlight');
+                    } else {
+                        m.classList.add('search-hidden');
+                        m.classList.remove('search-highlight');
+                    }
+                });
+            },
 
-                    this.state.localStream = stream;
-                    btnHeader.classList.add('cam-on'); btnHeader.title = "Disattiva Cam";
-                    this.state.me.camActive = true;
-                    document.getElementById('btn-toggle-video').classList.remove('off');
-                    document.getElementById('btn-toggle-audio').classList.remove('off');
-                    document.getElementById('mic-volume-slider').value = 100;
-                    if(this.state.me.uid) updateDoc(doc(this.getCol('online_users'), this.state.me.uid), { camActive: true }).catch(() => null);
+            initScrollObserver() {
+                const c = document.getElementById('msg-container');
+                const fab = document.getElementById('scroll-to-bottom');
+                if(!c || !fab) return;
+                c.onscroll = () => {
+                    const isNearBottom = c.scrollHeight - c.scrollTop <= c.clientHeight + 150;
+                    if(isNearBottom) fab.classList.remove('visible');
+                    else fab.classList.add('visible');
+                };
+            },
 
-                    if(this.state.currentRoom === 'games' && this.state.gameHostUid === this.state.me.uid) {
-                        const sp = document.getElementById('stage
+            sendTypingSignal() {
+                if(this.state.typingTimeout) clearTimeout(this.state.typingTimeout);
+                const room = this.state.currentRoom;
+                if(this.state.me.uid) {
+                    setDoc(doc(this.getCol('typing_status'), this.state.me.uid), {
+                        name: this.state.me.name, room: room, timestamp: Date.now()
+                    }).catch(()=>{});
+                }
+                this.state.typingTimeout = setTimeout(() => {
+                    if(this.state.me.uid) {
+                        deleteDoc(doc(this.getCol('typing_status'), this.state.me.uid)).catch(()=>{});
+                    }
+                }, 2000);
+            },
+
+            startTypingListener() {
+                onSnapshot(this.getCol('typing_status'), snap => {
+                    this.state.typingUsers = {};
+                    const now = Date.now();
+                    snap.forEach(d => {
+                        const data = d.data();
+                        if(data.room === this.state.currentRoom && (now - data.timestamp < 3000) && d.id !== this.state.me.uid) {
+                            this.state.typingUsers[d.id] = data.name;
+                        }
+                    });
+                    this.renderTypingIndicator();
+                }, console.error);
+            },
+
+            renderTypingIndicator() {
+                const ind = document.getElementById('typing-indicator');
+                if(!ind) return;
+                const names = Object.values(this.state.typingUsers
