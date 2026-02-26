@@ -453,7 +453,9 @@ service cloud.firestore {
 
     <div id="profile-modal" class="modal-overlay" onclick="app.closeOnOverlay(event, this)">
         <div class="bg-white w-[380px] rounded-[40px] overflow-hidden shadow-2xl mx-4">
-            <div class="h-24 brand-gradient"></div>
+            <div class="h-24 brand-gradient relative">
+                <button onclick="app.closeModal('profile-modal')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center text-lg font-bold transition">✕</button>
+            </div>
             <div class="p-8 pt-10 text-center relative">
                 <div class="w-20 h-20 mx-auto -mt-20 mb-4 rounded-3xl border-4 border-white bg-slate-100 overflow-hidden shadow-xl relative">
                     <img id="prof-avatar-preview" src="" class="w-full h-full object-cover">
@@ -464,7 +466,21 @@ service cloud.firestore {
                 <div class="mt-5 space-y-3">
                     <input type="text" id="edit-prof-name" placeholder="Il tuo nome..." maxlength="30" class="w-full p-4 bg-slate-50 border border-slate-100 rounded-xl text-xs font-bold outline-none">
                     <textarea id="edit-prof-bio" placeholder="Bio breve (max 100 caratteri)..." maxlength="100" rows="2" class="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl text-xs font-medium outline-none resize-none"></textarea>
-                    <button onclick="app.saveProfile()" class="w-full brand-gradient text-white py-4 rounded-xl font-black uppercase text-[10px] tracking-widest mt-2 shadow-lg">Salva nel Cloud</button>
+                    <button onclick="app.saveProfile()" class="w-full brand-gradient text-white py-4 rounded-xl font-black uppercase text-[10px] tracking-widest mt-2 shadow-lg">💾 Salva nel Cloud</button>
+                    <!-- ADMIN CLAIM (hidden until needed) -->
+                    <div id="admin-claim-area" class="hidden">
+                        <div class="border-t border-slate-100 pt-3 mt-1">
+                            <p class="text-[10px] text-slate-400 font-bold mb-2">🔑 Codice Admin</p>
+                            <div class="flex gap-2">
+                                <input type="password" id="admin-claim-code" placeholder="Inserisci codice..." class="flex-1 p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold outline-none">
+                                <button onclick="app.claimAdmin()" class="bg-indigo-600 hover:bg-indigo-500 text-white px-4 rounded-xl text-xs font-black transition">OK</button>
+                            </div>
+                        </div>
+                    </div>
+                    <button onclick="app.showAdminClaimArea()" id="btn-claim-admin" class="w-full text-[10px] text-slate-400 hover:text-indigo-600 font-bold transition py-1">🔐 Hai un codice admin?</button>
+                    <div class="border-t border-slate-100 pt-3">
+                        <button onclick="app.logout()" class="w-full bg-red-50 hover:bg-red-100 text-red-600 py-3 rounded-xl font-black uppercase text-[10px] tracking-widest transition border border-red-100">🚪 Esci / Logout</button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -562,6 +578,14 @@ service cloud.firestore {
                         <div><label class="text-[10px] text-slate-400 uppercase font-black block mb-2">Colore Brand Secondario</label><div class="flex items-center gap-3"><input type="color" id="adm-color-2" class="w-12 h-12 bg-slate-900 border border-slate-600 rounded-lg cursor-pointer p-1"><span class="text-xs text-slate-400">Bottom/Destra</span></div></div>
                     </div>
                     <button onclick="app.adminSaveAppearance()" class="w-full btn-brand text-white py-4 rounded-xl font-black uppercase tracking-widest mt-4 shadow-lg text-sm">Salva e Applica</button>
+                </div>
+                <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 mt-6">
+                    <h4 class="text-[10px] text-slate-400 uppercase font-black mb-3">🔑 Codice Admin (per "Diventa Admin")</h4>
+                    <p class="text-[11px] text-slate-500 mb-3">Gli utenti che conoscono questo codice possono promuoversi Admin dal loro profilo. Default: <code class="text-yellow-400">rask2024</code></p>
+                    <div class="flex gap-3">
+                        <input type="text" id="adm-admin-code" class="flex-1 bg-slate-900 border border-slate-600 text-white text-sm p-3 rounded-lg" placeholder="Nuovo codice admin...">
+                        <button onclick="app.adminSaveAdminCode()" class="btn-brand text-white px-6 rounded-xl font-black text-xs">Salva</button>
+                    </div>
                 </div>
             </div>
 
@@ -1055,7 +1079,22 @@ service cloud.firestore {
 
                         // 3. Create Firebase Auth user — password NEVER stored by us (hashed by Firebase)
                         // NOTE: createUserWithEmailAndPassword auto-signs-in the new user, replacing any previous session
-                        const cred = await createUserWithEmailAndPassword(this.state.auth, email, rawP);
+                        let cred;
+                        try {
+                            cred = await createUserWithEmailAndPassword(this.state.auth, email, rawP);
+                        } catch (regErr) {
+                            this.state.authSubmitting = false;
+                            document.getElementById('auth-submit-btn').disabled = false;
+                            document.getElementById('btn-text').innerText = 'Registra Account';
+                            const regErrMap = {
+                                'auth/operation-not-allowed': '⚠️ Registrazione non abilitata. Vai su Firebase Console → Authentication → Sign-in method → abilita "Email/Password".',
+                                'auth/email-already-in-use': `Username "${rawU}" già in uso. Prova ad accedere.`,
+                                'auth/weak-password': 'Password troppo corta (minimo 6 caratteri)',
+                                'auth/network-request-failed': '❌ Errore di rete. Controlla la connessione.',
+                                'auth/configuration-not-found': '⚠️ Firebase non configurato correttamente.',
+                            };
+                            return this.showToast(regErrMap[regErr.code] || `Errore registrazione: ${regErr.message}`, 'error');
+                        }
                         const uid = cred.user.uid;
                         const gender = document.getElementById('auth-gender').value;
                         const avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(rawU)}`;
@@ -1091,11 +1130,14 @@ service cloud.firestore {
                         } catch (authErr) {
                             this.setAuthMode('login');
                             const errMap = {
-                                'auth/user-not-found':   'Utente non trovato',
+                                'auth/user-not-found':   'Utente non trovato. Prova a registrarti.',
                                 'auth/wrong-password':   'Password errata',
-                                'auth/invalid-credential': 'Credenziali non valide',
+                                'auth/invalid-credential': 'Credenziali non valide. Controlla username e password.',
                                 'auth/too-many-requests': '⚠️ Troppi tentativi. Riprova tra poco.',
-                                'auth/user-disabled':    'Account disabilitato'
+                                'auth/user-disabled':    'Account disabilitato',
+                                'auth/operation-not-allowed': '⚠️ Nella console Firebase → Authentication → Sign-in method → abilita "Email/Password".',
+                                'auth/configuration-not-found': '⚠️ Firebase non configurato. Controlla le credenziali.',
+                                'auth/network-request-failed': '❌ Errore di rete. Controlla la connessione.',
                             };
                             return this.showToast(errMap[authErr.code] || `Errore: ${authErr.message}`, 'error');
                         }
@@ -1367,6 +1409,9 @@ service cloud.firestore {
                 document.getElementById('main-app').classList.remove('pointer-events-none');
                 document.getElementById('main-app').style.opacity = '1';
 
+                // Explicitly enable chat input
+                this.updateChatInputState();
+
                 this.initPeerJS();
                 this.startListeners();
 
@@ -1428,6 +1473,58 @@ service cloud.firestore {
                 document.getElementById('status-menu').classList.remove('active');
                 const labels = { online: '🟢 Online', busy: '🟡 Occupato', dnd: '🔴 Non disturbare' };
                 this.showToast(`Stato: ${labels[status]}`, 'info');
+            },
+
+            // ============================================================
+            // LOGOUT
+            // ============================================================
+            async logout() {
+                if (!confirm('Sei sicuro di voler uscire?')) return;
+                try {
+                    if (this.state.heartbeatInterval) clearInterval(this.state.heartbeatInterval);
+                    if (this.state.typingTimeout) {
+                        clearTimeout(this.state.typingTimeout);
+                        if (this.state.me.uid) deleteDoc(doc(this.getCol('typing_status'), this.state.me.uid)).catch(() => null);
+                    }
+                    if (this.state.me.uid) deleteDoc(doc(this.getCol('online_users'), this.state.me.uid)).catch(() => null);
+                    if (this.state.peer) this.state.peer.destroy();
+                    if (this.state.currentRoomUnsub) this.state.currentRoomUnsub();
+                    if (this.state.localStream) this.state.localStream.getTracks().forEach(t => t.stop());
+                    await signOut(this.state.auth).catch(() => null);
+                } catch (e) { console.warn('Logout error:', e); }
+                window.location.reload();
+            },
+
+            // ============================================================
+            // ADMIN CLAIM
+            // ============================================================
+            showAdminClaimArea() {
+                const area = document.getElementById('admin-claim-area');
+                const btn = document.getElementById('btn-claim-admin');
+                if (area) { area.classList.toggle('hidden'); btn.style.display = 'none'; }
+            },
+
+            async claimAdmin() {
+                const code = document.getElementById('admin-claim-code').value.trim();
+                if (!code) return this.showToast('Inserisci il codice', 'error');
+                try {
+                    // Check the admin code stored in Firestore (or default to 'rask2024' for first setup)
+                    let validCode = 'rask2024';
+                    try {
+                        const cfgSnap = await getDocs(this.getCol('server_settings'));
+                        cfgSnap.forEach(d => { if (d.id === 'config' && d.data().adminCode) validCode = d.data().adminCode; });
+                    } catch (_) {}
+                    if (code !== validCode) return this.showToast('❌ Codice non valido', 'error');
+                    // Promote to Admin
+                    await updateDoc(doc(this.getCol('user_profiles'), this.state.me.uid), { role: 'Admin' }).catch(console.error);
+                    await updateDoc(doc(this.getCol('online_users'), this.state.me.uid), { role: 'Admin' }).catch(console.error);
+                    this.state.me.role = 'Admin';
+                    document.getElementById('admin-nav-btn').classList.remove('hidden');
+                    this.closeModal('profile-modal');
+                    this.showToast('✅ Sei diventato Admin!', 'success');
+                } catch (err) {
+                    this.showToast('Errore: ' + err.message, 'error');
+                }
             },
 
             // ============================================================
@@ -1498,6 +1595,15 @@ service cloud.firestore {
                         container.appendChild(row);
                     });
                 } catch (err) { container.innerHTML = '<div class="p-4 text-red-400 text-sm">Errore caricamento log.</div>'; }
+            },
+
+            async adminSaveAdminCode() {
+                const code = document.getElementById('adm-admin-code').value.trim();
+                if (!code || code.length < 4) return this.showToast('Codice troppo corto (min 4 caratteri)', 'error');
+                await setDoc(doc(this.getCol('server_settings'), 'config'), { adminCode: code }, { merge: true });
+                await this.writeAuditLog('ADMIN_CODE_CHANGED', '***');
+                document.getElementById('adm-admin-code').value = '';
+                this.showToast('✅ Codice admin aggiornato', 'success');
             },
 
             async adminSaveAppearance() {
