@@ -696,16 +696,16 @@ service cloud.firestore {
                 authSubmitting: false,
                 // Pending guest login retry (used when Firestore rules block the first attempt)
                 _pendingGuestRetry: null,
-			},
+            },
 
             // ============================================================
             // UTILITIES
-  // ============================================================
-            getCol(name) {
+            // ============================================================
+            getCol: function(name) {
                 return collection(this.state.db, 'artifacts', this.state.appId, 'public', 'data', name);
             },
 
-            showToast(msg, type = 'info', extraHtml = '', ttl = 3500) {
+            showToast: function(msg, type = 'info', extraHtml = '', ttl = 3500) {
                 const c = document.getElementById('toast-container');
                 const t = document.createElement('div');
                 const id = `toast-${Date.now()}`;
