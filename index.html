@@ -1946,9 +1946,9 @@ service cloud.firestore {
                 } else {
                     input.placeholder = 'Scrivi... (Invio per inviare, Shift+Invio per a capo)'; input.disabled = false;
                 }
-            } // 
+            }, // <--- HO MESSO LA VIRGOLA QUI!
 
-}, // 
+            // ============================================================
             // PER-ROOM MESSAGE LISTENER — FIX: query with constraints
             // NOTE: Requires Firestore composite index on (roomId ASC, timestamp ASC)
             //        Firebase will provide the index creation link on first use.
@@ -1961,8 +1961,7 @@ service cloud.firestore {
                     where('roomId', '==', roomId),
                     orderBy('timestamp', 'asc'),
                     limit(100)
-                ); 
-
+                );
                 const c = document.getElementById('msg-container');
                 const roomName = this.state.rooms.find(r => r.id === roomId)?.name || roomId;
                 if (c) c.innerHTML = `<div class="flex justify-center mb-6 mt-2"><span class="bg-indigo-50 text-indigo-500 text-[10px] px-6 py-2 rounded-full font-black uppercase tracking-widest border border-indigo-100/50 shadow-sm">📍 ${this.sanitize(roomName)}</span></div>`;
