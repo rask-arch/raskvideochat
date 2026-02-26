@@ -413,6 +413,53 @@
         </div>
     </div>
 
+    <!-- FIRESTORE SETUP GUIDE MODAL -->
+    <div id="firestore-setup-modal" class="modal-overlay">
+        <div class="bg-white w-[560px] rounded-[28px] overflow-hidden shadow-2xl mx-4 max-h-[90vh] flex flex-col">
+            <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-red-50">
+                <div>
+                    <h2 class="text-lg font-black text-red-700">⚠️ Firestore: permessi mancanti</h2>
+                    <p class="text-xs text-red-500 mt-1 font-medium">Le Security Rules di Firestore bloccano le scritture. Copia le regole qui sotto nel tuo progetto Firebase.</p>
+                </div>
+                <button onclick="app.closeModal('firestore-setup-modal')" class="text-slate-400 text-2xl hover:text-red-500 ml-4">✕</button>
+            </div>
+            <div class="p-6 overflow-y-auto flex-1">
+                <p class="text-xs text-slate-500 mb-3 font-medium">Vai su <a href="https://console.firebase.google.com" target="_blank" class="text-indigo-600 underline font-bold">console.firebase.google.com</a> → tuo progetto → <b>Firestore Database</b> → tab <b>Rules</b> → incolla questo e clicca <b>Publish</b>:</p>
+                <div class="relative">
+                    <pre id="firestore-rules-code" class="bg-slate-900 text-green-300 text-xs p-4 rounded-xl overflow-x-auto font-mono leading-relaxed select-all border border-slate-700">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // RaskVideochat — allow any authenticated user (including anonymous)
+    // to read and write all app data under the public namespace.
+    match /artifacts/{appId}/public/data/{document=**} {
+      allow read, write: if request.auth != null;
+    }
+
+    // Deny everything else
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}</pre>
+                    <button onclick="app.copyFirestoreRules()" id="copy-rules-btn" class="absolute top-3 right-3 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black uppercase px-3 py-1.5 rounded-lg transition shadow">📋 Copia</button>
+                </div>
+                <div class="mt-5 bg-amber-50 border border-amber-200 rounded-xl p-4 text-xs text-amber-800 font-medium leading-relaxed">
+                    <b>💡 Alternativa rapida (solo per test/sviluppo):</b><br>
+                    Puoi anche usare queste regole temporanee <span class="text-red-600 font-black">⚠️ NON usare in produzione</span>:<br>
+                    <code class="block mt-2 bg-amber-100 px-3 py-2 rounded font-mono text-[10px]">allow read, write: if true;</code>
+                </div>
+                <div class="mt-4 bg-blue-50 border border-blue-200 rounded-xl p-4 text-xs text-blue-800 font-medium">
+                    <b>📌 Anche Firebase Authentication:</b> Per gli ospiti abilita <b>Anonymous</b> in Authentication → Sign-in method.
+                </div>
+            </div>
+            <div class="p-5 border-t border-slate-100 flex gap-3">
+                <button onclick="app.closeModal('firestore-setup-modal');app.retryLogin()" class="flex-1 btn-brand text-white py-3 rounded-xl font-bold text-xs transition shadow-lg">🔄 Riprova Login</button>
+                <button onclick="app.closeModal('firestore-setup-modal')" class="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold text-xs transition hover:bg-slate-200">Chiudi</button>
+            </div>
+        </div>
+    </div>
+
     <div id="profile-modal" class="modal-overlay" onclick="app.closeOnOverlay(event, this)">
         <div class="bg-white w-[380px] rounded-[40px] overflow-hidden shadow-2xl mx-4">
             <div class="h-24 brand-gradient"></div>
@@ -647,6 +694,8 @@
                 focusMode: false,
                 // FIX: Submit guard (double click prevention)
                 authSubmitting: false,
+                // Pending guest login retry (used when Firestore rules block the first attempt)
+                _pendingGuestRetry: null,
             },
 
             // ============================================================
@@ -1012,10 +1061,19 @@
                         const gender = document.getElementById('auth-gender').value;
                         const avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(rawU)}`;
 
-                        await setDoc(doc(this.getCol('user_profiles'), uid), {
-                            name: rawU, nameLower: rawU.toLowerCase(), gender, role: 'User',
-                            avatarUrl, bio: '', createdAt: Date.now()
-                        });
+                        try {
+                            await setDoc(doc(this.getCol('user_profiles'), uid), {
+                                name: rawU, nameLower: rawU.toLowerCase(), gender, role: 'User',
+                                avatarUrl, bio: '', createdAt: Date.now()
+                            });
+                        } catch (writeErr) {
+                            if (writeErr.code === 'permission-denied' || writeErr.message?.includes('permissions')) {
+                                this.setAuthMode('register');
+                                this.openModal('firestore-setup-modal');
+                                return;
+                            }
+                            throw writeErr;
+                        }
                         this.showToast('✅ Account creato!', 'success');
                         await this.finalizeLogin(uid, rawU, 'User', gender, avatarUrl, '');
 
@@ -1096,64 +1154,120 @@
                         return this.showToast('🔒 LOCKDOWN: Accesso ospiti chiuso.', 'error');
                     }
 
-                    // ── Strategy: try signInAnonymously first (cleanest approach).
-                    //   If the Firebase project has not enabled Anonymous auth, fall back
-                    //   to creating a real (but ephemeral) account with a random password.
-                    //
-                    //   IMPORTANT: We do NOT call signOut() before signing in.
-                    //   signInAnonymously / createUserWithEmailAndPassword both replace
-                    //   the current session automatically — calling signOut() first would
-                    //   leave us unauthenticated and break subsequent Firestore writes.
+                    // ── Step 1: Authenticate with Firebase ───────────────────
+                    // We try signInAnonymously first. If Anonymous auth is not
+                    // enabled in the Firebase Console, we fall back to creating
+                    // an ephemeral account with a random password.
+                    // We do NOT call signOut() before — both methods replace the
+                    // current session automatically. Calling signOut() first would
+                    // leave us briefly unauthenticated causing Firestore writes to fail.
 
-                    let uid, avatarUrl;
+                    let uid;
                     const gName = `Ospite_${Math.floor(Math.random() * 90000 + 10000)}`;
 
                     try {
-                        // Attempt 1: true anonymous sign-in (requires Anonymous enabled in Firebase Console)
                         const cred = await signInAnonymously(this.state.auth);
                         uid = cred.user.uid;
-                        console.log('[Guest] signInAnonymously OK, uid:', uid);
+                        console.log('[Guest] signInAnonymously OK:', uid);
                     } catch (anonErr) {
                         if (anonErr.code === 'auth/operation-not-allowed') {
-                            // Anonymous auth not enabled → fall back to ephemeral account
-                            console.warn('[Guest] signInAnonymously not enabled, using ephemeral account fallback');
-                            const email = this.usernameToEmail(gName + '_' + Date.now());
-                            const gPass = `Gh!${Math.random().toString(36).slice(2, 10)}${Date.now()}`;
+                            // Anonymous disabled in Firebase Console → ephemeral account fallback
+                            console.warn('[Guest] Anonymous not enabled, using ephemeral account');
+                            const email = this.usernameToEmail(`guest_${Date.now()}`);
+                            const gPass = `Gh!${Date.now()}${Math.random().toString(36).slice(2, 8)}`;
                             const cred2 = await createUserWithEmailAndPassword(this.state.auth, email, gPass);
                             uid = cred2.user.uid;
+                            console.log('[Guest] Ephemeral account created:', uid);
                         } else {
-                            throw anonErr; // real error, propagate
+                            throw anonErr;
                         }
                     }
 
-                    avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${uid}`;
+                    // ── Step 2: Write guest profile to Firestore ─────────────
+                    // This write requires request.auth != null in Firestore Rules.
+                    // If rules are still default (deny-all), we catch the error,
+                    // show the setup guide, and cancel the login cleanly.
+                    const avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${uid}`;
+                    try {
+                        await setDoc(doc(this.getCol('user_profiles'), uid), {
+                            name: gName, nameLower: gName.toLowerCase(),
+                            gender: 'M', role: 'Guest',
+                            avatarUrl, bio: '', createdAt: Date.now(), isGuest: true
+                        });
+                    } catch (writeErr) {
+                        console.error('[Guest] Firestore write failed:', writeErr.code, writeErr.message);
+                        if (writeErr.code === 'permission-denied' || writeErr.message?.includes('permissions')) {
+                            btn.disabled = false;
+                            btn.innerText = 'Entra come Ospite';
+                            this.openModal('firestore-setup-modal');
+                            // Store pending guest info so retryLogin() can continue
+                            this.state._pendingGuestRetry = { uid, gName, avatarUrl };
+                            return;
+                        }
+                        throw writeErr; // unexpected error — propagate
+                    }
 
-                    // Write guest profile to Firestore (user is now authenticated → write allowed)
-                    await setDoc(doc(this.getCol('user_profiles'), uid), {
-                        name: gName,
-                        nameLower: gName.toLowerCase(),
-                        gender: 'M',
-                        role: 'Guest',
-                        avatarUrl,
-                        bio: '',
-                        createdAt: Date.now(),
-                        isGuest: true
-                    });
-
+                    // ── Step 3: Finalize ──────────────────────────────────────
                     await this.finalizeLogin(uid, gName, 'Guest', 'M', avatarUrl, '');
 
                 } catch (err) {
-                    console.error('[loginAsGuest] Error:', err);
+                    console.error('[loginAsGuest] Unhandled error:', err);
                     btn.disabled = false;
                     btn.innerText = 'Entra come Ospite';
 
-                    const friendly = {
-                        'auth/network-request-failed': 'Errore di rete. Controlla la connessione.',
-                        'auth/too-many-requests':      '⚠️ Troppi accessi. Attendi qualche secondo.',
-                        'auth/configuration-not-found': '⚠️ Firebase non configurato correttamente.',
-                    };
-                    this.showToast(friendly[err.code] || `Errore: ${err.message || 'Riprova'}`, 'error');
+                    if (err.code === 'permission-denied' || err.message?.includes('permissions')) {
+                        this.openModal('firestore-setup-modal');
+                    } else {
+                        const friendly = {
+                            'auth/network-request-failed': '❌ Errore di rete. Controlla la connessione.',
+                            'auth/too-many-requests': '⚠️ Troppi accessi. Attendi qualche secondo.',
+                            'auth/configuration-not-found': '⚠️ Firebase non configurato.',
+                            'auth/internal-error': '⚠️ Errore Firebase interno. Verifica la configurazione.',
+                        };
+                        this.showToast(friendly[err.code] || `Errore: ${err.message || 'Riprova'}`, 'error');
+                    }
                 }
+            },
+
+            // Called by the "Riprova Login" button in the Firestore setup modal
+            retryLogin() {
+                const p = this.state._pendingGuestRetry;
+                if (p) {
+                    this.state._pendingGuestRetry = null;
+                    // Retry the profile write and finalize
+                    const go = async () => {
+                        try {
+                            await setDoc(doc(this.getCol('user_profiles'), p.uid), {
+                                name: p.gName, nameLower: p.gName.toLowerCase(),
+                                gender: 'M', role: 'Guest',
+                                avatarUrl: p.avatarUrl, bio: '', createdAt: Date.now(), isGuest: true
+                            });
+                            await this.finalizeLogin(p.uid, p.gName, 'Guest', 'M', p.avatarUrl, '');
+                        } catch (e) {
+                            if (e.code === 'permission-denied' || e.message?.includes('permissions')) {
+                                this.openModal('firestore-setup-modal');
+                                this.state._pendingGuestRetry = p;
+                            } else {
+                                this.showToast('Errore: ' + e.message, 'error');
+                            }
+                        }
+                    };
+                    go();
+                } else {
+                    // No pending guest retry — reset the auth screen
+                    this.setAuthMode('login');
+                }
+            },
+
+            copyFirestoreRules() {
+                const rules = document.getElementById('firestore-rules-code').innerText;
+                navigator.clipboard.writeText(rules).then(() => {
+                    const btn = document.getElementById('copy-rules-btn');
+                    btn.innerText = '✅ Copiato!';
+                    setTimeout(() => { btn.innerText = '📋 Copia'; }, 2000);
+                }).catch(() => {
+                    this.showToast('Seleziona il testo manualmente', 'info');
+                });
             },
 
             async finalizeLogin(uid, username, role, gender, avatarUrl, bio) {
@@ -1189,19 +1303,32 @@
                 document.getElementById('my-avatar-mini').src = this.state.me.avatarUrl;
 
                 // Write our online presence
-                await setDoc(doc(this.getCol('online_users'), uid), {
-                    name: username,
-                    nameLower: username.toLowerCase(),
-                    color: this.state.me.color,
-                    avatarUrl: this.state.me.avatarUrl,
-                    role, gender,
-                    camActive: false,
-                    currentRoom: 'lobby',
-                    status: 'online',
-                    bio: bio || '',
-                    timestamp: Date.now(),
-                    lastActive: Date.now()
-                });
+                // Wrapped in try/catch — if Firestore rules are not yet set,
+                // we show the setup guide rather than crashing silently.
+                try {
+                    await setDoc(doc(this.getCol('online_users'), uid), {
+                        name: username,
+                        nameLower: username.toLowerCase(),
+                        color: this.state.me.color,
+                        avatarUrl: this.state.me.avatarUrl,
+                        role, gender,
+                        camActive: false,
+                        currentRoom: 'lobby',
+                        status: 'online',
+                        bio: bio || '',
+                        timestamp: Date.now(),
+                        lastActive: Date.now()
+                    });
+                } catch (presenceErr) {
+                    if (presenceErr.code === 'permission-denied' || presenceErr.message?.includes('permissions')) {
+                        console.error('[finalizeLogin] Firestore permission-denied on online_users write');
+                        // Don't block login — show setup guide but continue
+                        this.openModal('firestore-setup-modal');
+                        // Continue anyway — app works in local-only mode (no sidebar presence)
+                    } else {
+                        console.warn('[finalizeLogin] online_users write failed:', presenceErr.message);
+                    }
+                }
 
                 // Heartbeat — keeps lastActive fresh so stale users are filtered out
                 this.state.heartbeatInterval = setInterval(() => {
