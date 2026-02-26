@@ -696,12 +696,11 @@ service cloud.firestore {
                 authSubmitting: false,
                 // Pending guest login retry (used when Firestore rules block the first attempt)
                 _pendingGuestRetry: null,
-            },
 			};
 
             // ============================================================
             // UTILITIES
-            // ============================================================
+  // ============================================================
             getCol(name) {
                 return collection(this.state.db, 'artifacts', this.state.appId, 'public', 'data', name);
             },
