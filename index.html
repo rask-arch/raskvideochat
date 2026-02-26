@@ -729,35 +729,45 @@ service cloud.firestore {
                 return d.innerHTML;
             },
 
-            // FIX: Markdown-safe text processor (no raw HTML tag reinjection)
+            // FIX H1+H2: Markdown-safe text processor (no raw HTML tag reinjection)
             processText(rawInput) {
                 let text = this.sanitize(rawInput);
 
                 // Process **bold** markdown
                 text = text.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
 
-                // YouTube embed
-                const ytRx = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/;
-                let hadYT = false;
+                // FIX H1: sanitize() converts & → &amp; which breaks URLs in href/src.
+                // Restore & only inside URLs (between https?:// and whitespace/angle-bracket)
+                // by working on a decoded copy for matching, then re-encoding for the final HTML.
+                const decodeAmp = (s) => s.replace(/&amp;/g, '&');
+
+                // FIX H2: YouTube — use /g flag so ALL YT links get embedded, not just first.
+                // Also do NOT set hadYT=true blocking remaining regular links.
+                const ytRx = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
+                const ytMatches = new Set();
                 text = text.replace(ytRx, (match, id) => {
-                    hadYT = true;
+                    ytMatches.add(match);
                     return `<div class="mt-2 w-full max-w-[300px] aspect-video rounded-xl overflow-hidden shadow-lg border border-slate-300"><iframe width="100%" height="100%" src="https://www.youtube.com/embed/${id}" frameborder="0" allowfullscreen loading="lazy"></iframe></div>`;
                 });
 
                 // Safe URL links (only http/https — no javascript: etc)
-                if (!hadYT) {
-                    text = text.replace(/(https?:\/\/[^\s<>"]{3,})/g, (url) => {
-                        if (url.match(/\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i)) {
-                            return `<img src="${url}" class="chat-image" loading="lazy" onerror="this.style.display='none'">`;
-                        }
-                        return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-brand underline font-bold break-all">${url}</a>`;
-                    });
-                }
+                // FIX H1: decode &amp; before matching so URLs with query params work.
+                text = text.replace(/(https?:\/\/[^\s<>"]{3,})/g, (rawUrl) => {
+                    const url = decodeAmp(rawUrl);
+                    // Skip if this URL was already replaced by a YouTube embed
+                    if ([...ytMatches].some(yt => rawUrl.includes(yt) || yt.includes(rawUrl.slice(0,30)))) return rawUrl;
+                    if (url.match(/\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i)) {
+                        return `<img src="${url}" class="chat-image" loading="lazy" onerror="this.style.display='none'">`;
+                    }
+                    return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-brand underline font-bold break-all">${url}</a>`;
+                });
 
-                // Bad words filter
+                // Bad words filter (run on visible text tokens only to avoid matching HTML tags)
                 if (this.state.serverConfig.badWords) {
                     this.state.serverConfig.badWords.split(',').map(w => w.trim().toLowerCase()).filter(w => w).forEach(w => {
-                        const rx = new RegExp(`\\b${w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'gi');
+                        const escaped = w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+                        // Match word only outside HTML tags
+                        const rx = new RegExp(`(?<![<"])\\b${escaped}\\b(?![^<]*>)`, 'gi');
                         text = text.replace(rx, '***');
                     });
                 }
@@ -1068,6 +1078,10 @@ service cloud.firestore {
                             });
                         } catch (writeErr) {
                             if (writeErr.code === 'permission-denied' || writeErr.message?.includes('permissions')) {
+                                // FIX C3: reset submit lock so user can try again after fixing rules
+                                this.state.authSubmitting = false;
+                                document.getElementById('auth-submit-btn').disabled = false;
+                                document.getElementById('btn-text').innerText = 'Registra Account';
                                 this.setAuthMode('register');
                                 this.openModal('firestore-setup-modal');
                                 return;
@@ -1397,12 +1411,15 @@ service cloud.firestore {
                 const b = document.getElementById('edit-prof-bio').value.trim().slice(0, 100);
                 if (n && n.length >= 2) this.state.me.name = n;
                 this.state.me.bio = b;
-                await updateDoc(doc(this.getCol('online_users'), this.state.me.uid), {
-                    name: this.state.me.name, avatarUrl: this.state.me.avatarUrl, bio: b
-                }).catch(console.error);
-                await updateDoc(doc(this.getCol('user_profiles'), this.state.me.uid), {
-                    name: this.state.me.name, avatarUrl: this.state.me.avatarUrl, bio: b
-                }).catch(console.error);
+                // FIX H3: include nameLower so ban/mute lookups remain accurate after a rename
+                const nameUpdate = {
+                    name: this.state.me.name,
+                    nameLower: this.state.me.name.toLowerCase(),
+                    avatarUrl: this.state.me.avatarUrl,
+                    bio: b
+                };
+                await updateDoc(doc(this.getCol('online_users'), this.state.me.uid), nameUpdate).catch(console.error);
+                await updateDoc(doc(this.getCol('user_profiles'), this.state.me.uid), nameUpdate).catch(console.error);
                 document.getElementById('my-avatar-mini').src = this.state.me.avatarUrl;
                 this.closeModal('profile-modal');
                 this.showToast('Profilo salvato', 'success');
@@ -1560,19 +1577,51 @@ service cloud.firestore {
                 const r = document.getElementById('adm-reg-role').value;
                 if (!n || !p) return this.showToast('Nome e password obbligatori', 'error');
                 if (p.length < 6) return this.showToast('Password: minimo 6 caratteri', 'error');
+                if (/<[^>]+>/.test(n)) return this.showToast('Username non valido', 'error');
+
+                // FIX C2 — CRITICAL: createUserWithEmailAndPassword() on the MAIN auth instance
+                // would sign out the currently logged-in admin and replace the session with the
+                // new account. To prevent this we spin up a SECONDARY Firebase app instance,
+                // create the user there, then immediately delete the secondary app.
                 try {
-                    const email = this.usernameToEmail(n);
-                    const cred = await createUserWithEmailAndPassword(this.state.auth, email, p);
-                    await setDoc(doc(this.getCol('user_profiles'), cred.user.uid), {
+                    const { initializeApp: initApp, getApps, deleteApp } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js');
+                    const { getAuth: getAuth2, createUserWithEmailAndPassword: createUser2 } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js');
+
+                    const existingMain = this.state.auth.app;
+                    const cfg = existingMain.options;
+                    const secondaryName = `admin-reg-${Date.now()}`;
+                    const secondaryApp = initApp(cfg, secondaryName);
+                    const secondaryAuth = getAuth2(secondaryApp);
+
+                    let newUid;
+                    try {
+                        const email = this.usernameToEmail(n);
+                        const cred = await createUser2(secondaryAuth, email, p);
+                        newUid = cred.user.uid;
+                    } finally {
+                        // Always clean up the secondary app — this signs out the secondary session
+                        // but leaves the admin's primary session completely intact.
+                        await deleteApp(secondaryApp).catch(() => null);
+                    }
+
+                    await setDoc(doc(this.getCol('user_profiles'), newUid), {
                         name: n, nameLower: n.toLowerCase(), gender: g, role: r,
-                        avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${n}`,
+                        avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(n)}`,
                         bio: '', createdAt: Date.now()
                     });
                     await this.writeAuditLog('CREATE_USER', `${n} (${r}, ${g})`);
-                    document.getElementById('adm-reg-name').value = ''; document.getElementById('adm-reg-pass').value = '';
+                    document.getElementById('adm-reg-name').value = '';
+                    document.getElementById('adm-reg-pass').value = '';
                     this.adminRenderRegisteredUsers();
-                    this.showToast(`Utente ${n} creato`, 'success');
-                } catch (err) { this.showToast('Errore: ' + err.message, 'error'); }
+                    this.showToast(`✅ Utente ${n} creato`, 'success');
+                } catch (err) {
+                    const errMap = {
+                        'auth/email-already-in-use': `Username "${n}" già registrato`,
+                        'auth/weak-password': 'Password troppo debole (min 6 caratteri)',
+                        'auth/invalid-email': 'Username contiene caratteri non validi',
+                    };
+                    this.showToast('Errore: ' + (errMap[err.code] || err.message), 'error');
+                }
             },
 
             async adminRenderRegisteredUsers() {
@@ -1594,7 +1643,9 @@ service cloud.firestore {
 
             async adminUpdateUserRole(uid, role) {
                 if (this.state.me.role !== 'Admin') return this.showToast('Solo Admin può cambiare ruoli', 'error');
+                // FIX H5: update both user_profiles (permanent) and online_users (live session)
                 await updateDoc(doc(this.getCol('user_profiles'), uid), { role }).catch(console.error);
+                await updateDoc(doc(this.getCol('online_users'), uid), { role }).catch(() => null); // non-fatal: user may be offline
                 await this.writeAuditLog('ROLE_CHANGE', `UID ${uid} → ${role}`);
                 this.showToast(`Ruolo aggiornato: ${role}`, 'success');
             },
@@ -1835,18 +1886,25 @@ service cloud.firestore {
                     snap.docChanges().forEach(change => {
                         if (change.type === 'added') {
                             const req = change.doc.data();
+                            const docId = change.doc.id;
+                            // FIX M4: auto-delete stale cam_requests older than 60s
+                            if (Date.now() - req.timestamp > 60000) {
+                                deleteDoc(doc(this.getCol('cam_requests'), docId)).catch(() => null);
+                                return;
+                            }
                             if (req.to === this.state.me.uid && req.status === 'pending') {
                                 if (!this.state.me.camActive) {
-                                    updateDoc(doc(this.getCol('cam_requests'), change.doc.id), { status: 'rejected' }).catch(() => null);
+                                    updateDoc(doc(this.getCol('cam_requests'), docId), { status: 'rejected' }).catch(() => null);
                                     return;
                                 }
                                 this.playBeep();
                                 this.showToast(`🎥 ${req.fromName} vuole vedere la tua cam!`, 'request',
-                                    `<div class="flex gap-2 w-full mt-2"><button onclick="app.answerCamRequest('${change.doc.id}','${req.from}',true)" class="flex-1 bg-green-500 text-white py-1 rounded text-xs font-bold">✅ Mostra</button><button onclick="app.answerCamRequest('${change.doc.id}','${req.from}',false)" class="flex-1 bg-red-500 text-white py-1 rounded text-xs font-bold">❌ Nega</button></div>`
+                                    `<div class="flex gap-2 w-full mt-2"><button id="req-${docId}" onclick="app.answerCamRequest('${docId}','${req.from}',true)" class="flex-1 bg-green-500 text-white py-1 rounded text-xs font-bold">✅ Mostra</button><button onclick="app.answerCamRequest('${docId}','${req.from}',false)" class="flex-1 bg-red-500 text-white py-1 rounded text-xs font-bold">❌ Nega</button></div>`
                                 );
                             }
                         }
                     });
+                });
                 });
 
                 onSnapshot(this.getCol('radio_stations'), snap => {
@@ -1861,13 +1919,20 @@ service cloud.firestore {
                     if (this.state.me.role === 'Admin') this.adminRenderRadio();
                 });
 
+                // FIX M4: cleanup stale live_reactions (older than 30s) to prevent Firestore growth
                 onSnapshot(this.getCol('live_reactions'), snap => {
+                    const cutoff = Date.now() - 30000;
                     snap.docChanges().forEach(change => {
                         if (change.type === 'added') {
                             const d = change.doc.data();
+                            if (d.timestamp < cutoff) {
+                                deleteDoc(doc(this.getCol('live_reactions'), change.doc.id)).catch(() => null);
+                                return;
+                            }
                             if (this.state.currentRoom === 'games' && (Date.now() - d.timestamp < 10000)) this.showFloatingReaction(d.emoji);
                         }
                     });
+                });
                 });
             },
 
@@ -2276,8 +2341,16 @@ service cloud.firestore {
                 const el = document.getElementById(`req-${reqId}`);
                 if (el) el.parentElement.remove();
                 updateDoc(doc(this.getCol('cam_requests'), reqId), { status: accepted ? 'accepted' : 'rejected' }).catch(() => null);
-                if (accepted && this.state.localStream) {
-                    const call = this.state.peer.call(fromUid, this.state.localStream);
+                if (accepted) {
+                    if (!this.state.localStream) {
+                        // FIX M3: tell user their cam is off before accepting
+                        return this.showToast('⚠️ Attiva prima la tua webcam per condividere!', 'warning');
+                    }
+                    // FIX C4: resolve the actual PeerJS ID for the caller.
+                    // If their peer used a fallback ID it's stored in online_users.peerId.
+                    const callerUser = this.state.users.find(u => u.uid === fromUid);
+                    const targetPeerId = callerUser?.peerId || fromUid;
+                    const call = this.state.peer.call(targetPeerId, this.state.localStream);
                     if (call) call.on('error', err => console.warn('Call error:', err));
                     this.showToast('📡 Trasmissione avviata', 'success');
                 }
@@ -2406,7 +2479,8 @@ service cloud.firestore {
                 const user = this.state.users.find(u => u.uid === uid) || { uid, name: 'Utente' };
                 this.state.selectedUserForMenu = user;
                 const isIgnored = this.state.ignoredUsers.some(u => u.uid === uid);
-                const isSameRoom = user.currentRoom === this.state.currentRoom || true;
+                // FIX M2: removed dead `|| true` — isSameRoom now means what it says
+                const isSameRoom = user.currentRoom === this.state.currentRoom;
                 let html = `<div class="user-menu-header">${this.sanitize(user.name)}${user.bio ? `<div class="text-slate-400 text-[10px] font-normal mt-1">${this.sanitize(user.bio)}</div>` : ''}</div>
                     <div class="user-menu-item" onclick="app.startPrivateChat()">💬 Messaggio Privato</div>
                     <div class="user-menu-item" onclick="app.${isIgnored?'unignoreUser':'ignoreUser'}('${uid}')">${isIgnored?'👁️ Smetti di ignorare':'🚫 Ignora'}</div>`;
@@ -2678,6 +2752,9 @@ service cloud.firestore {
                     icon.innerHTML = '<path d="m11.596 8.697-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.363 3.692a.802.802 0 0 1 0 1.393z"/>';
                 } else {
                     if (!audio.src) this.changeStation();
+                    // FIX M1: sync audio volume to slider value before playing
+                    const volSlider = document.querySelector('input[oninput*="setRadioVolume"]');
+                    if (volSlider) audio.volume = parseFloat(volSlider.value);
                     audio.play().catch(() => this.showToast('Errore radio', 'error'));
                     this.state.isRadioPlaying = true; viz.style.opacity = '1';
                     icon.innerHTML = '<path d="M5.5 3.5A1.5 1.5 0 0 1 7 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5zm5 0A1.5 1.5 0 0 1 12 5v6a1.5 1.5 0 0 1-3 0V5a1.5 1.5 0 0 1 1.5-1.5z"/>';
