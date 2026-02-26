@@ -1949,10 +1949,9 @@ service cloud.firestore {
             } // 
 
 }, // 
-            // ============================================================
             // PER-ROOM MESSAGE LISTENER — FIX: query with constraints
             // NOTE: Requires Firestore composite index on (roomId ASC, timestamp ASC)
-            //       Firebase will provide the index creation link on first use.
+            //        Firebase will provide the index creation link on first use.
             // ============================================================
             subscribeToRoom(roomId) {
                 if (this.state.currentRoomUnsub) { this.state.currentRoomUnsub(); this.state.currentRoomUnsub = null; }
@@ -1962,7 +1961,7 @@ service cloud.firestore {
                     where('roomId', '==', roomId),
                     orderBy('timestamp', 'asc'),
                     limit(100)
-                );
+                ); 
 
                 const c = document.getElementById('msg-container');
                 const roomName = this.state.rooms.find(r => r.id === roomId)?.name || roomId;
