@@ -2773,10 +2773,10 @@ service cloud.firestore {
         // ============================================================
         // BOOT
         // ============================================================
-        app.setup();
-        app.initFirebase().then(() => {
+        window.app.setup();
+        window.app.initFirebase().then(() => {
             // Pre-fetch server config for auth screen
-            app.applyAppearanceSettings();
+            window.app.applyAppearanceSettings();
         }).catch(console.error);
     </script>
 </body>
