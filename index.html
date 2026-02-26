@@ -196,16 +196,7 @@
         .avatar-edit-btn { position: absolute; bottom: -5px; right: -5px; background: var(--brand-col-2); color: white; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center; border: 2px solid white; cursor: pointer; box-shadow: 0 2px 5px rgba(0,0,0,0.2); transition: transform 0.2s; }
         .avatar-edit-btn:hover { transform: scale(1.1); }
 
-        /* === FOCUS MODE (Quick Win #3) === */
-        body.focus-mode header,
-        body.focus-mode #sidebar-right,
-        body.focus-mode #sidebar-overlay,
-        body.focus-mode #game-stage,
-        body.focus-mode .toolbar-row,
-        body.focus-mode #typing-indicator { display: none !important; }
-        body.focus-mode #msg-container { border-radius: 0; }
-        #focus-mode-btn { position: fixed; bottom: 80px; left: 16px; z-index: 300; background: rgba(0,0,0,0.4); color: white; border: none; border-radius: 10px; padding: 6px 10px; font-size: 10px; font-weight: 800; cursor: pointer; backdrop-filter: blur(4px); transition: all 0.2s; text-transform: uppercase; letter-spacing: 0.05em; }
-        #focus-mode-btn:hover { background: rgba(0,0,0,0.6); }
+
 
         /* === RATE LIMIT INDICATOR === */
         #rate-limit-bar { height: 2px; background: var(--brand-col-2); transition: width 0.3s, background 0.3s; position: absolute; bottom: 0; left: 0; width: 0%; border-radius: 2px; }
@@ -233,7 +224,7 @@
     <div class="app-backdrop"></div>
     <div id="toast-container"></div>
     <div id="sidebar-overlay" onclick="app.toggleSidebar()"></div>
-    <button id="focus-mode-btn" onclick="app.toggleFocusMode()" title="Modalità Focus (F)">⊡ Focus</button>
+
 
     <!-- ============================================================ -->
     <!-- AUTH SCREEN                                                   -->
@@ -368,10 +359,10 @@
                     <div class="relative">
                         <div id="rate-limit-bar"></div>
                     </div>
-                    <form id="chat-box" onsubmit="app.handleChatSubmit(event)" class="flex gap-2 items-end max-w-4xl mx-auto">
+                    <form id="chat-box" class="flex gap-2 items-end max-w-4xl mx-auto">
                         <button type="button" onclick="app.toggleEmojiPicker(event)" class="p-2 text-slate-400 hover:text-brand transition"><svg width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14.828 14.828a4 4 0 0 1-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/></svg></button>
                         <textarea id="msg-input" placeholder="Scrivi... (Invio per inviare, Shift+Invio per a capo)" rows="1" maxlength="2000" class="flex-1 bg-slate-100 border-0 rounded-2xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-brand/20 transition resize-none max-h-32"></textarea>
-                        <button type="submit" id="send-btn" class="btn-brand text-white px-5 py-3 rounded-2xl font-bold text-xs shadow-lg active:scale-95 transition-all">INVIA</button>
+                        <button type="button" id="send-btn" onclick="app.handleChatSubmit(event)" class="btn-brand text-white px-5 py-3 rounded-2xl font-bold text-xs shadow-lg active:scale-95 transition-all">INVIA</button>
                     </form>
                 </div>
             </main>
@@ -691,7 +682,6 @@ service cloud.firestore {
                 lastMsgTime: 0, msgBurst: 0,
                 // FIX: Per-room listener
                 currentRoomUnsub: null,
-                focusMode: false,
                 // FIX: Submit guard (double click prevention)
                 authSubmitting: false,
                 // Pending guest login retry (used when Firestore rules block the first attempt)
@@ -927,7 +917,6 @@ service cloud.firestore {
                 document.addEventListener('keydown', (e) => {
                     if ((e.ctrlKey || e.metaKey) && e.key === 'f') { e.preventDefault(); this.toggleSearch(); }
                     if (e.key === 'Escape' && this.state.searchOpen) this.closeSearch();
-                    if (e.key === 'f' && !e.ctrlKey && !e.metaKey && document.activeElement.tagName !== 'INPUT' && document.activeElement.tagName !== 'TEXTAREA') this.toggleFocusMode();
                 });
 
                 // Offline detection
@@ -1439,16 +1428,6 @@ service cloud.firestore {
                 document.getElementById('status-menu').classList.remove('active');
                 const labels = { online: '🟢 Online', busy: '🟡 Occupato', dnd: '🔴 Non disturbare' };
                 this.showToast(`Stato: ${labels[status]}`, 'info');
-            },
-
-            // ============================================================
-            // FOCUS MODE (Quick Win #3)
-            // ============================================================
-            toggleFocusMode() {
-                this.state.focusMode = !this.state.focusMode;
-                document.body.classList.toggle('focus-mode', this.state.focusMode);
-                document.getElementById('focus-mode-btn').innerHTML = this.state.focusMode ? '⊞ Esci Focus' : '⊡ Focus';
-                this.scrollToBottom(true);
             },
 
             // ============================================================
@@ -2104,7 +2083,8 @@ service cloud.firestore {
             // MESSAGING — FIX: XSS, rate limiting, reply scroll
             // ============================================================
             handleChatSubmit(e) {
-                if (e) e.preventDefault();
+                if (e && e.preventDefault) e.preventDefault();
+                if (!this.state.isLoggedIn) return;
                 const input = document.getElementById('msg-input');
                 const text = input.value.trim();
                 if (!text) return;
@@ -2133,19 +2113,27 @@ service cloud.firestore {
             async sendChatMessage(text, isSystemHtml = false) {
                 if (this.state.me.muted) return this.showToast('Sei mutato.', 'error');
                 if (this.state.serverConfig.chatLocked && !['Admin','Staff'].includes(this.state.me.role)) return;
+                if (!this.state.db) return this.showToast('Connessione non disponibile.', 'error');
 
                 // FIX: Use processText() — safe XSS-cleaned HTML with markdown
                 const finalTxt = isSystemHtml ? text : this.processText(text);
 
+                const sizeEl = document.getElementById('text-size');
+                const colorEl = document.getElementById('text-color');
                 const payload = {
                     roomId: this.state.currentRoom, text: finalTxt, name: this.state.me.name,
                     fromUid: this.state.me.uid, color: this.state.me.color,
-                    size: document.getElementById('text-size').value,
-                    txtColor: document.getElementById('text-color').value,
+                    size: sizeEl ? sizeEl.value : '14px',
+                    txtColor: colorEl ? colorEl.value : '#0f172a',
                     avatarUrl: this.state.me.avatarUrl, timestamp: Date.now()
                 };
                 if (this.state.replyingTo && !isSystemHtml) { payload.replyTo = this.state.replyingTo; this.cancelReply(); }
-                await addDoc(this.getCol('messages'), payload).catch(console.error);
+                try {
+                    await addDoc(this.getCol('messages'), payload);
+                } catch (err) {
+                    console.error('sendChatMessage error:', err);
+                    this.showToast('Errore invio messaggio. Riprova.', 'error');
+                }
             },
 
             buildMessageHTML(m) {
