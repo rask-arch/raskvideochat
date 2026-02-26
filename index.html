@@ -599,28 +599,23 @@
     <!-- JAVASCRIPT                                                    -->
     <!-- ============================================================ -->
     <script type="module">
-        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, signInAnonymously } from "https://www.gstatic.com/firebasejs/11.4.0/firebase-auth.js";
-<!-- ... existing code ... -->
-        window.loginAsGuest = async function() {
-            try {
-                const auth = getAuth();
-                // 1. Accedi in modo anonimo tramite Firebase Auth
-                const userCredential = await signInAnonymously(auth);
-                
-                // 2. Salva il profilo temporaneo su Firestore
-                await setDoc(doc(db, "users", userCredential.user.uid), {
-                    username: "Ospite_" + Math.floor(Math.random() * 1000),
-                    role: "user",
-                    createdAt: new Date()
-                });
-                
-                console.log("Accesso ospite completato!");
-                
-            } catch (error) {
-                console.error("Errore durante l'accesso ospite:", error);
-                alert("Errore accesso ospite: " + error.message);
-            }
-        };
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
+        import {
+            getAuth,
+            createUserWithEmailAndPassword,
+            signInWithEmailAndPassword,
+            signInAnonymously,
+            signOut,
+            browserLocalPersistence,
+            setPersistence
+        } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
+        import {
+            getFirestore, collection, addDoc, onSnapshot, doc, setDoc,
+            deleteDoc, updateDoc, getDocs, getDoc, query, where, orderBy, limit
+        } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+        import {
+            getStorage, ref, uploadBytesResumable, getDownloadURL
+        } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js';
 
         // ============================================================
         // APP OBJECT
@@ -887,6 +882,7 @@
             // FIREBASE INIT
             // ============================================================
             async initFirebase() {
+                // Singleton — only initialise once
                 if (this.state.db && this.state.auth) return this.state.auth;
 
                 let cfg;
@@ -904,23 +900,20 @@
                 const fbApp = initializeApp(cfg);
                 const auth = getAuth(fbApp);
 
-                // FIX: Persistent session across refreshes
+                // FIX: Persistent sessions across page refreshes
                 await setPersistence(auth, browserLocalPersistence);
 
                 this.state.db = getFirestore(fbApp);
                 this.state.storage = getStorage(fbApp);
                 this.state.auth = auth;
 
-                // Anonymous sign-in for Firestore access (not for user identity)
+                // NOTE: NO signInAnonymously here — it conflicted with real user auth.
+                // Server config is fetched after login or with open Firestore rules.
                 try {
-                    if (!auth.currentUser) {
-                        const { signInAnonymously } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js');
-                        await signInAnonymously(auth);
-                    }
-                } catch (e) {}
+                    const scSnap = await getDocs(this.getCol('server_settings'));
+                    scSnap.forEach(d => { if (d.id === 'config') this.state.serverConfig = { ...this.state.serverConfig, ...d.data() }; });
+                } catch (_) { /* Firestore rules may require auth — config loaded after login */ }
 
-                const scSnap = await getDocs(this.getCol('server_settings'));
-                scSnap.forEach(d => { if (d.id === 'config') this.state.serverConfig = { ...this.state.serverConfig, ...d.data() }; });
                 this.applyAppearanceSettings();
                 return auth;
             },
@@ -955,19 +948,30 @@
 
             async handleAuth(e) {
                 if (e) e.preventDefault();
-                // FIX: Double-click / double-submit prevention
+                // Double-submit guard
                 if (this.state.authSubmitting) return;
                 this.state.authSubmitting = true;
 
-                const u = document.getElementById('auth-username').value.trim();
-                const p = document.getElementById('auth-password').value.trim();
+                const rawU = document.getElementById('auth-username').value.trim();
+                const rawP = document.getElementById('auth-password').value.trim();
 
-                // FIX: Input validation
-                if (!u || !p) { this.state.authSubmitting = false; return this.showToast('Inserisci username e password', 'error'); }
-                if (u.length < 2 || u.length > 30) { this.state.authSubmitting = false; return this.showToast('Username: 2-30 caratteri', 'error'); }
-                if (p.length < 6) { this.state.authSubmitting = false; return this.showToast('Password: minimo 6 caratteri', 'error'); }
-                // FIX: XSS prevention on username input
-                if (/<[^>]+>/.test(u)) { this.state.authSubmitting = false; return this.showToast('Username non valido', 'error'); }
+                // Input validation
+                if (!rawU || !rawP) {
+                    this.state.authSubmitting = false;
+                    return this.showToast('Inserisci username e password', 'error');
+                }
+                if (rawU.length < 2 || rawU.length > 30) {
+                    this.state.authSubmitting = false;
+                    return this.showToast('Username: 2–30 caratteri', 'error');
+                }
+                if (rawP.length < 6) {
+                    this.state.authSubmitting = false;
+                    return this.showToast('Password: minimo 6 caratteri', 'error');
+                }
+                if (/<[^>]+>/.test(rawU)) {
+                    this.state.authSubmitting = false;
+                    return this.showToast('Username non valido', 'error');
+                }
 
                 const btnEl = document.getElementById('btn-text');
                 const submitBtn = document.getElementById('auth-submit-btn');
@@ -976,52 +980,103 @@
 
                 try {
                     await this.initFirebase();
-                    const email = this.usernameToEmail(u);
-
-                    // Check ban before anything
-                    const bansSnap = await getDocs(this.getCol('banned_users'));
-                    let isBanned = false;
-                    bansSnap.forEach(d => { if (d.data().username.toLowerCase() === u.toLowerCase()) isBanned = true; });
-                    if (isBanned) { this.setAuthMode(this.state.authMode); return this.showToast('Accesso negato: sei stato bannato.', 'error'); }
+                    const email = this.usernameToEmail(rawU);
 
                     if (this.state.authMode === 'register') {
-                        // FIX: Check username uniqueness via Firestore index
-                        const existQ = query(this.getCol('user_profiles'), where('nameLower', '==', u.toLowerCase()));
-                        const existSnap = await getDocs(existQ);
-                        if (!existSnap.empty) { this.setAuthMode('register'); return this.showToast('Username già in uso', 'error'); }
+                        // ── REGISTER ─────────────────────────────────────────────
+                        // 1. Check username uniqueness BEFORE creating the Firebase account
+                        try {
+                            const existSnap = await getDocs(
+                                query(this.getCol('user_profiles'), where('nameLower', '==', rawU.toLowerCase()))
+                            );
+                            if (!existSnap.empty) {
+                                this.setAuthMode('register');
+                                return this.showToast('Username già in uso', 'error');
+                            }
+                        } catch (_) { /* Firestore rules: open — proceed */ }
 
-                        // FIX: Firebase Auth creates user — password NEVER stored by us
-                        const cred = await createUserWithEmailAndPassword(this.state.auth, email, p);
+                        // 2. Check ban list
+                        try {
+                            const bansSnap = await getDocs(this.getCol('banned_users'));
+                            let isBanned = false;
+                            bansSnap.forEach(d => {
+                                if ((d.data().usernameLower || d.data().username?.toLowerCase()) === rawU.toLowerCase()) isBanned = true;
+                            });
+                            if (isBanned) { this.setAuthMode('register'); return this.showToast('Accesso negato: utente bannato.', 'error'); }
+                        } catch (_) {}
+
+                        // 3. Create Firebase Auth user — password NEVER stored by us (hashed by Firebase)
+                        // NOTE: createUserWithEmailAndPassword auto-signs-in the new user, replacing any previous session
+                        const cred = await createUserWithEmailAndPassword(this.state.auth, email, rawP);
                         const uid = cred.user.uid;
                         const gender = document.getElementById('auth-gender').value;
+                        const avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(rawU)}`;
+
                         await setDoc(doc(this.getCol('user_profiles'), uid), {
-                            name: u, nameLower: u.toLowerCase(), gender, role: 'User',
-                            avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${u}`,
-                            bio: '', createdAt: Date.now()
+                            name: rawU, nameLower: rawU.toLowerCase(), gender, role: 'User',
+                            avatarUrl, bio: '', createdAt: Date.now()
                         });
-                        this.showToast('Account creato!', 'success');
-                        await this.finalizeLogin(uid, u, 'User', gender, `https://api.dicebear.com/7.x/avataaars/svg?seed=${u}`, '');
+                        this.showToast('✅ Account creato!', 'success');
+                        await this.finalizeLogin(uid, rawU, 'User', gender, avatarUrl, '');
 
                     } else {
-                        // FIX: Firebase Auth verifies password — no plaintext comparison
+                        // ── LOGIN ─────────────────────────────────────────────────
+                        // FIX: signInWithEmailAndPassword auto-replaces any existing session.
+                        //      DO NOT call signOut() first — it would deauthenticate us and
+                        //      make the subsequent getDocs calls fail with permission-denied.
                         let cred;
                         try {
-                            cred = await signInWithEmailAndPassword(this.state.auth, email, p);
+                            cred = await signInWithEmailAndPassword(this.state.auth, email, rawP);
                         } catch (authErr) {
                             this.setAuthMode('login');
-                            const errMap = { 'auth/user-not-found': 'Utente non trovato', 'auth/wrong-password': 'Password errata', 'auth/invalid-credential': 'Credenziali errate', 'auth/too-many-requests': '⚠️ Troppi tentativi. Riprova tra poco.' };
-                            return this.showToast(errMap[authErr.code] || 'Errore di accesso', 'error');
+                            const errMap = {
+                                'auth/user-not-found':   'Utente non trovato',
+                                'auth/wrong-password':   'Password errata',
+                                'auth/invalid-credential': 'Credenziali non valide',
+                                'auth/too-many-requests': '⚠️ Troppi tentativi. Riprova tra poco.',
+                                'auth/user-disabled':    'Account disabilitato'
+                            };
+                            return this.showToast(errMap[authErr.code] || `Errore: ${authErr.message}`, 'error');
                         }
-                        const uid = cred.user.uid;
-                        const profileDoc = await getDoc(doc(this.getCol('user_profiles'), uid));
-                        if (!profileDoc.exists()) { this.setAuthMode('login'); return this.showToast('Profilo non trovato. Registrati.', 'error'); }
-                        const profile = profileDoc.data();
 
-                        if (this.state.serverConfig.guestsLocked && profile.role === 'Guest') { this.setAuthMode('login'); return this.showToast('Accesso ospiti chiuso.', 'error'); }
-                        await this.finalizeLogin(uid, profile.name, profile.role, profile.gender, profile.avatarUrl, profile.bio || '');
+                        const uid = cred.user.uid;
+
+                        // Check ban list NOW (user is authenticated, Firestore reads work)
+                        try {
+                            const bansSnap = await getDocs(this.getCol('banned_users'));
+                            let isBanned = false;
+                            bansSnap.forEach(d => {
+                                if ((d.data().usernameLower || d.data().username?.toLowerCase()) === rawU.toLowerCase()) isBanned = true;
+                            });
+                            if (isBanned) {
+                                await signOut(this.state.auth).catch(() => null);
+                                this.setAuthMode('login');
+                                return this.showToast('Accesso negato: sei stato bannato.', 'error');
+                            }
+                        } catch (_) {}
+
+                        // Load profile
+                        const profileDoc = await getDoc(doc(this.getCol('user_profiles'), uid));
+                        if (!profileDoc.exists()) {
+                            // Profile missing — create a basic one (migration from old accounts)
+                            await setDoc(doc(this.getCol('user_profiles'), uid), {
+                                name: rawU, nameLower: rawU.toLowerCase(), gender: 'M', role: 'User',
+                                avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(rawU)}`,
+                                bio: '', createdAt: Date.now()
+                            });
+                        }
+                        const profile = profileDoc.exists() ? profileDoc.data() : { name: rawU, role: 'User', gender: 'M', avatarUrl: `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(rawU)}`, bio: '' };
+
+                        if (this.state.serverConfig.guestsLocked && profile.role === 'Guest') {
+                            await signOut(this.state.auth).catch(() => null);
+                            this.setAuthMode('login');
+                            return this.showToast('Accesso ospiti chiuso.', 'error');
+                        }
+
+                        await this.finalizeLogin(uid, profile.name || rawU, profile.role || 'User', profile.gender || 'M', profile.avatarUrl, profile.bio || '');
                     }
                 } catch (err) {
-                    console.error('Auth error:', err);
+                    console.error('[handleAuth] Unexpected error:', err);
                     this.setAuthMode(this.state.authMode);
                     this.showToast('Errore: ' + (err.message || 'Riprova'), 'error');
                 }
@@ -1029,55 +1084,135 @@
 
             async loginAsGuest() {
                 const btn = document.getElementById('btn-guest');
-                btn.disabled = true; btn.innerText = 'Accesso...';
+                btn.disabled = true;
+                btn.innerText = 'Accesso in corso...';
+
                 try {
                     await this.initFirebase();
+
                     if (this.state.serverConfig.guestsLocked) {
-                        btn.disabled = false; btn.innerText = 'Entra come Ospite';
-                        return this.showToast('LOCKDOWN: Accesso ospiti chiuso.', 'error');
+                        btn.disabled = false;
+                        btn.innerText = 'Entra come Ospite';
+                        return this.showToast('🔒 LOCKDOWN: Accesso ospiti chiuso.', 'error');
                     }
-                    const gName = `Ospite_${Math.floor(Math.random() * 9000 + 1000)}`;
-                    const email = this.usernameToEmail(gName);
-                    const gPass = `guest_${Date.now()}_${Math.random().toString(36).slice(2)}`;
-                    const cred = await createUserWithEmailAndPassword(this.state.auth, email, gPass);
-                    const uid = cred.user.uid;
-                    const avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${uid}`;
-                    await setDoc(doc(this.getCol('user_profiles'), uid), { name: gName, nameLower: gName.toLowerCase(), gender: 'M', role: 'Guest', avatarUrl, bio: '', createdAt: Date.now() });
+
+                    // ── Strategy: try signInAnonymously first (cleanest approach).
+                    //   If the Firebase project has not enabled Anonymous auth, fall back
+                    //   to creating a real (but ephemeral) account with a random password.
+                    //
+                    //   IMPORTANT: We do NOT call signOut() before signing in.
+                    //   signInAnonymously / createUserWithEmailAndPassword both replace
+                    //   the current session automatically — calling signOut() first would
+                    //   leave us unauthenticated and break subsequent Firestore writes.
+
+                    let uid, avatarUrl;
+                    const gName = `Ospite_${Math.floor(Math.random() * 90000 + 10000)}`;
+
+                    try {
+                        // Attempt 1: true anonymous sign-in (requires Anonymous enabled in Firebase Console)
+                        const cred = await signInAnonymously(this.state.auth);
+                        uid = cred.user.uid;
+                        console.log('[Guest] signInAnonymously OK, uid:', uid);
+                    } catch (anonErr) {
+                        if (anonErr.code === 'auth/operation-not-allowed') {
+                            // Anonymous auth not enabled → fall back to ephemeral account
+                            console.warn('[Guest] signInAnonymously not enabled, using ephemeral account fallback');
+                            const email = this.usernameToEmail(gName + '_' + Date.now());
+                            const gPass = `Gh!${Math.random().toString(36).slice(2, 10)}${Date.now()}`;
+                            const cred2 = await createUserWithEmailAndPassword(this.state.auth, email, gPass);
+                            uid = cred2.user.uid;
+                        } else {
+                            throw anonErr; // real error, propagate
+                        }
+                    }
+
+                    avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${uid}`;
+
+                    // Write guest profile to Firestore (user is now authenticated → write allowed)
+                    await setDoc(doc(this.getCol('user_profiles'), uid), {
+                        name: gName,
+                        nameLower: gName.toLowerCase(),
+                        gender: 'M',
+                        role: 'Guest',
+                        avatarUrl,
+                        bio: '',
+                        createdAt: Date.now(),
+                        isGuest: true
+                    });
+
                     await this.finalizeLogin(uid, gName, 'Guest', 'M', avatarUrl, '');
+
                 } catch (err) {
-                    btn.disabled = false; btn.innerText = 'Entra come Ospite';
-                    this.showToast('Errore di connessione', 'error');
+                    console.error('[loginAsGuest] Error:', err);
+                    btn.disabled = false;
+                    btn.innerText = 'Entra come Ospite';
+
+                    const friendly = {
+                        'auth/network-request-failed': 'Errore di rete. Controlla la connessione.',
+                        'auth/too-many-requests':      '⚠️ Troppi accessi. Attendi qualche secondo.',
+                        'auth/configuration-not-found': '⚠️ Firebase non configurato correttamente.',
+                    };
+                    this.showToast(friendly[err.code] || `Errore: ${err.message || 'Riprova'}`, 'error');
                 }
             },
 
             async finalizeLogin(uid, username, role, gender, avatarUrl, bio) {
-                if (this.state.heartbeatInterval) { clearInterval(this.state.heartbeatInterval); this.state.heartbeatInterval = null; }
+                if (this.state.heartbeatInterval) {
+                    clearInterval(this.state.heartbeatInterval);
+                    this.state.heartbeatInterval = null;
+                }
 
-                this.state.me = { ...this.state.me, uid, name: username, role, gender, avatarUrl, bio,
-                    color: this.getUserColor(role, gender), currentRoom: 'lobby', status: 'online', muted: false };
+                this.state.me = {
+                    ...this.state.me,
+                    uid, name: username, role, gender, bio,
+                    avatarUrl: avatarUrl || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(username)}`,
+                    color: this.getUserColor(role, gender),
+                    currentRoom: 'lobby', status: 'online', muted: false
+                };
                 this.state.loginTime = Date.now();
 
-                // Remove duplicate online entries
-                const onlineSnap = await getDocs(this.getCol('online_users'));
-                onlineSnap.forEach(d => { if (d.data().nameLower === username.toLowerCase() && d.id !== uid) deleteDoc(doc(this.getCol('online_users'), d.id)).catch(() => null); });
+                // Remove stale online entries for the same user (e.g. old tab)
+                // Wrapped in try/catch — permission-denied is non-fatal here
+                try {
+                    const onlineSnap = await getDocs(this.getCol('online_users'));
+                    onlineSnap.forEach(d => {
+                        const data = d.data();
+                        if ((data.nameLower || data.name?.toLowerCase()) === username.toLowerCase() && d.id !== uid) {
+                            deleteDoc(doc(this.getCol('online_users'), d.id)).catch(() => null);
+                        }
+                    });
+                } catch (_) {}
 
-                if (['Admin', 'Staff'].includes(role)) document.getElementById('admin-nav-btn').classList.remove('hidden');
-                document.getElementById('my-avatar-mini').src = avatarUrl;
+                if (['Admin', 'Staff'].includes(role)) {
+                    document.getElementById('admin-nav-btn').classList.remove('hidden');
+                }
+                document.getElementById('my-avatar-mini').src = this.state.me.avatarUrl;
 
+                // Write our online presence
                 await setDoc(doc(this.getCol('online_users'), uid), {
-                    name: username, nameLower: username.toLowerCase(), color: this.state.me.color,
-                    avatarUrl, role, gender, camActive: false, currentRoom: 'lobby',
-                    status: 'online', bio, timestamp: Date.now(), lastActive: Date.now()
+                    name: username,
+                    nameLower: username.toLowerCase(),
+                    color: this.state.me.color,
+                    avatarUrl: this.state.me.avatarUrl,
+                    role, gender,
+                    camActive: false,
+                    currentRoom: 'lobby',
+                    status: 'online',
+                    bio: bio || '',
+                    timestamp: Date.now(),
+                    lastActive: Date.now()
                 });
 
-                // Heartbeat
+                // Heartbeat — keeps lastActive fresh so stale users are filtered out
                 this.state.heartbeatInterval = setInterval(() => {
                     if (this.state.isLoggedIn && this.state.me.uid) {
-                        updateDoc(doc(this.getCol('online_users'), this.state.me.uid), { lastActive: Date.now() }).catch(() => null);
+                        updateDoc(doc(this.getCol('online_users'), this.state.me.uid), {
+                            lastActive: Date.now()
+                        }).catch(() => null);
                     }
                 }, 45000);
 
-                // FIX: Cleanup on page close (typing, online status)
+                // Cleanup on page close
                 window.addEventListener('beforeunload', () => {
                     if (this.state.me.uid) {
                         if (this.state.typingTimeout) {
@@ -1085,7 +1220,9 @@
                             deleteDoc(doc(this.getCol('typing_status'), this.state.me.uid)).catch(() => null);
                         }
                         if (this.state.gameHostUid === this.state.me.uid) {
-                            updateDoc(doc(this.getCol('rooms_data'), 'games_stage'), { hostUid: null, hostName: null }).catch(() => null);
+                            updateDoc(doc(this.getCol('rooms_data'), 'games_stage'), {
+                                hostUid: null, hostName: null
+                            }).catch(() => null);
                         }
                         deleteDoc(doc(this.getCol('online_users'), this.state.me.uid)).catch(() => null);
                     }
@@ -1094,6 +1231,8 @@
                 });
 
                 this.state.isLoggedIn = true;
+
+                // Show main app
                 document.getElementById('auth-screen').classList.add('hidden');
                 document.getElementById('main-app').classList.remove('pointer-events-none');
                 document.getElementById('main-app').style.opacity = '1';
@@ -1101,15 +1240,18 @@
                 this.initPeerJS();
                 this.startListeners();
 
-                const available = this.state.rooms.filter(r => {
-                    if (role === 'Guest' && r.role !== 'Guest') return false;
-                    if (r.role === 'Staff' && !['Staff', 'Admin'].includes(role)) return false;
-                    return true;
-                });
-                const target = available.find(r => r.id === 'lobby') || available[0];
-                this.changeRoom(target ? target.id : 'lobby', true);
+                // Wait a tick for rooms listener to populate, then join lobby
+                setTimeout(() => {
+                    const available = this.state.rooms.filter(r => {
+                        if (role === 'Guest' && r.role !== 'Guest' && r.role !== 'User') return false;
+                        if (r.role === 'Staff' && !['Staff', 'Admin'].includes(role)) return false;
+                        return true;
+                    });
+                    const target = available.find(r => r.id === 'lobby') || available[0];
+                    this.changeRoom(target ? target.id : 'lobby', true);
+                }, 600);
 
-                this.showToast(`Benvenuto, ${username}!`, 'success');
+                this.showToast(`👋 Benvenuto, ${username}!`, 'success');
                 this.playBeep();
             },
 
