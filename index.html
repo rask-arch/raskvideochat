@@ -1932,9 +1932,11 @@ service cloud.firestore {
                             if (this.state.currentRoom === 'games' && (Date.now() - d.timestamp < 10000)) this.showFloatingReaction(d.emoji);
                         }
                     });
-                });
-                });
-            },
+                }); // 
+
+            } // 
+
+}; // 
 
             updateChatInputState() {
                 const input = document.getElementById('msg-input');
