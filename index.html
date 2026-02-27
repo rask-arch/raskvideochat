@@ -117,7 +117,7 @@
         .reaction-count { font-size: 10px; color: #475569; font-weight: 800; }
 
         /* === SCROLL BUTTON === */
-        #scroll-to-bottom { position: absolute; bottom: 50px; right: 18px; z-index: 150; background: var(--brand-col-2); color: white; border: none; border-radius: 50%; width: 34px; height: 34px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3); display: none; align-items: center; justify-content: center; transition: all 0.2s; font-size: 15px; }
+        #scroll-to-bottom { position: sticky; bottom: 8px; float: right; margin-right: 4px; z-index: 150; background: var(--brand-col-2); color: white; border: none; border-radius: 50%; width: 34px; height: 34px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3); display: none; align-items: center; justify-content: center; transition: all 0.2s; font-size: 15px; clear: both; }
         #scroll-to-bottom.visible { display: flex; }
 
         /* === UNREAD BADGE === */
@@ -350,8 +350,9 @@
                 </div>
 
                 <!-- CHAT -->
-                <div id="msg-container" class="flex-1 p-3 overflow-y-auto custom-scroll backdrop-blur-sm relative"></div>
-                <div class="relative h-0"><button id="scroll-to-bottom" onclick="app.scrollToBottom(true)" title="Vai all'ultimo">▼</button></div>
+                <div id="msg-container" class="flex-1 p-3 overflow-y-auto custom-scroll backdrop-blur-sm relative">
+                    <button id="scroll-to-bottom" onclick="app.scrollToBottom(true)" title="Vai all'ultimo">▼</button>
+                </div>
                 <div id="typing-indicator"></div>
 
                 <!-- TOOLBAR ROW -->
@@ -2053,363 +2054,299 @@ service cloud.firestore {
                 }
             }, // <--- HO MESSO LA VIRGOLA QUI!
 
-// Questa versione include la logica completa per Firestore, reazioni e gestione stanze.
-// CORREZIONE DEFINITIVA: Gestione ultra-sicura dei nodi DOM per evitare NotFoundError.
+            // ============================================================
+            // PER-ROOM MESSAGE LISTENER — FIX: query with constraints
+            // NOTE: Requires Firestore composite index on (roomId ASC, timestamp ASC)
+            //        Firebase will provide the index creation link on first use.
+            // ============================================================
+            subscribeToRoom(roomId) {
+                // We only create ONE global listener for all messages.
+                // If already subscribed, just re-render the current room.
+                if (this.state.currentRoomUnsub) {
+                    this.renderRoomMessages(roomId);
+                    return;
+                }
 
-const Chat = {
-    // ============================================================
-    // LISTENER MESSAGGI PER STANZA
-    // ============================================================
-    subscribeToRoom(roomId) {
-        if (this.state.currentRoomUnsub) {
-            this.renderRoomMessages(roomId);
-            return;
-        }
+                // Single global listener - no composite index required
+                const msgQ = query(
+                    this.getCol('messages'),
+                    orderBy('timestamp', 'asc'),
+                    limit(500)
+                );
 
-        const msgQ = query(
-            this.getCol('messages'),
-            orderBy('timestamp', 'asc'),
-            limit(500)
-        );
+                this.state.currentRoomUnsub = onSnapshot(msgQ, snap => {
+                    const statMsgs = document.getElementById('stat-msgs');
+                    const isFirstLoad = this.state.cachedMessages.length === 0;
 
-        this.state.currentRoomUnsub = onSnapshot(msgQ, snap => {
-            const statMsgs = document.getElementById('stat-msgs');
-            const isFirstLoad = this.state.cachedMessages.length === 0;
+                    // Build full cache from snapshot
+                    const newCache = [];
+                    snap.forEach(docSnap => newCache.push({ id: docSnap.id, ...docSnap.data() }));
+                    this.state.cachedMessages = newCache;
 
-            const newCache = [];
-            snap.forEach(docSnap => newCache.push({ id: docSnap.id, ...docSnap.data() }));
-            this.state.cachedMessages = newCache;
+                    if (isFirstLoad) {
+                        // Initial render for current room
+                        this.renderRoomMessages(this.state.currentRoom);
+                        if (statMsgs) statMsgs.innerText = snap.size;
+                    } else {
+                        // Handle new messages
+                        snap.docChanges().forEach(change => {
+                            if (change.type !== 'added') return;
+                            const m = { id: change.doc.id, ...change.doc.data() };
+                            if (m.timestamp <= this.state.loginTime - 2000) return; // skip old
 
-            if (isFirstLoad) {
-                this.renderRoomMessages(this.state.currentRoom);
-                if (statMsgs) statMsgs.innerText = snap.size;
-            } else {
-                snap.docChanges().forEach(change => {
-                    if (change.type !== 'added') return;
-                    const m = { id: change.doc.id, ...change.doc.data() };
-                    
-                    if (m.timestamp <= this.state.loginTime - 2000) return;
+                            if (m.roomId === this.state.currentRoom) {
+                                const ignoredUids = this.state.ignoredUsers.map(u => u.uid);
+                                if (ignoredUids.includes(m.fromUid)) return;
+                                const c = document.getElementById('msg-container');
+                                if (!c) return;
+                                const fab = document.getElementById('scroll-to-bottom');
+                                const div = document.createElement('div');
+                                div.innerHTML = this.buildMessageHTML(m);
+                                if (div.firstElementChild) {
+                                    if (fab && fab.parentNode === c) {
+                                        c.insertBefore(div.firstElementChild, fab);
+                                    } else {
+                                        c.appendChild(div.firstElementChild);
+                                    }
+                                    this.scrollToBottom(false);
+                                    if (m.fromUid !== this.state.me.uid) this.playBeep();
+                                }
+                            } else if (m.fromUid !== this.state.me.uid) {
+                                this.incrementUnread(m.roomId);
+                            }
+                        });
+                        if (statMsgs) statMsgs.innerText = snap.size;
+                    }
+                }, (err) => {
+                    console.error('Messages listener error:', err.message);
+                    this.showToast('⚠️ Errore messaggi: controlla le Firestore Rules.', 'error');
+                });
+            },
 
-                    if (m.roomId === this.state.currentRoom) {
-                        const ignoredUids = this.state.ignoredUsers.map(u => u.uid);
-                        if (ignoredUids.includes(m.fromUid)) return;
+            startReactionListener() {
+                onSnapshot(this.getCol('msg_reactions'), snap => {
+                    this.state.msgReactions = {};
+                    snap.forEach(d => { this.state.msgReactions[d.id] = d.data(); });
+                    document.querySelectorAll('.msg-reactions-display').forEach(el => {
+                        const msgId = el.closest('[data-msg-id]')?.dataset.msgId;
+                        if (msgId) el.innerHTML = this.buildReactionBadgesHTML(msgId);
+                    });
+                });
+            },
 
-                        const c = document.getElementById('msg-container');
-                        if (!c) return;
+            async toggleReaction(msgId, emoji) {
+                const reactions = this.state.msgReactions[msgId] || {};
+                const emojiReacts = reactions[emoji] || {};
+                if (emojiReacts[this.state.me.uid]) delete emojiReacts[this.state.me.uid]; else emojiReacts[this.state.me.uid] = true;
+                reactions[emoji] = emojiReacts;
+                await setDoc(doc(this.getCol('msg_reactions'), msgId), reactions);
+            },
 
+            buildReactionBadgesHTML(msgId) {
+                const reactions = this.state.msgReactions[msgId] || {};
+                return Object.entries(reactions).filter(([, users]) => Object.keys(users).length > 0).map(([emoji, users]) => {
+                    const count = Object.keys(users).length, mine = !!users[this.state.me.uid];
+                    return `<span class="reaction-badge ${mine ? 'mine' : ''}" onclick="app.toggleReaction('${msgId}','${emoji}')">${emoji}<span class="reaction-count">${count}</span></span>`;
+                }).join('');
+            },
+
+            // ============================================================
+            // ROOMS
+            // ============================================================
+            renderRoomsList() {
+                const c = document.getElementById('rooms-list');
+                if (!c) return;
+                c.innerHTML = this.state.rooms.map(r => {
+                    if (this.state.me.role === 'Guest' && r.role !== 'Guest') return '';
+                    if (r.role === 'Staff' && !['Staff','Admin'].includes(this.state.me.role)) return '';
+                    const act = this.state.currentRoom === r.id ? 'active' : 'inactive';
+                    const lockIcon = (r.isLocked && !['Admin','Staff'].includes(this.state.me.role) && !this.state.unlockedRooms.includes(r.id)) ? '🔒 ' : '';
+                    const users = this.state.users.filter(u => u.currentRoom === r.id).length;
+                    const unread = this.state.unreadCounts[r.id] || 0;
+                    const badge = unread > 0 ? `<span class="unread-badge">${unread > 9 ? '9+' : unread}</span>` : '';
+                    const cnt = users > 0 ? `<span class="room-user-count">${users}👤</span>` : '';
+                    return `<button onclick="app.changeRoom('${r.id}')" class="room-btn ${act}">
+                        <span class="flex items-center gap-1">${lockIcon}${this.sanitize(r.name)}${cnt}</span>
+                        <span class="flex items-center gap-1"><span class="${r.color||'bg-slate-600'} text-white px-1.5 rounded text-[9px]">${r.badgeText||''}</span>${badge}</span>
+                    </button>`;
+                }).join('');
+            },
+
+            async changeRoom(id, force = false) {
+                const target = this.state.rooms.find(r => r.id === id);
+                if (!target && !force) return;
+                if (target && target.isLocked && !['Admin','Staff'].includes(this.state.me.role) && !this.state.unlockedRooms.includes(id) && !force) {
+                    this.state.pendingRoomId = id;
+                    document.getElementById('room-pin-input').value = '';
+                    this.openModal('room-password-modal'); return;
+                }
+                this.state.currentRoom = id;
+                this.renderRoomsList();
+                if (this.state.isLoggedIn && this.state.me.uid) {
+                    updateDoc(doc(this.getCol('online_users'), this.state.me.uid), { currentRoom: id }).catch(() => null);
+                }
+                if (id === 'games') { document.getElementById('game-stage').classList.remove('hidden'); setTimeout(() => window.dispatchEvent(new Event('resize')), 100); }
+                else { document.getElementById('game-stage').classList.add('hidden'); if (this.state.me.camActive) document.getElementById('local-video-container').style.display = 'block'; }
+
+                // Re-render messages for the new room from cached messages
+                this.renderRoomMessages(id);
+
+                this.state.typingUsers = {};
+                this.renderTypingIndicator();
+                this.clearUnread(id);
+                if (window.innerWidth <= 768) { document.getElementById('sidebar-right').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('active'); }
+            },
+
+            renderRoomMessages(roomId) {
+                const c = document.getElementById('msg-container');
+                if (!c) return;
+                const fab = document.getElementById('scroll-to-bottom');
+                const roomName = this.state.rooms.find(r => r.id === roomId)?.name || roomId;
+                // Clear all messages but keep the FAB button inside
+                const children = [...c.childNodes];
+                children.forEach(child => { if (child !== fab) child.remove(); });
+                // Add room header
+                const header = document.createElement('div');
+                header.className = 'flex justify-center mb-6 mt-2';
+                header.innerHTML = `<span class="bg-indigo-50 text-indigo-500 text-[10px] px-6 py-2 rounded-full font-black uppercase tracking-widest border border-indigo-100/50 shadow-sm">📍 ${this.sanitize(roomName)}</span>`;
+                c.insertBefore(header, fab);
+                const ignoredUids = this.state.ignoredUsers.map(u => u.uid);
+                const msgs = this.state.cachedMessages.filter(m => m.roomId === roomId);
+                msgs.forEach(m => {
+                    if (!ignoredUids.includes(m.fromUid)) {
                         const div = document.createElement('div');
                         div.innerHTML = this.buildMessageHTML(m);
-                        
-                        if (div.firstElementChild) {
-                            const fab = document.getElementById('scroll-to-bottom');
-                            
-                            // LOGICA DI INSERIMENTO ULTRA-SICURA
-                            // Verifichiamo ESPLICITAMENTE che fab sia figlio di c
-                            if (fab && fab.parentNode === c) {
-                                try {
-                                    c.insertBefore(div.firstElementChild, fab);
-                                } catch (e) {
-                                    // Fallback estremo se il DOM è cambiato nel microsecondo precedente
-                                    c.appendChild(div.firstElementChild);
-                                }
-                            } else {
-                                c.appendChild(div.firstElementChild);
-                            }
-                            
-                            this.scrollToBottom(false);
-                            if (m.fromUid !== this.state.me.uid) this.playBeep();
-                        }
-                    } else if (m.fromUid !== this.state.me.uid) {
-                        this.incrementUnread(m.roomId);
+                        if (div.firstElementChild) c.insertBefore(div.firstElementChild, fab);
                     }
                 });
-                if (statMsgs) statMsgs.innerText = snap.size;
-            }
-        }, (err) => {
-            console.error('Errore listener messaggi:', err.message);
-            this.showToast('⚠️ Errore messaggi', 'error');
-        });
-    },
+                this.scrollToBottom(true);
+            },
 
-    startReactionListener() {
-        onSnapshot(this.getCol('msg_reactions'), snap => {
-            this.state.msgReactions = {};
-            snap.forEach(d => { this.state.msgReactions[d.id] = d.data(); });
-            document.querySelectorAll('.msg-reactions-display').forEach(el => {
-                const msgId = el.closest('[data-msg-id]')?.dataset.msgId;
-                if (msgId) el.innerHTML = this.buildReactionBadgesHTML(msgId);
-            });
-        });
-    },
+            submitRoomPassword() {
+                const target = this.state.rooms.find(r => r.id === this.state.pendingRoomId);
+                const pin = document.getElementById('room-pin-input').value;
+                if (target && target.password === pin) {
+                    this.state.unlockedRooms.push(target.id);
+                    this.closeModal('room-password-modal');
+                    this.changeRoom(target.id, true);
+                    this.showToast('✅ Accesso consentito', 'success');
+                } else {
+                    this.showToast('❌ Password errata', 'error');
+                    document.getElementById('room-pin-input').value = '';
+                }
+            },
 
-    async toggleReaction(msgId, emoji) {
-        const reactions = this.state.msgReactions[msgId] || {};
-        const emojiReacts = reactions[emoji] || {};
-        if (emojiReacts[this.state.me.uid]) {
-            delete emojiReacts[this.state.me.uid];
-        } else {
-            emojiReacts[this.state.me.uid] = true;
-        }
-        reactions[emoji] = emojiReacts;
-        await setDoc(doc(this.getCol('msg_reactions'), msgId), reactions);
-    },
+            // ============================================================
+            // MESSAGING — FIX: XSS, rate limiting, reply scroll
+            // ============================================================
+            handleChatSubmit(e) {
+                if (e && e.preventDefault) e.preventDefault();
+                if (!this.state.isLoggedIn) return;
+                const input = document.getElementById('msg-input');
+                const text = input.value.trim();
+                if (!text) return;
 
-    buildReactionBadgesHTML(msgId) {
-        const reactions = this.state.msgReactions[msgId] || {};
-        return Object.entries(reactions)
-            .filter(([, users]) => Object.keys(users).length > 0)
-            .map(([emoji, users]) => {
-                const count = Object.keys(users).length;
-                const mine = !!users[this.state.me.uid];
-                return `<span class="reaction-badge ${mine ? 'mine' : ''}" onclick="app.toggleReaction('${msgId}','${emoji}')">${emoji}<span class="reaction-count">${count}</span></span>`;
-            }).join('');
-    },
+                // FIX: Client-side rate limit (max 5 messages per 3s burst)
+                const now = Date.now();
+                if (now - this.state.lastMsgTime > 3000) { this.state.msgBurst = 0; }
+                this.state.msgBurst++;
+                this.state.lastMsgTime = now;
+                if (this.state.msgBurst > 5) {
+                    this.showToast('⚠️ Stai scrivendo troppo velocemente!', 'warning', '', 2000);
+                    const bar = document.getElementById('rate-limit-bar');
+                    if (bar) { bar.style.width = '100%'; bar.style.background = '#ef4444'; setTimeout(() => { bar.style.width = '0%'; }, 1500); }
+                    return;
+                }
+                const pct = Math.min(100, this.state.msgBurst * 20);
+                const bar = document.getElementById('rate-limit-bar');
+                if (bar) { bar.style.width = pct + '%'; bar.style.background = pct >= 80 ? '#f59e0b' : 'var(--brand-col-2)'; }
 
-    // ============================================================
-    // GESTIONE STANZE
-    // ============================================================
-    renderRoomsList() {
-        const c = document.getElementById('rooms-list');
-        if (!c) return;
-        c.innerHTML = this.state.rooms.map(r => {
-            if (this.state.me.role === 'Guest' && r.role !== 'Guest') return '';
-            if (r.role === 'Staff' && !['Staff','Admin'].includes(this.state.me.role)) return '';
-            
-            const act = this.state.currentRoom === r.id ? 'active' : 'inactive';
-            const lockIcon = (r.isLocked && !['Admin','Staff'].includes(this.state.me.role) && !this.state.unlockedRooms.includes(r.id)) ? '🔒 ' : '';
-            const users = this.state.users.filter(u => u.currentRoom === r.id).length;
-            const unread = this.state.unreadCounts[r.id] || 0;
-            const badge = unread > 0 ? `<span class="unread-badge">${unread > 9 ? '9+' : unread}</span>` : '';
-            const cnt = users > 0 ? `<span class="room-user-count">${users}👤</span>` : '';
-            
-            return `<button onclick="app.changeRoom('${r.id}')" class="room-btn ${act}">
-                <span class="flex items-center gap-1">${lockIcon}${this.sanitize(r.name)}${cnt}</span>
-                <span class="flex items-center gap-1"><span class="${r.color||'bg-slate-600'} text-white px-1.5 rounded text-[9px]">${r.badgeText||''}</span>${badge}</span>
-            </button>`;
-        }).join('');
-    },
+                this.sendChatMessage(text, false);
+                input.value = '';
+                input.style.height = 'auto';
+                document.getElementById('emoji-picker').classList.remove('active');
+            },
 
-    async changeRoom(id, force = false) {
-        const target = this.state.rooms.find(r => r.id === id);
-        if (!target && !force) return;
-        
-        if (target && target.isLocked && !['Admin','Staff'].includes(this.state.me.role) && !this.state.unlockedRooms.includes(id) && !force) {
-            this.state.pendingRoomId = id;
-            const pinInput = document.getElementById('room-pin-input');
-            if (pinInput) pinInput.value = '';
-            this.openModal('room-password-modal'); 
-            return;
-        }
+            async sendChatMessage(text, isSystemHtml = false) {
+                if (this.state.me.muted) return this.showToast('Sei mutato.', 'error');
+                if (this.state.serverConfig.chatLocked && !['Admin','Staff'].includes(this.state.me.role)) return;
+                if (!this.state.db) return this.showToast('Connessione non disponibile.', 'error');
 
-        this.state.currentRoom = id;
-        this.renderRoomsList();
+                // FIX: Use processText() — safe XSS-cleaned HTML with markdown
+                const finalTxt = isSystemHtml ? text : this.processText(text);
 
-        if (this.state.isLoggedIn && this.state.me.uid) {
-            updateDoc(doc(this.getCol('online_users'), this.state.me.uid), { currentRoom: id }).catch(() => null);
-        }
+                const sizeEl = document.getElementById('text-size');
+                const colorEl = document.getElementById('text-color');
+                const payload = {
+                    roomId: this.state.currentRoom, text: finalTxt, name: this.state.me.name,
+                    fromUid: this.state.me.uid, color: this.state.me.color,
+                    size: sizeEl ? sizeEl.value : '14px',
+                    txtColor: colorEl ? colorEl.value : '#0f172a',
+                    avatarUrl: this.state.me.avatarUrl, timestamp: Date.now()
+                };
+                if (this.state.replyingTo && !isSystemHtml) { payload.replyTo = this.state.replyingTo; this.cancelReply(); }
+                try {
+                    await addDoc(this.getCol('messages'), payload);
+                } catch (err) {
+                    console.error('sendChatMessage error:', err);
+                    this.showToast('Errore invio messaggio. Riprova.', 'error');
+                }
+            },
 
-        const stage = document.getElementById('game-stage');
-        if (id === 'games') { 
-            if (stage) stage.classList.remove('hidden'); 
-            setTimeout(() => window.dispatchEvent(new Event('resize')), 100); 
-        } else { 
-            if (stage) stage.classList.add('hidden'); 
-            const localVid = document.getElementById('local-video-container');
-            if (this.state.me.camActive && localVid) localVid.style.display = 'block'; 
-        }
+            buildMessageHTML(m) {
+                const time = new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                const avatar = m.avatarUrl ? `<img src="${m.avatarUrl}" class="chat-avatar" loading="lazy" onerror="this.style.opacity='0'">` : `<div class="chat-avatar"></div>`;
+                let quoteHtml = '';
+                if (m.replyTo) {
+                    quoteHtml = `<div class="chat-quote" onclick="app.scrollToMessage('${m.replyTo.id}')"><b>${this.sanitize(m.replyTo.name)}:</b> ${this.sanitize(m.replyTo.text)}</div>`;
+                }
+                const reactBadges = this.buildReactionBadgesHTML(m.id);
+                return `<div class="chat-line group" data-msg-id="${m.id}">
+                    <span class="chat-timestamp">${time}</span>
+                    ${avatar}
+                    <div class="chat-content-area">
+                        ${quoteHtml}
+                        <div class="flex items-start flex-wrap gap-x-1">
+                            <span class="chat-name" onclick="app.openUserMenu(event,'${m.fromUid}')" style="color:${m.color||'#64748b'}">${this.sanitize(m.name)}:</span>
+                            <span class="chat-text" style="font-size:${m.size||'14px'};color:${m.txtColor||'#0f172a'}">${m.text}</span>
+                            <button onclick="app.setReplyTo('${m.id}')" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-brand text-[10px] ml-1 transition self-center" title="Rispondi">↩️</button>
+                        </div>
+                        ${reactBadges ? `<div class="msg-reactions-display">${reactBadges}</div>` : `<div class="msg-reactions-display"></div>`}
+                    </div>
+                    <div class="msg-reaction-bar">
+                        <button class="msg-react-btn" onclick="app.toggleReaction('${m.id}','❤️')">❤️</button>
+                        <button class="msg-react-btn" onclick="app.toggleReaction('${m.id}','👍')">👍</button>
+                        <button class="msg-react-btn" onclick="app.toggleReaction('${m.id}','😂')">😂</button>
+                        <button class="msg-react-btn" onclick="app.toggleReaction('${m.id}','🔥')">🔥</button>
+                    </div>
+                </div>`;
+            },
 
-        this.renderRoomMessages(id);
+            // Quick Win #2: Reply scroll-to-original
+            scrollToMessage(msgId) {
+                const el = document.querySelector(`[data-msg-id="${msgId}"]`);
+                if (el) { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); el.style.background = 'rgba(253,224,71,0.4)'; setTimeout(() => el.style.background = '', 1200); }
+            },
 
-        this.state.typingUsers = {};
-        this.renderTypingIndicator();
-        this.clearUnread(id);
+            setReplyTo(msgId) {
+                const el = document.querySelector(`[data-msg-id="${msgId}"]`);
+                if (!el) return;
+                const name = el.querySelector('.chat-name')?.innerText.replace(':', '') || 'Utente';
+                let text = el.querySelector('.chat-text')?.innerText || '';
+                if (el.querySelector('.chat-image')) text = '📷 Immagine';
+                if (el.querySelector('audio')) text = '🎤 Nota vocale';
+                this.state.replyingTo = { id: msgId, name, text };
+                document.getElementById('reply-preview-name').innerText = name;
+                document.getElementById('reply-preview-text').innerText = text;
+                document.getElementById('reply-preview-container').classList.remove('hidden');
+                document.getElementById('msg-input').focus();
+            },
 
-        if (window.innerWidth <= 768) { 
-            const sb = document.getElementById('sidebar-right');
-            const overlay = document.getElementById('sidebar-overlay');
-            if (sb) sb.classList.remove('open'); 
-            if (overlay) overlay.classList.remove('active'); 
-        }
-    },
+            cancelReply() {
+                this.state.replyingTo = null;
+                document.getElementById('reply-preview-container').classList.add('hidden');
+            },
 
-    renderRoomMessages(roomId) {
-        const c = document.getElementById('msg-container');
-        if (!c) return;
-        
-        const roomName = this.state.rooms.find(r => r.id === roomId)?.name || roomId;
-        
-        // Svuotiamo il contenitore MA preserviamo il pulsante FAB se esiste
-        const fab = document.getElementById('scroll-to-bottom');
-        
-        // Pulizia sicura: lasciamo solo il FAB se presente
-        c.innerHTML = `<div class="flex justify-center mb-6 mt-2"><span class="bg-indigo-50 text-indigo-500 text-[10px] px-6 py-2 rounded-full font-black uppercase tracking-widest border border-indigo-100/50 shadow-sm">📍 ${this.sanitize(roomName)}</span></div>`;
-        
-        // Se il FAB è stato rimosso dall'innerHTML sopra, lo riaggiungiamo alla fine se necessario
-        // (Nota: solitamente il FAB dovrebbe essere un elemento fisso o gestito separatamente per evitare questo)
-        if (fab && fab.parentNode !== c) {
-            c.appendChild(fab);
-        }
-        
-        const ignoredUids = this.state.ignoredUsers.map(u => u.uid);
-        const msgs = this.state.cachedMessages.filter(m => m.roomId === roomId);
-        const fragment = document.createDocumentFragment();
-        
-        msgs.forEach(m => {
-            if (!ignoredUids.includes(m.fromUid)) {
-                const div = document.createElement('div');
-                div.innerHTML = this.buildMessageHTML(m);
-                if (div.firstElementChild) fragment.appendChild(div.firstElementChild);
-            }
-        });
-
-        // Inserimento finale protetto
-        const currentFab = document.getElementById('scroll-to-bottom');
-        if (currentFab && currentFab.parentNode === c) {
-            c.insertBefore(fragment, currentFab);
-        } else {
-            c.appendChild(fragment);
-        }
-        
-        this.scrollToBottom(true);
-    },
-
-    submitRoomPassword() {
-        const target = this.state.rooms.find(r => r.id === this.state.pendingRoomId);
-        const pinInput = document.getElementById('room-pin-input');
-        const pin = pinInput ? pinInput.value : '';
-        
-        if (target && target.password === pin) {
-            this.state.unlockedRooms.push(target.id);
-            this.closeModal('room-password-modal');
-            this.changeRoom(target.id, true);
-            this.showToast('✅ Accesso consentito', 'success');
-        } else {
-            this.showToast('❌ Password errata', 'error');
-            if (pinInput) pinInput.value = '';
-        }
-    },
-
-    // ============================================================
-    // MESSAGGISTICA
-    // ============================================================
-    handleChatSubmit(e) {
-        if (e && e.preventDefault) e.preventDefault();
-        if (!this.state.isLoggedIn) return;
-        
-        const input = document.getElementById('msg-input');
-        if (!input) return;
-        
-        const text = input.value.trim();
-        if (!text) return;
-
-        const now = Date.now();
-        if (now - this.state.lastMsgTime > 3000) { this.state.msgBurst = 0; }
-        this.state.msgBurst++;
-        this.state.lastMsgTime = now;
-        
-        if (this.state.msgBurst > 5) {
-            this.showToast('⚠️ Stai scrivendo troppo velocemente!', 'warning', '', 2000);
-            return;
-        }
-
-        this.sendChatMessage(text, false);
-        input.value = '';
-        input.style.height = 'auto';
-    },
-
-    async sendChatMessage(text, isSystemHtml = false) {
-        if (this.state.me.muted) return this.showToast('Sei mutato.', 'error');
-        if (this.state.serverConfig.chatLocked && !['Admin','Staff'].includes(this.state.me.role)) return;
-        if (!this.state.db) return;
-
-        const finalTxt = isSystemHtml ? text : this.processText(text);
-        const sizeEl = document.getElementById('text-size');
-        const colorEl = document.getElementById('text-color');
-
-        const payload = {
-            roomId: this.state.currentRoom, 
-            text: finalTxt, 
-            name: this.state.me.name,
-            fromUid: this.state.me.uid, 
-            color: this.state.me.color,
-            size: sizeEl ? sizeEl.value : '14px',
-            txtColor: colorEl ? colorEl.value : '#0f172a',
-            avatarUrl: this.state.me.avatarUrl, 
-            timestamp: Date.now()
-        };
-
-        if (this.state.replyingTo && !isSystemHtml) { 
-            payload.replyTo = this.state.replyingTo; 
-            this.cancelReply(); 
-        }
-
-        try {
-            await addDoc(this.getCol('messages'), payload);
-        } catch (err) {
-            this.showToast('Errore invio', 'error');
-        }
-    },
-
-    buildMessageHTML(m) {
-        const time = new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-        const avatar = m.avatarUrl ? `<img src="${m.avatarUrl}" class="chat-avatar" loading="lazy">` : `<div class="chat-avatar"></div>`;
-        
-        let quoteHtml = '';
-        if (m.replyTo) {
-            quoteHtml = `<div class="chat-quote" onclick="app.scrollToMessage('${m.replyTo.id}')"><b>${this.sanitize(m.replyTo.name)}:</b> ${this.sanitize(m.replyTo.text)}</div>`;
-        }
-        
-        const reactBadges = this.buildReactionBadgesHTML(m.id);
-        
-        return `<div class="chat-line group" data-msg-id="${m.id}">
-            <span class="chat-timestamp">${time}</span>
-            ${avatar}
-            <div class="chat-content-area">
-                ${quoteHtml}
-                <div class="flex items-start flex-wrap gap-x-1">
-                    <span class="chat-name" onclick="app.openUserMenu(event,'${m.fromUid}')" style="color:${m.color||'#64748b'}">${this.sanitize(m.name)}:</span>
-                    <span class="chat-text" style="font-size:${m.size||'14px'};color:${m.txtColor||'#0f172a'}">${m.text}</span>
-                    <button onclick="app.setReplyTo('${m.id}')" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-brand text-[10px] ml-1 transition self-center">↩️</button>
-                </div>
-                <div class="msg-reactions-display">${reactBadges || ''}</div>
-            </div>
-            <div class="msg-reaction-bar">
-                <button class="msg-react-btn" onclick="app.toggleReaction('${m.id}','❤️')">❤️</button>
-                <button class="msg-react-btn" onclick="app.toggleReaction('${m.id}','👍')">👍</button>
-                <button class="msg-react-btn" onclick="app.toggleReaction('${m.id}','😂')">😂</button>
-            </div>
-        </div>`;
-    },
-
-    scrollToMessage(msgId) {
-        const el = document.querySelector(`[data-msg-id="${msgId}"]`);
-        if (el) { 
-            el.scrollIntoView({ behavior: 'smooth', block: 'center' }); 
-            el.style.background = 'rgba(253,224,71,0.4)'; 
-            setTimeout(() => el.style.background = '', 1200); 
-        }
-    },
-
-    setReplyTo(msgId) {
-        const el = document.querySelector(`[data-msg-id="${msgId}"]`);
-        if (!el) return;
-        
-        const name = el.querySelector('.chat-name')?.innerText.replace(':', '') || 'Utente';
-        let text = el.querySelector('.chat-text')?.innerText || '';
-        
-        this.state.replyingTo = { id: msgId, name, text };
-        document.getElementById('reply-preview-name').innerText = name;
-        document.getElementById('reply-preview-text').innerText = text;
-        document.getElementById('reply-preview-container').classList.remove('hidden');
-        document.getElementById('msg-input').focus();
-    },
-
-    cancelReply() {
-        this.state.replyingTo = null;
-        const container = document.getElementById('reply-preview-container');
-        if (container) container.classList.add('hidden');
-    }
-};
             // ============================================================
             // CAM / WEBRTC — FIX: Memory leak, PeerJS fallback ID
             // ============================================================
@@ -2498,19 +2435,28 @@ const Chat = {
                     }
                 });
                 this.state.peer.on('error', err => {
-                    console.warn('PeerJS:', err.type);
+                    console.warn('PeerJS:', err.type, err.message);
                     if (err.type === 'unavailable-id') {
-                        const fallbackId = `${peerId}_${Date.now()}`;
-                        this.state.peer = new Peer(fallbackId);
-                        // FIX: Update Firestore with fallback peer ID so others can reach us
+                        // ID already in use (e.g. same user in another tab)
+                        try { this.state.peer.destroy(); } catch(e) {}
+                        const fallbackId = `${peerId}_${Math.random().toString(36).slice(2,7)}`;
+                        this.state.peer = new Peer(fallbackId, { config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] } });
                         updateDoc(doc(this.getCol('online_users'), this.state.me.uid), { peerId: fallbackId }).catch(() => null);
-                        this.state.peer.on('error', e2 => console.warn('PeerJS fallback:', e2));
+                        this.state.peer.on('error', e2 => console.warn('PeerJS fallback:', e2.type));
                         this.setupPeerCallHandler();
-                    } else if (['network','server-error','disconnected'].includes(err.type)) {
-                        setTimeout(() => this.initPeerJS(), 4000);
+                    } else if (['network','server-error'].includes(err.type)) {
+                        setTimeout(() => this.initPeerJS(), 5000);
                     }
                 });
-                this.state.peer.on('disconnected', () => { setTimeout(() => { if (this.state.peer && !this.state.peer.destroyed) this.state.peer.reconnect(); }, 2000); });
+                this.state.peer.on('disconnected', () => {
+                    setTimeout(() => {
+                        try {
+                            if (this.state.peer && !this.state.peer.destroyed && this.state.peer.disconnected) {
+                                this.state.peer.reconnect();
+                            }
+                        } catch (e) { console.warn('PeerJS reconnect skipped:', e.message); }
+                    }, 2000);
+                });
                 this.setupPeerCallHandler();
             },
 
