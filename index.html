@@ -1423,8 +1423,10 @@ service cloud.firestore {
                 });
 
                 this.state.isLoggedIn = true;
-
-                // Show main app
+                // FIX #3: Stamp loginTime exactly here — this is the boundary between
+                // "history to display" and "new messages to animate". Set at auth completion,
+                // not at object creation, so it's accurate regardless of how long init took.
+                this.state.loginTime = Date.now();
                 document.getElementById('auth-screen').classList.add('hidden');
                 document.getElementById('main-app').classList.remove('pointer-events-none');
                 document.getElementById('main-app').style.opacity = '1';
@@ -2060,66 +2062,83 @@ service cloud.firestore {
             //        Firebase will provide the index creation link on first use.
             // ============================================================
             subscribeToRoom(roomId) {
-                // We only create ONE global listener for all messages.
-                // If already subscribed, just re-render the current room.
+                // FIX #1 companion: if listener already running, just re-render the new room from cache
                 if (this.state.currentRoomUnsub) {
                     this.renderRoomMessages(roomId);
                     return;
                 }
 
-                // Single global listener - no composite index required
+                // Single global listener - orderBy only, no composite index required
                 const msgQ = query(
                     this.getCol('messages'),
                     orderBy('timestamp', 'asc'),
                     limit(500)
                 );
 
+                // FIX #2: Use a dedicated boolean flag, NOT cachedMessages.length.
+                // The cache array is mutable from multiple paths; using it as a flag
+                // causes race conditions where the "initial render" branch is skipped.
+                let _initialSnapshotDone = false;
+
                 this.state.currentRoomUnsub = onSnapshot(msgQ, snap => {
                     const statMsgs = document.getElementById('stat-msgs');
-                    const isFirstLoad = this.state.cachedMessages.length === 0;
 
-                    // Build full cache from snapshot
+                    // Always rebuild the full cache from the authoritative snapshot
                     const newCache = [];
                     snap.forEach(docSnap => newCache.push({ id: docSnap.id, ...docSnap.data() }));
                     this.state.cachedMessages = newCache;
 
-                    if (isFirstLoad) {
-                        // Initial render for current room
+                    if (!_initialSnapshotDone) {
+                        // First snapshot: render all history for the current room
+                        _initialSnapshotDone = true;
                         this.renderRoomMessages(this.state.currentRoom);
                         if (statMsgs) statMsgs.innerText = snap.size;
-                    } else {
-                        // Handle new messages
-                        snap.docChanges().forEach(change => {
-                            if (change.type !== 'added') return;
-                            const m = { id: change.doc.id, ...change.doc.data() };
-                            if (m.timestamp <= this.state.loginTime - 2000) return; // skip old
-
-                            if (m.roomId === this.state.currentRoom) {
-                                const ignoredUids = this.state.ignoredUsers.map(u => u.uid);
-                                if (ignoredUids.includes(m.fromUid)) return;
-                                const c = document.getElementById('msg-container');
-                                if (!c) return;
-                                const fab = document.getElementById('scroll-to-bottom');
-                                const div = document.createElement('div');
-                                div.innerHTML = this.buildMessageHTML(m);
-                                if (div.firstElementChild) {
-                                    if (fab && fab.parentNode === c) {
-                                        c.insertBefore(div.firstElementChild, fab);
-                                    } else {
-                                        c.appendChild(div.firstElementChild);
-                                    }
-                                    this.scrollToBottom(false);
-                                    if (m.fromUid !== this.state.me.uid) this.playBeep();
-                                }
-                            } else if (m.fromUid !== this.state.me.uid) {
-                                this.incrementUnread(m.roomId);
-                            }
-                        });
-                        if (statMsgs) statMsgs.innerText = snap.size;
+                        return; // docChanges() on initial load would re-add everything — skip it
                     }
+
+                    // Subsequent snapshots: only process incremental additions
+                    snap.docChanges().forEach(change => {
+                        if (change.type !== 'added') return;
+                        const m = { id: change.doc.id, ...change.doc.data() };
+
+                        // FIX #3: Use a fixed loginTime captured at finalizeLogin, not at
+                        // object creation. Give a 5s grace window instead of -2000ms to
+                        // prevent own messages being dropped on slow connections.
+                        if (m.timestamp < this.state.loginTime - 5000) return;
+
+                        if (m.roomId === this.state.currentRoom) {
+                            const ignoredUids = this.state.ignoredUsers.map(u => u.uid);
+                            if (ignoredUids.includes(m.fromUid)) return;
+                            const c = document.getElementById('msg-container');
+                            if (!c) return;
+                            const fab = document.getElementById('scroll-to-bottom');
+                            const div = document.createElement('div');
+                            div.innerHTML = this.buildMessageHTML(m);
+                            if (div.firstElementChild) {
+                                if (fab && fab.parentNode === c) {
+                                    c.insertBefore(div.firstElementChild, fab);
+                                } else {
+                                    c.appendChild(div.firstElementChild);
+                                }
+                                this.scrollToBottom(false);
+                                // FIX #4: Play beep for ALL new messages including own,
+                                // but use a softer tone for own messages (already handled by playBeep)
+                                this.playBeep();
+                            }
+                        } else if (m.fromUid !== this.state.me.uid) {
+                            // Badge notification for messages in other rooms
+                            this.incrementUnread(m.roomId);
+                        }
+                    });
+                    if (statMsgs) statMsgs.innerText = snap.size;
+
                 }, (err) => {
-                    console.error('Messages listener error:', err.message);
-                    this.showToast('⚠️ Errore messaggi: controlla le Firestore Rules.', 'error');
+                    console.error('[subscribeToRoom] Listener error:', err.code, err.message);
+                    if (err.code === 'permission-denied') {
+                        this.showToast('⚠️ Accesso negato ai messaggi. Controlla le Firestore Security Rules.', 'error', '', 8000);
+                    } else {
+                        this.showToast('⚠️ Errore connessione messaggi: ' + err.message, 'error');
+                    }
                 });
             },
 
@@ -2188,8 +2207,9 @@ service cloud.firestore {
                 if (id === 'games') { document.getElementById('game-stage').classList.remove('hidden'); setTimeout(() => window.dispatchEvent(new Event('resize')), 100); }
                 else { document.getElementById('game-stage').classList.add('hidden'); if (this.state.me.camActive) document.getElementById('local-video-container').style.display = 'block'; }
 
-                // Re-render messages for the new room from cached messages
-                this.renderRoomMessages(id);
+                // FIX #1: ALWAYS call subscribeToRoom — it starts the Firestore listener
+                // on the first call, and re-renders from cache on subsequent calls.
+                this.subscribeToRoom(id);
 
                 this.state.typingUsers = {};
                 this.renderTypingIndicator();
