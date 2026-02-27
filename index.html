@@ -188,8 +188,13 @@
         .pvt-header { background: linear-gradient(135deg, #ec4899 0%, #db2777 100%); padding: 10px 12px; color: white; cursor: move; display: flex; justify-content: space-between; align-items: center; touch-action: none; gap: 5px; user-select: none; }
         .pvt-messages { flex: 1; overflow-y: auto; padding: 12px; background: #fdf2f8; display: flex; flex-direction: column; }
         .pvt-input-area { padding: 10px; background: white; border-top: 1px solid #fbcfe8; display: flex; gap: 6px; }
-        .pvt-msg { margin-bottom: 8px; font-size: 12px; padding: 7px 11px; border-radius: 10px; max-width: 85%; word-break: break-word; }
-        .pvt-msg.me { background: #db2777; color: white; align-self: flex-end; }
+        .pvt-msg { margin-bottom: 2px; font-size: 12px; padding: 7px 11px; border-radius: 10px; max-width: 85%; word-break: break-word; }
+        .pvt-msg.me { background: #db2777; color: white; }
+        .pvt-msg-row { display: flex; flex-direction: column; margin-bottom: 6px; }
+        .pvt-msg-row.me { align-items: flex-end; }
+        .pvt-msg-row.them { align-items: flex-start; }
+        .pvt-time { font-size: 9px; color: rgba(100,116,139,0.7); margin-top: 1px; padding: 0 4px; }
+        .pvt-badge { background: #ef4444; color: white; font-size: 9px; font-weight: 900; border-radius: 999px; padding: 1px 5px; min-width: 16px; text-align: center; display: inline-block; }
         .pvt-msg.them { background: white; color: #831843; border: 1px solid #fbcfe8; align-self: flex-start; }
 
         .toolbar-icon { display: flex; align-items: center; justify-content: center; width: 28px; height: 28px; border-radius: 8px; font-weight: 900; font-size: 12px; cursor: pointer; transition: all 0.2s; }
@@ -580,6 +585,13 @@ service cloud.firestore {
                     <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 flex items-center justify-between"><div><h4 class="text-white font-bold text-sm">Blocco Chat</h4><p class="text-slate-400 text-xs">Impedisce ai non-staff di scrivere.</p></div><label class="toggle-switch"><input type="checkbox" id="adm-lock-chat" onchange="app.adminUpdateServerConfig('chatLocked', this.checked)"><span class="toggle-slider"></span></label></div>
                     <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 flex items-center justify-between"><div><h4 class="text-white font-bold text-sm">Blocco Ospiti</h4><p class="text-slate-400 text-xs">Impedisce ai guest di loggare.</p></div><label class="toggle-switch"><input type="checkbox" id="adm-lock-guests" onchange="app.adminUpdateServerConfig('guestsLocked', this.checked)"><span class="toggle-slider"></span></label></div>
                 </div>
+                <!-- Bad Words Filter -->
+                <div class="bg-slate-800 p-6 rounded-xl border border-yellow-500/30 mb-6">
+                    <h4 class="text-yellow-400 font-black text-sm mb-1">🤬 Parole Censurate (Filtro Chat)</h4>
+                    <p class="text-slate-400 text-[11px] mb-3">Le parole in questa lista vengono sostituite con <b>***</b> in tutti i messaggi. Separale con virgola.</p>
+                    <textarea id="adm-bad-words" rows="3" class="w-full bg-slate-900 border border-slate-700 text-white text-xs p-3 rounded-lg resize-none font-mono" placeholder="parolaccia,parolabrutta,spam,..."></textarea>
+                    <button onclick="app.adminSaveBadWords()" class="mt-3 bg-yellow-600 hover:bg-yellow-500 text-white px-6 py-2.5 rounded-lg text-xs font-black uppercase shadow-lg transition">💾 Salva Filtro</button>
+                </div>
                 <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 mb-8"><h4 class="text-white font-bold text-sm mb-2">Invia Broadcast Globale (tutte le stanze)</h4><div class="flex gap-2"><input type="text" id="adm-broadcast-text" class="flex-1 bg-slate-900 border border-slate-600 text-white text-sm p-3 rounded-lg" placeholder="Messaggio globale..."><button onclick="app.adminSendBroadcast()" class="bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-lg font-bold uppercase shadow-lg">Invia</button></div></div>
                 <div class="grid grid-cols-2 gap-6">
                     <div class="bg-slate-800 p-5 rounded-xl border border-yellow-500/30"><h4 class="text-xs font-black uppercase text-yellow-400 mb-3">Utenti Mutati</h4><div class="flex gap-2 mb-3"><input type="text" id="adm-mute-name" class="flex-1 bg-slate-900 border border-slate-700 text-xs text-white p-2 rounded" placeholder="Username..."><button onclick="app.adminMuteUserBtn()" class="bg-yellow-600 text-white px-3 rounded text-xs">Muta</button></div><table class="admin-table"><tbody id="admin-muted-list"></tbody></table></div>
@@ -708,7 +720,7 @@ service cloud.firestore {
                 peer: null, currentCall: null, localStream: null,
                 micGainNode: null, localAudioCtx: null,
                 isRadioPlaying: false, radioStations: [],
-                serverConfig: { chatLocked: false, guestsLocked: false, appTitle: 'RaskVideochat', appBgUrl: '', color1: '#4338ca', color2: '#7e22ce' },
+                serverConfig: { chatLocked: false, guestsLocked: false, appTitle: 'RaskVideochat', appBgUrl: '', color1: '#4338ca', color2: '#7e22ce', badWords: '' },
                 me: { uid: null, name: '', color: '#64748b', camActive: false, role: 'User', gender: 'M', avatarUrl: null, muted: false, currentRoom: 'lobby', status: 'online', bio: '' },
                 users: [], allPvtMessages: [], registeredUsers: [], ignoredUsers: [],
                 bannedUsers: [], mutedUsers: [], rooms: [], currentRoom: 'lobby',
@@ -723,6 +735,11 @@ service cloud.firestore {
                 msgReactions: {}, unreadCounts: {}, searchOpen: false,
                 soundsEnabled: true,
                 cachedMessages: [],
+                pvtUnread: {},
+                // Multi-cam: map of peerUid → MediaConnection
+                activeCamConnections: {},
+                // Cam request dedup: map of targetUid → 'pending'|'accepted'|'rejected'
+                camRequestStates: {},
                 // FIX: Rate limiting
                 lastMsgTime: 0, msgBurst: 0,
                 // FIX: Per-room listener
@@ -764,46 +781,40 @@ service cloud.firestore {
                 return d.innerHTML;
             },
 
-            // FIX H1+H2: Markdown-safe text processor (no raw HTML tag reinjection)
             processText(rawInput) {
                 let text = this.sanitize(rawInput);
-
-                // Process **bold** markdown
-                text = text.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
-
-                // FIX H1: sanitize() converts & → &amp; which breaks URLs in href/src.
-                // Restore & only inside URLs (between https?:// and whitespace/angle-bracket)
-                // by working on a decoded copy for matching, then re-encoding for the final HTML.
                 const decodeAmp = (s) => s.replace(/&amp;/g, '&');
 
-                // FIX H2: YouTube — use /g flag so ALL YT links get embedded, not just first.
-                // Also do NOT set hadYT=true blocking remaining regular links.
-                const ytRx = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/g;
-                const ytMatches = new Set();
+                // **bold** markdown
+                text = text.replace(/\*\*(.+?)\*\*/g, '<b>$1</b>');
+
+                // STEP 1: Extract YouTube URLs and replace with placeholders BEFORE any other URL processing.
+                // This prevents the link-regex below from re-matching the embed iframe src (which caused 404).
+                const ytRx = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})(?:[^\s<>"]*)?/g;
+                const ytEmbeds = [];
                 text = text.replace(ytRx, (match, id) => {
-                    ytMatches.add(match);
-                    return `<div class="mt-2 w-full max-w-[300px] aspect-video rounded-xl overflow-hidden shadow-lg border border-slate-300"><iframe width="100%" height="100%" src="https://www.youtube.com/embed/${id}" frameborder="0" allowfullscreen loading="lazy"></iframe></div>`;
+                    const ph = `\x00YT${ytEmbeds.length}\x00`;
+                    ytEmbeds.push(`<div class="mt-2 w-full max-w-xs aspect-video rounded-xl overflow-hidden shadow-lg border border-slate-200"><iframe width="100%" height="100%" src="https://www.youtube-nocookie.com/embed/${id}?rel=0" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" allowfullscreen loading="lazy"></iframe></div>`);
+                    return ph;
                 });
 
-                // Safe URL links (only http/https — no javascript: etc)
-                // FIX H1: decode &amp; before matching so URLs with query params work.
-                text = text.replace(/(https?:\/\/[^\s<>"]{3,})/g, (rawUrl) => {
+                // STEP 2: Process remaining URLs (no YouTube HTML present in text yet — safe from double-match)
+                text = text.replace(/(https?:\/\/[^\s<>"\x00]{3,})/g, (rawUrl) => {
                     const url = decodeAmp(rawUrl);
-                    // Skip if this URL was already replaced by a YouTube embed
-                    if ([...ytMatches].some(yt => rawUrl.includes(yt) || yt.includes(rawUrl.slice(0,30)))) return rawUrl;
                     if (url.match(/\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i)) {
                         return `<img src="${url}" class="chat-image" loading="lazy" onerror="this.style.display='none'">`;
                     }
                     return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-brand underline font-bold break-all">${url}</a>`;
                 });
 
-                // Bad words filter (run on visible text tokens only to avoid matching HTML tags)
+                // STEP 3: Restore YouTube embeds from placeholders
+                ytEmbeds.forEach((html, i) => { text = text.replace(`\x00YT${i}\x00`, html); });
+
+                // STEP 4: Bad-words filter (run on text tokens only, outside HTML tags)
                 if (this.state.serverConfig.badWords) {
-                    this.state.serverConfig.badWords.split(',').map(w => w.trim().toLowerCase()).filter(w => w).forEach(w => {
+                    this.state.serverConfig.badWords.split(',').map(w => w.trim().toLowerCase()).filter(Boolean).forEach(w => {
                         const escaped = w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-                        // Match word only outside HTML tags
-                        const rx = new RegExp(`(?<![<"])\\b${escaped}\\b(?![^<]*>)`, 'gi');
-                        text = text.replace(rx, '***');
+                        text = text.replace(new RegExp(`(?<![<"])\\b${escaped}\\b(?![^<]*>)`, 'gi'), '***');
                     });
                 }
                 return text;
@@ -1587,6 +1598,8 @@ service cloud.firestore {
                     const lc = document.getElementById('adm-lock-chat'), lg = document.getElementById('adm-lock-guests');
                     if (lc) lc.checked = this.state.serverConfig.chatLocked;
                     if (lg) lg.checked = this.state.serverConfig.guestsLocked;
+                    const bw = document.getElementById('adm-bad-words');
+                    if (bw) bw.value = this.state.serverConfig.badWords || '';
                 }
                 if (id === 'auditlog') this.loadAuditLog();
             },
@@ -1618,6 +1631,14 @@ service cloud.firestore {
                         container.appendChild(row);
                     });
                 } catch (err) { container.innerHTML = '<div class="p-4 text-red-400 text-sm">Errore caricamento log.</div>'; }
+            },
+
+            async adminSaveBadWords() {
+                const val = document.getElementById('adm-bad-words').value.trim();
+                await setDoc(doc(this.getCol('server_settings'), 'config'), { badWords: val }, { merge: true });
+                this.state.serverConfig.badWords = val;
+                await this.writeAuditLog('BAD_WORDS_UPDATED', `${val.split(',').filter(Boolean).length} parole`);
+                this.showToast('✅ Filtro parole salvato', 'success');
             },
 
             async adminSaveAdminCode() {
@@ -1968,38 +1989,52 @@ service cloud.firestore {
                 onSnapshot(this.getCol('messages_pvt'), snap => {
                     this.state.allPvtMessages = [];
                     snap.forEach(d => this.state.allPvtMessages.push({ id: d.id, ...d.data() }));
+
                     snap.docChanges().forEach(change => {
-                        if (change.type === 'added') {
-                            const m = change.doc.data();
-                            if (m.toUid === this.state.me.uid && m.timestamp > this.state.loginTime) {
-                                const sender = this.state.users.find(u => u.uid === m.fromUid);
-                                if (sender) {
-                                    const w = document.getElementById('pvt-window');
-                                    if (!w.classList.contains('active')) {
-                                        this.startPrivateChatWithUser(sender);
-                                        this.showToast(`💬 Messaggio da ${sender.name}`, 'info');
-                                        this.playBeep();
-                                    } else if (!this.state.privateChatTarget || this.state.privateChatTarget.uid !== sender.uid) {
-                                        this.showToast(`💬 Messaggio da ${sender.name}`, 'info');
-                                        this.playBeep();
-                                    } else { this.playBeep(); }
-                                }
-                            }
+                        if (change.type !== 'added') return;
+                        const m = change.doc.data();
+                        // Only handle new messages received after login
+                        if (m.timestamp <= this.state.loginTime) return;
+                        if (m.toUid !== this.state.me.uid) return;
+
+                        const sender = this.state.users.find(u => u.uid === m.fromUid);
+                        const senderName = sender?.name || m.name || '???';
+                        const w = document.getElementById('pvt-window');
+                        const isWindowOpen = w.classList.contains('active');
+                        const isCurrentChat = isWindowOpen && this.state.privateChatTarget?.uid === m.fromUid;
+
+                        if (!isCurrentChat) {
+                            // Increment unread badge for this sender
+                            if (!this.state.pvtUnread) this.state.pvtUnread = {};
+                            this.state.pvtUnread[m.fromUid] = (this.state.pvtUnread[m.fromUid] || 0) + 1;
+                            this.updatePvtBadge();
                         }
+
+                        if (!isWindowOpen) {
+                            // Auto-open window for the receiver
+                            if (sender) this.startPrivateChatWithUser(sender);
+                        } else if (!isCurrentChat) {
+                            // Window open on different conversation — show toast
+                            this.showToast(`💬 ${senderName}: ${m.text.slice(0,40)}`, 'info', `<button onclick="app.switchPrivateTo('${m.fromUid}')" class="mt-1 text-[10px] bg-white/20 px-2 py-1 rounded font-bold">Apri chat</button>`, 5000);
+                        }
+                        this.playBeep();
                     });
+
                     if (this.state.privateChatTarget) this.renderPrivateChat();
                 });
 
                 onSnapshot(this.getCol('cam_requests'), snap => {
                     snap.docChanges().forEach(change => {
+                        const req = change.doc.data();
+                        const docId = change.doc.id;
+
                         if (change.type === 'added') {
-                            const req = change.doc.data();
-                            const docId = change.doc.id;
-                            // FIX M4: auto-delete stale cam_requests older than 60s
+                            // Auto-delete stale requests
                             if (Date.now() - req.timestamp > 60000) {
                                 deleteDoc(doc(this.getCol('cam_requests'), docId)).catch(() => null);
                                 return;
                             }
+                            // Incoming request to me
                             if (req.to === this.state.me.uid && req.status === 'pending') {
                                 if (!this.state.me.camActive) {
                                     updateDoc(doc(this.getCol('cam_requests'), docId), { status: 'rejected' }).catch(() => null);
@@ -2009,6 +2044,19 @@ service cloud.firestore {
                                 this.showToast(`🎥 ${req.fromName} vuole vedere la tua cam!`, 'request',
                                     `<div class="flex gap-2 w-full mt-2"><button id="req-${docId}" onclick="app.answerCamRequest('${docId}','${req.from}',true)" class="flex-1 bg-green-500 text-white py-1 rounded text-xs font-bold">✅ Mostra</button><button onclick="app.answerCamRequest('${docId}','${req.from}',false)" class="flex-1 bg-red-500 text-white py-1 rounded text-xs font-bold">❌ Nega</button></div>`
                                 );
+                            }
+                        }
+                        if (change.type === 'modified') {
+                            // Response to MY request
+                            if (req.from === this.state.me.uid) {
+                                if (req.status === 'rejected') {
+                                    this.state.camRequestStates[req.to] = 'rejected';
+                                    this.showToast('❌ Cam rifiutata dall\'utente.', 'error');
+                                    deleteDoc(doc(this.getCol('cam_requests'), docId)).catch(() => null);
+                                } else if (req.status === 'accepted') {
+                                    this.state.camRequestStates[req.to] = 'accepted';
+                                    deleteDoc(doc(this.getCol('cam_requests'), docId)).catch(() => null);
+                                }
                             }
                         }
                     });
@@ -2223,15 +2271,21 @@ service cloud.firestore {
                 const fab = document.getElementById('scroll-to-bottom');
                 const roomName = this.state.rooms.find(r => r.id === roomId)?.name || roomId;
                 // Clear all messages but keep the FAB button inside
-                const children = [...c.childNodes];
-                children.forEach(child => { if (child !== fab) child.remove(); });
-                // Add room header
+                [...c.childNodes].forEach(child => { if (child !== fab) child.remove(); });
+                // Room header
                 const header = document.createElement('div');
                 header.className = 'flex justify-center mb-6 mt-2';
                 header.innerHTML = `<span class="bg-indigo-50 text-indigo-500 text-[10px] px-6 py-2 rounded-full font-black uppercase tracking-widest border border-indigo-100/50 shadow-sm">📍 ${this.sanitize(roomName)}</span>`;
                 c.insertBefore(header, fab);
                 const ignoredUids = this.state.ignoredUsers.map(u => u.uid);
-                const msgs = this.state.cachedMessages.filter(m => m.roomId === roomId);
+                // Only show messages received AFTER the user logged in
+                const msgs = this.state.cachedMessages.filter(m => m.roomId === roomId && m.timestamp >= this.state.loginTime);
+                if (msgs.length === 0) {
+                    const empty = document.createElement('div');
+                    empty.className = 'flex justify-center mt-4';
+                    empty.innerHTML = `<span class="text-slate-400 text-[11px] italic">Nessun messaggio ancora. Inizia tu! 👋</span>`;
+                    c.insertBefore(empty, fab);
+                }
                 msgs.forEach(m => {
                     if (!ignoredUids.includes(m.fromUid)) {
                         const div = document.createElement('div');
@@ -2372,7 +2426,6 @@ service cloud.firestore {
             // ============================================================
             async toggleCam() {
                 if (this.state.me.camActive) {
-                    // FIX: Proper cleanup — close AudioContext and stop all tracks
                     if (this.state.localAudioCtx && this.state.localAudioCtx.state !== 'closed') {
                         try { await this.state.localAudioCtx.close(); } catch (e) {}
                     }
@@ -2388,6 +2441,16 @@ service cloud.firestore {
                     document.getElementById('header-btn-cam').classList.remove('cam-on');
                     this.state.me.camActive = false;
                     updateDoc(doc(this.getCol('online_users'), this.state.me.uid), { camActive: false }).catch(() => null);
+
+                    // Close all active outgoing calls (we were sharing our stream)
+                    Object.entries(this.state.activeCamConnections).forEach(([peerId, call]) => {
+                        try { call.close(); } catch(e) {}
+                    });
+                    this.state.activeCamConnections = {};
+                    // Reset all cam request states so users can request again after re-enable
+                    this.state.camRequestStates = {};
+
+                    this.showToast('🎥 Cam disattivata', 'info');
                 } else {
                     try {
                         const vSrc = document.getElementById('select-video-source').value;
@@ -2482,61 +2545,112 @@ service cloud.firestore {
 
             setupPeerCallHandler() {
                 if (!this.state.peer) return;
+                this.state.peer.removeAllListeners('call');
                 this.state.peer.on('call', call => {
-                    call.answer(this.state.localStream);
-                    this.state.currentCall = call;
+                    const peerId = call.peer;
+                    call.answer(this.state.localStream || undefined);
                     this.playBeep();
+
                     call.on('stream', remoteStream => {
-                        if (this.state.currentRoom === 'games' && this.state.gameHostUid === call.peer) {
+                        // Find user name from peerId
+                        const user = this.state.users.find(u => (u.peerId || u.uid) === peerId);
+                        const label = user?.name || peerId;
+                        if (this.state.currentRoom === 'games' && this.state.gameHostUid === (user?.uid || peerId)) {
                             const sp = document.getElementById('stage-player');
                             sp.srcObject = remoteStream; sp.classList.remove('hidden');
                             document.getElementById('game-placeholder').classList.add('hidden');
                             document.getElementById('stage-vol-ctrl-container').classList.remove('hidden');
                         } else {
-                            const win = document.getElementById('watch-video-container');
-                            document.getElementById('remote-v-player').srcObject = remoteStream;
-                            document.getElementById('watching-name').innerText = 'Live';
-                            win.classList.add('active');
-                            this.bringToFront(win);
+                            this.openCamWindow(peerId, label, remoteStream);
                         }
                     });
-                    call.on('close', () => this.closeRemoteStream());
-                    call.on('error', () => this.closeRemoteStream());
+                    call.on('close', () => this.closeCamWindow(peerId));
+                    call.on('error', () => this.closeCamWindow(peerId));
+                    this.state.activeCamConnections[peerId] = call;
                 });
             },
 
+            openCamWindow(peerId, label, remoteStream) {
+                const winId = `cam-win-${peerId.replace(/[^a-z0-9]/gi,'_')}`;
+                let win = document.getElementById(winId);
+                if (!win) {
+                    win = document.createElement('div');
+                    win.id = winId;
+                    win.className = 'video-window';
+                    win.style.cssText = `width:180px;height:180px;top:${80 + Object.keys(this.state.activeCamConnections).length * 200}px;left:20px;`;
+                    win.innerHTML = `
+                        <div class="drag-handle" id="drag-${winId}"></div>
+                        <video class="w-full h-full object-cover pointer-events-none" autoplay playsinline></video>
+                        <div class="absolute top-2 left-2 bg-black/60 px-1.5 py-0.5 rounded text-[7px] font-black text-white uppercase z-20 pointer-events-none">${this.sanitize(label)}</div>
+                        <button onclick="app.closeCamWindow('${peerId}')" class="absolute top-2 right-2 w-5 h-5 bg-black/50 text-white rounded-full flex items-center justify-center text-[10px] z-50 hover:bg-red-600 cursor-pointer">×</button>
+                        <div class="remote-vol-controls" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">
+                            <span class="text-[8px] text-white font-bold uppercase">Vol</span>
+                            <input type="range" class="vol-slider" min="0" max="1" step="0.05" value="1" oninput="this.closest('.video-window').querySelector('video').volume=this.value">
+                        </div>
+                        <div class="resize-handle" id="resize-${winId}"></div>`;
+                    document.body.appendChild(win);
+                    this.makeDraggable(win, win.querySelector('.drag-handle'));
+                    this.makeResizable(win, win.querySelector('.resize-handle'));
+                }
+                win.querySelector('video').srcObject = remoteStream;
+                win.classList.add('active');
+                this.bringToFront(win);
+            },
+
+            closeCamWindow(peerId) {
+                const winId = `cam-win-${peerId.replace(/[^a-z0-9]/gi,'_')}`;
+                const win = document.getElementById(winId);
+                if (win) { win.querySelector('video').srcObject = null; win.classList.remove('active'); }
+                const call = this.state.activeCamConnections[peerId];
+                if (call) { try { call.close(); } catch(e){} delete this.state.activeCamConnections[peerId]; }
+                // Also clear stage if it was the host
+                const sp = document.getElementById('stage-player');
+                if (sp?.srcObject) { const tracks = sp.srcObject.getTracks(); if (tracks.length === 0) { sp.srcObject=null; sp.classList.add('hidden'); document.getElementById('game-placeholder').classList.remove('hidden'); document.getElementById('stage-vol-ctrl-container').classList.add('hidden'); } }
+                // Reset cam request state for this peer
+                const user = this.state.users.find(u => (u.peerId || u.uid) === peerId);
+                if (user) delete this.state.camRequestStates[user.uid];
+            },
+
+            closeRemoteStream() {
+                // Legacy: close all cam windows
+                Object.keys(this.state.activeCamConnections).forEach(peerId => this.closeCamWindow(peerId));
+                // Also close old single watch-video-container if still present
+                const win = document.getElementById('watch-video-container');
+                if (win) { win.classList.remove('active'); const v = win.querySelector('video'); if (v) v.srcObject = null; }
+                const sp = document.getElementById('stage-player');
+                if (sp) { sp.srcObject = null; sp.classList.add('hidden'); }
+                document.getElementById('game-placeholder').classList.remove('hidden');
+                document.getElementById('stage-vol-ctrl-container').classList.add('hidden');
+                this.state.currentCall = null;
+            },
+
             async requestCam(targetUid) {
+                const state = this.state.camRequestStates[targetUid];
+                if (state === 'pending') return this.showToast('📡 Richiesta già inviata, attendi...', 'info');
+                if (state === 'accepted') return this.showToast('🎥 Cam già visualizzata.', 'info');
+                if (state === 'rejected') return this.showToast('❌ Richiesta cam rifiutata dall\'utente.', 'error');
+                this.state.camRequestStates[targetUid] = 'pending';
                 this.showToast('📡 Richiesta cam inviata...', 'info');
                 await addDoc(this.getCol('cam_requests'), { from: this.state.me.uid, fromName: this.state.me.name, to: targetUid, status: 'pending', timestamp: Date.now() });
             },
 
             answerCamRequest(reqId, fromUid, accepted) {
                 const el = document.getElementById(`req-${reqId}`);
-                if (el) el.parentElement.remove();
+                if (el) el.closest('.toast')?.remove();
                 updateDoc(doc(this.getCol('cam_requests'), reqId), { status: accepted ? 'accepted' : 'rejected' }).catch(() => null);
                 if (accepted) {
-                    if (!this.state.localStream) {
-                        // FIX M3: tell user their cam is off before accepting
-                        return this.showToast('⚠️ Attiva prima la tua webcam per condividere!', 'warning');
-                    }
-                    // FIX C4: resolve the actual PeerJS ID for the caller.
-                    // If their peer used a fallback ID it's stored in online_users.peerId.
+                    if (!this.state.localStream) return this.showToast('⚠️ Attiva prima la tua webcam per condividere!', 'warning');
                     const callerUser = this.state.users.find(u => u.uid === fromUid);
                     const targetPeerId = callerUser?.peerId || fromUid;
                     const call = this.state.peer.call(targetPeerId, this.state.localStream);
-                    if (call) call.on('error', err => console.warn('Call error:', err));
+                    if (call) {
+                        call.on('error', err => console.warn('Call error:', err));
+                        this.state.activeCamConnections[targetPeerId] = call;
+                    }
                     this.showToast('📡 Trasmissione avviata', 'success');
+                } else {
+                    this.showToast('❌ Cam rifiutata.', 'info');
                 }
-            },
-
-            closeRemoteStream() {
-                document.getElementById('watch-video-container').classList.remove('active');
-                if (this.state.currentCall) { try { this.state.currentCall.close(); } catch (e) {} }
-                const rp = document.getElementById('remote-v-player'); if (rp) rp.srcObject = null;
-                const sp = document.getElementById('stage-player'); if (sp) { sp.srcObject = null; sp.classList.add('hidden'); }
-                document.getElementById('game-placeholder').classList.remove('hidden');
-                document.getElementById('stage-vol-ctrl-container').classList.add('hidden');
-                this.state.currentCall = null;
             },
 
             // ============================================================
@@ -2697,33 +2811,72 @@ service cloud.firestore {
             startPrivateChatWithUser(user) {
                 if (!user) return;
                 this.state.privateChatTarget = user;
+                // Clear unread for this sender
+                if (this.state.pvtUnread) this.state.pvtUnread[user.uid] = 0;
+                this.updatePvtBadge();
                 const w = document.getElementById('pvt-window');
                 w.classList.add('active');
                 this.bringToFront(w);
                 const camBtn = user.camActive
-                    ? `<button onclick="event.stopPropagation();app.requestCam('${user.uid}')" class="text-green-300 hover:text-green-100 mr-2 p-1.5 bg-white/10 hover:bg-white/20 rounded flex items-center transition"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></button>`
+                    ? `<button onclick="event.stopPropagation();app.requestCam('${user.uid}')" title="Richiedi cam" class="text-green-300 hover:text-green-100 mr-2 p-1.5 bg-white/10 hover:bg-white/20 rounded flex items-center transition"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></button>`
                     : '';
-                document.getElementById('pvt-title-area').innerHTML = `${camBtn}<span class="text-xs font-black uppercase truncate">💬 ${this.sanitize(user.name)}</span>`;
+                const roleColor = user.role === 'Admin' ? 'text-yellow-300' : user.role === 'Staff' ? 'text-red-300' : 'text-white/80';
+                document.getElementById('pvt-title-area').innerHTML = `${camBtn}<div class="flex flex-col min-w-0"><span class="text-xs font-black truncate leading-none">💬 ${this.sanitize(user.name)}</span><span class="text-[9px] ${roleColor} font-bold">${user.role}</span></div>`;
                 this.renderPrivateChat();
                 this.closeUserMenu();
             },
-            closePrivateChat() { this.state.privateChatTarget = null; document.getElementById('pvt-window').classList.remove('active'); },
+
+            switchPrivateTo(uid) {
+                const user = this.state.users.find(u => u.uid === uid);
+                if (user) this.startPrivateChatWithUser(user);
+            },
+
+            updatePvtBadge() {
+                const total = Object.values(this.state.pvtUnread || {}).reduce((a,b) => a+b, 0);
+                // Update any pvt badge indicators
+                document.querySelectorAll('.pvt-badge').forEach(el => {
+                    el.textContent = total > 0 ? total : '';
+                    el.classList.toggle('hidden', total === 0);
+                });
+            },
+
+            closePrivateChat() {
+                this.state.privateChatTarget = null;
+                document.getElementById('pvt-window').classList.remove('active');
+            },
 
             async sendPrivateMessage(e) {
                 e.preventDefault();
-                const t = document.getElementById('pvt-input').value.trim();
+                const input = document.getElementById('pvt-input');
+                const t = input.value.trim();
                 if (!t || !this.state.privateChatTarget) return;
-                await addDoc(this.getCol('messages_pvt'), { text: this.sanitize(t), name: this.state.me.name, fromUid: this.state.me.uid, toUid: this.state.privateChatTarget.uid, timestamp: Date.now() });
-                document.getElementById('pvt-input').value = '';
+                const payload = {
+                    text: this.sanitize(t), name: this.state.me.name,
+                    fromUid: this.state.me.uid, toUid: this.state.privateChatTarget.uid,
+                    timestamp: Date.now()
+                };
+                input.value = '';
+                await addDoc(this.getCol('messages_pvt'), payload);
             },
 
             renderPrivateChat() {
                 const t = this.state.privateChatTarget; if (!t) return;
                 const c = document.getElementById('pvt-messages');
                 const msgs = this.state.allPvtMessages
-                    .filter(m => ((m.fromUid === this.state.me.uid && m.toUid === t.uid) || (m.fromUid === t.uid && m.toUid === this.state.me.uid)) && m.timestamp >= this.state.loginTime - 60000)
-                    .sort((a, b) => a.timestamp - b.timestamp);
-                c.innerHTML = msgs.map(m => `<div class="pvt-msg ${m.fromUid === this.state.me.uid ? 'me' : 'them'}">${this.sanitize(m.text)}</div>`).join('');
+                    .filter(m =>
+                        (m.fromUid === this.state.me.uid && m.toUid === t.uid) ||
+                        (m.fromUid === t.uid && m.toUid === this.state.me.uid)
+                    )
+                    .sort((a, b) => a.timestamp - b.timestamp)
+                    .slice(-100); // last 100 messages
+                c.innerHTML = msgs.map(m => {
+                    const isMe = m.fromUid === this.state.me.uid;
+                    const time = new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+                    return `<div class="pvt-msg-row ${isMe ? 'me' : 'them'}">
+                        <div class="pvt-msg ${isMe ? 'me' : 'them'}">${this.sanitize(m.text)}</div>
+                        <div class="pvt-time">${isMe ? '✓ ' : ''}${time}</div>
+                    </div>`;
+                }).join('');
                 setTimeout(() => { c.scrollTop = c.scrollHeight; }, 10);
             },
 
