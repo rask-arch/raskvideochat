@@ -236,19 +236,38 @@
         <div class="auth-card">
             <div class="text-center mb-6">
                 <h1 class="text-2xl font-black text-slate-900 tracking-tight app-title-display">RaskVideochat</h1>
-                <p class="text-[10px] font-bold text-brand uppercase tracking-widest mt-1">Release 2.0.0 — Secured</p>
+                <p class="text-[10px] font-bold text-brand uppercase tracking-widest mt-1">Release 2.0.0</p>
             </div>
-            <div class="flex border-b border-slate-200 mb-6">
+            <!-- Firebase setup warning (shown only when needed) -->
+            <div id="firebase-setup-banner" class="hidden mb-4 bg-amber-50 border border-amber-200 rounded-2xl p-3 text-xs text-amber-800">
+                <p class="font-black mb-1">⚙️ Setup Firebase richiesto</p>
+                <p class="font-medium mb-2">Per usare la chat devi configurare Firebase:</p>
+                <ol class="space-y-1 font-medium list-decimal list-inside text-[11px]">
+                    <li>Vai su <a href="https://console.firebase.google.com" target="_blank" class="text-indigo-600 font-black underline">console.firebase.google.com</a></li>
+                    <li><b>Authentication → Sign-in method → Email/Password → Abilita</b></li>
+                    <li><b>Firestore → Rules</b> → incolla le regole → Pubblica</li>
+                </ol>
+                <button onclick="app.openModal('firestore-setup-modal')" class="mt-2 w-full bg-amber-600 text-white py-2 rounded-xl text-[10px] font-black uppercase">Vedi regole Firestore</button>
+            </div>
+            <div class="flex border-b border-slate-200 mb-5">
                 <button type="button" onclick="app.setAuthMode('login')" id="tab-btn-login" class="flex-1 pb-3 text-[11px] font-black uppercase tracking-widest border-b-2 border-brand text-brand transition">Accedi</button>
                 <button type="button" onclick="app.setAuthMode('register')" id="tab-btn-register" class="flex-1 pb-3 text-[11px] font-black uppercase tracking-widest border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition">Registrati</button>
             </div>
-            <form id="auth-form" onsubmit="app.handleAuth(event)" class="space-y-4">
-                <div><label class="block text-[10px] font-black uppercase text-slate-500 mb-1 ml-1">Username</label><input type="text" id="auth-username" placeholder="Il tuo nome..." required autocomplete="username" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition"></div>
-                <div><label class="block text-[10px] font-black uppercase text-slate-500 mb-1 ml-1">Password</label><input type="password" id="auth-password" placeholder="Min. 6 caratteri" required autocomplete="current-password" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition"></div>
-                <div id="gender-group" style="display:none;"><label class="block text-[10px] font-black uppercase text-slate-500 mb-1 ml-1">Sesso</label><select id="auth-gender" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition"><option value="M">Uomo</option><option value="F">Donna</option></select></div>
-                <button type="submit" id="auth-submit-btn" class="w-full btn-brand text-white py-4 rounded-xl font-black text-sm uppercase tracking-wider shadow-lg flex justify-center items-center transition"><span id="btn-text">Accedi</span></button>
-                <div class="relative flex py-3 items-center"><div class="flex-grow border-t border-slate-200"></div><span class="flex-shrink-0 mx-4 text-slate-400 text-[10px] uppercase font-bold">OPPURE</span><div class="flex-grow border-t border-slate-200"></div></div>
-                <button type="button" onclick="app.loginAsGuest()" id="btn-guest" class="w-full bg-white border-2 border-slate-200 hover:bg-slate-50 text-slate-600 py-3 rounded-xl font-bold text-sm uppercase tracking-wider flex justify-center items-center transition">Entra come Ospite</button>
+            <form id="auth-form" onsubmit="app.handleAuth(event)" class="space-y-3">
+                <div>
+                    <label class="block text-[10px] font-black uppercase text-slate-500 mb-1 ml-1">Username</label>
+                    <input type="text" id="auth-username" placeholder="Scegli un nome..." required autocomplete="username" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-black uppercase text-slate-500 mb-1 ml-1">Password</label>
+                    <input type="password" id="auth-password" placeholder="Min. 6 caratteri" required autocomplete="current-password" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                </div>
+                <button type="submit" id="auth-submit-btn" class="w-full btn-brand text-white py-4 rounded-xl font-black text-sm uppercase tracking-wider shadow-lg flex justify-center items-center transition gap-2">
+                    <span id="btn-text">Accedi</span>
+                    <svg id="btn-spinner" class="hidden animate-spin w-4 h-4" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="white" stroke-width="4"/><path class="opacity-75" fill="white" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>
+                </button>
+                <div class="relative flex py-2 items-center"><div class="flex-grow border-t border-slate-200"></div><span class="flex-shrink-0 mx-4 text-slate-400 text-[10px] uppercase font-bold">OPPURE</span><div class="flex-grow border-t border-slate-200"></div></div>
+                <button type="button" onclick="app.loginAsGuest()" id="btn-guest" class="w-full bg-white border-2 border-slate-200 hover:bg-slate-50 text-slate-600 py-3 rounded-xl font-bold text-sm uppercase tracking-wider flex justify-center items-center transition">👤 Entra come Ospite</button>
             </form>
         </div>
     </div>
@@ -702,6 +721,7 @@ service cloud.firestore {
                 typingTimeout: null, typingUsers: {},
                 msgReactions: {}, unreadCounts: {}, searchOpen: false,
                 soundsEnabled: true,
+                cachedMessages: [],
                 // FIX: Rate limiting
                 lastMsgTime: 0, msgBurst: 0,
                 // FIX: Per-room listener
@@ -996,13 +1016,20 @@ service cloud.firestore {
             setAuthMode(mode) {
                 this.state.authMode = mode;
                 const btnText = document.getElementById('btn-text');
-                const genderGroup = document.getElementById('gender-group');
                 const tl = document.getElementById('tab-btn-login'), tr = document.getElementById('tab-btn-register');
                 const ac = 'flex-1 pb-3 text-[11px] font-black uppercase tracking-widest border-b-2 border-brand text-brand transition';
                 const ic = 'flex-1 pb-3 text-[11px] font-black uppercase tracking-widest border-b-2 border-transparent text-slate-400 hover:text-slate-600 transition';
-                if (mode === 'login') { tl.className = ac; tr.className = ic; btnText.innerText = 'Accedi'; genderGroup.style.display = 'none'; }
-                else { tr.className = ac; tl.className = ic; btnText.innerText = 'Registra Account'; genderGroup.style.display = 'block'; }
+                if (mode === 'login') {
+                    tl.className = ac; tr.className = ic;
+                    btnText.innerText = 'Accedi';
+                    document.getElementById('auth-username').placeholder = 'Il tuo username...';
+                } else {
+                    tr.className = ac; tl.className = ic;
+                    btnText.innerText = 'Crea Account';
+                    document.getElementById('auth-username').placeholder = 'Scegli un username...';
+                }
                 document.getElementById('auth-submit-btn').disabled = false;
+                document.getElementById('btn-spinner').classList.add('hidden');
                 this.state.authSubmitting = false;
             },
 
@@ -1020,35 +1047,29 @@ service cloud.firestore {
 
             async handleAuth(e) {
                 if (e) e.preventDefault();
-                // Double-submit guard
                 if (this.state.authSubmitting) return;
                 this.state.authSubmitting = true;
 
                 const rawU = document.getElementById('auth-username').value.trim();
                 const rawP = document.getElementById('auth-password').value.trim();
 
-                // Input validation
-                if (!rawU || !rawP) {
+                const resetBtn = () => {
                     this.state.authSubmitting = false;
-                    return this.showToast('Inserisci username e password', 'error');
-                }
-                if (rawU.length < 2 || rawU.length > 30) {
-                    this.state.authSubmitting = false;
-                    return this.showToast('Username: 2–30 caratteri', 'error');
-                }
-                if (rawP.length < 6) {
-                    this.state.authSubmitting = false;
-                    return this.showToast('Password: minimo 6 caratteri', 'error');
-                }
-                if (/<[^>]+>/.test(rawU)) {
-                    this.state.authSubmitting = false;
-                    return this.showToast('Username non valido', 'error');
-                }
+                    document.getElementById('auth-submit-btn').disabled = false;
+                    document.getElementById('btn-spinner').classList.add('hidden');
+                    document.getElementById('btn-text').innerText = this.state.authMode === 'login' ? 'Accedi' : 'Crea Account';
+                };
+
+                if (!rawU || !rawP) { resetBtn(); return this.showToast('Inserisci username e password', 'error'); }
+                if (rawU.length < 2 || rawU.length > 30) { resetBtn(); return this.showToast('Username: 2–30 caratteri', 'error'); }
+                if (rawP.length < 6) { resetBtn(); return this.showToast('Password: minimo 6 caratteri', 'error'); }
+                if (/<[^>]+>/.test(rawU)) { resetBtn(); return this.showToast('Username non valido', 'error'); }
 
                 const btnEl = document.getElementById('btn-text');
                 const submitBtn = document.getElementById('auth-submit-btn');
-                btnEl.innerText = 'Verifica...';
+                btnEl.innerText = 'Attendere...';
                 submitBtn.disabled = true;
+                document.getElementById('btn-spinner').classList.remove('hidden');
 
                 try {
                     await this.initFirebase();
@@ -1062,8 +1083,8 @@ service cloud.firestore {
                                 query(this.getCol('user_profiles'), where('nameLower', '==', rawU.toLowerCase()))
                             );
                             if (!existSnap.empty) {
-                                this.setAuthMode('register');
-                                return this.showToast('Username già in uso', 'error');
+                                resetBtn();
+                                return this.showToast('❌ Username già in uso', 'error');
                             }
                         } catch (_) { /* Firestore rules: open — proceed */ }
 
@@ -1083,41 +1104,39 @@ service cloud.firestore {
                         try {
                             cred = await createUserWithEmailAndPassword(this.state.auth, email, rawP);
                         } catch (regErr) {
-                            this.state.authSubmitting = false;
-                            document.getElementById('auth-submit-btn').disabled = false;
-                            document.getElementById('btn-text').innerText = 'Registra Account';
+                            resetBtn();
                             const regErrMap = {
-                                'auth/operation-not-allowed': '⚠️ Registrazione non abilitata. Vai su Firebase Console → Authentication → Sign-in method → abilita "Email/Password".',
+                                'auth/operation-not-allowed': null, // handled specially below
                                 'auth/email-already-in-use': `Username "${rawU}" già in uso. Prova ad accedere.`,
                                 'auth/weak-password': 'Password troppo corta (minimo 6 caratteri)',
                                 'auth/network-request-failed': '❌ Errore di rete. Controlla la connessione.',
                                 'auth/configuration-not-found': '⚠️ Firebase non configurato correttamente.',
                             };
-                            return this.showToast(regErrMap[regErr.code] || `Errore registrazione: ${regErr.message}`, 'error');
+                            if (regErr.code === 'auth/operation-not-allowed') {
+                                document.getElementById('firebase-setup-banner').classList.remove('hidden');
+                                return this.showToast('⚠️ Abilita "Email/Password" in Firebase Console → Authentication → Sign-in method', 'error', '', 8000);
+                            }
+                            return this.showToast(regErrMap[regErr.code] || `Errore: ${regErr.message}`, 'error');
                         }
                         const uid = cred.user.uid;
-                        const gender = document.getElementById('auth-gender').value;
                         const avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(rawU)}`;
 
                         try {
                             await setDoc(doc(this.getCol('user_profiles'), uid), {
-                                name: rawU, nameLower: rawU.toLowerCase(), gender, role: 'User',
+                                name: rawU, nameLower: rawU.toLowerCase(), gender: 'M', role: 'User',
                                 avatarUrl, bio: '', createdAt: Date.now()
                             });
                         } catch (writeErr) {
                             if (writeErr.code === 'permission-denied' || writeErr.message?.includes('permissions')) {
-                                // FIX C3: reset submit lock so user can try again after fixing rules
-                                this.state.authSubmitting = false;
-                                document.getElementById('auth-submit-btn').disabled = false;
-                                document.getElementById('btn-text').innerText = 'Registra Account';
-                                this.setAuthMode('register');
+                                resetBtn();
+                                document.getElementById('firebase-setup-banner').classList.remove('hidden');
                                 this.openModal('firestore-setup-modal');
                                 return;
                             }
                             throw writeErr;
                         }
-                        this.showToast('✅ Account creato!', 'success');
-                        await this.finalizeLogin(uid, rawU, 'User', gender, avatarUrl, '');
+                        this.showToast('✅ Account creato! Benvenuto!', 'success');
+                        await this.finalizeLogin(uid, rawU, 'User', 'M', avatarUrl, '');
 
                     } else {
                         // ── LOGIN ─────────────────────────────────────────────────
@@ -1180,7 +1199,7 @@ service cloud.firestore {
                     }
                 } catch (err) {
                     console.error('[handleAuth] Unexpected error:', err);
-                    this.setAuthMode(this.state.authMode);
+                    resetBtn();
                     this.showToast('Errore: ' + (err.message || 'Riprova'), 'error');
                 }
             },
@@ -1488,7 +1507,8 @@ service cloud.firestore {
                     }
                     if (this.state.me.uid) deleteDoc(doc(this.getCol('online_users'), this.state.me.uid)).catch(() => null);
                     if (this.state.peer) this.state.peer.destroy();
-                    if (this.state.currentRoomUnsub) this.state.currentRoomUnsub();
+                    if (this.state.currentRoomUnsub) { this.state.currentRoomUnsub(); this.state.currentRoomUnsub = null; }
+                    this.state.cachedMessages = [];
                     if (this.state.localStream) this.state.localStream.getTracks().forEach(t => t.stop());
                     await signOut(this.state.auth).catch(() => null);
                 } catch (e) { console.warn('Logout error:', e); }
@@ -2039,61 +2059,64 @@ service cloud.firestore {
             //        Firebase will provide the index creation link on first use.
             // ============================================================
             subscribeToRoom(roomId) {
-                if (this.state.currentRoomUnsub) { this.state.currentRoomUnsub(); this.state.currentRoomUnsub = null; }
+                // We only create ONE global listener for all messages.
+                // If already subscribed, just re-render the current room.
+                if (this.state.currentRoomUnsub) {
+                    this.renderRoomMessages(roomId);
+                    return;
+                }
 
+                // Single global listener - no composite index required
                 const msgQ = query(
                     this.getCol('messages'),
-                    where('roomId', '==', roomId),
                     orderBy('timestamp', 'asc'),
-                    limit(100)
+                    limit(500)
                 );
-                const c = document.getElementById('msg-container');
-                const roomName = this.state.rooms.find(r => r.id === roomId)?.name || roomId;
-                if (c) c.innerHTML = `<div class="flex justify-center mb-6 mt-2"><span class="bg-indigo-50 text-indigo-500 text-[10px] px-6 py-2 rounded-full font-black uppercase tracking-widest border border-indigo-100/50 shadow-sm">📍 ${this.sanitize(roomName)}</span></div>`;
-
-                let initialLoad = true;
-                const ignoredUids = () => this.state.ignoredUsers.map(u => u.uid);
 
                 this.state.currentRoomUnsub = onSnapshot(msgQ, snap => {
                     const statMsgs = document.getElementById('stat-msgs');
+                    const isFirstLoad = this.state.cachedMessages.length === 0;
 
-                    if (initialLoad) {
-                        // Render all existing messages at once
-                        initialLoad = false;
-                        const fragment = document.createDocumentFragment();
-                        snap.forEach(docSnap => {
-                            const m = { id: docSnap.id, ...docSnap.data() };
-                            if (!ignoredUids().includes(m.fromUid)) {
-                                const div = document.createElement('div');
-                                div.innerHTML = this.buildMessageHTML(m);
-                                if (div.firstElementChild) fragment.appendChild(div.firstElementChild);
-                            }
-                        });
-                        const fab = document.getElementById('scroll-to-bottom');
-                        if (c) { if (fab) c.insertBefore(fragment, fab); else c.appendChild(fragment); }
-                        this.scrollToBottom(true);
+                    // Build full cache from snapshot
+                    const newCache = [];
+                    snap.forEach(docSnap => newCache.push({ id: docSnap.id, ...docSnap.data() }));
+                    this.state.cachedMessages = newCache;
+
+                    if (isFirstLoad) {
+                        // Initial render for current room
+                        this.renderRoomMessages(this.state.currentRoom);
                         if (statMsgs) statMsgs.innerText = snap.size;
                     } else {
+                        // Handle new messages
                         snap.docChanges().forEach(change => {
-                            if (change.type === 'added') {
-                                const m = { id: change.doc.id, ...change.doc.data() };
-                                if (!ignoredUids().includes(m.fromUid) && m.timestamp > this.state.loginTime - 1000) {
-                                    const div = document.createElement('div');
-                                    div.innerHTML = this.buildMessageHTML(m);
-                                    if (div.firstElementChild && c) {
-                                        const fab = document.getElementById('scroll-to-bottom');
-                                        if (fab) c.insertBefore(div.firstElementChild, fab); else c.appendChild(div.firstElementChild);
-                                        this.scrollToBottom(false);
-                                        this.playBeep();
-                                    }
+                            if (change.type !== 'added') return;
+                            const m = { id: change.doc.id, ...change.doc.data() };
+                            if (m.timestamp <= this.state.loginTime - 2000) return; // skip old
+
+                            if (m.roomId === this.state.currentRoom) {
+                                // Show in current room
+                                const ignoredUids = this.state.ignoredUsers.map(u => u.uid);
+                                if (ignoredUids.includes(m.fromUid)) return;
+                                const c = document.getElementById('msg-container');
+                                if (!c) return;
+                                const div = document.createElement('div');
+                                div.innerHTML = this.buildMessageHTML(m);
+                                if (div.firstElementChild) {
+                                    const fab = document.getElementById('scroll-to-bottom');
+                                    if (fab) c.insertBefore(div.firstElementChild, fab); else c.appendChild(div.firstElementChild);
+                                    this.scrollToBottom(false);
+                                    if (m.fromUid !== this.state.me.uid) this.playBeep();
                                 }
-                                if (statMsgs) statMsgs.innerText = parseInt(statMsgs.innerText || 0) + 1;
+                            } else if (m.fromUid !== this.state.me.uid) {
+                                // Badge for other rooms
+                                this.incrementUnread(m.roomId);
                             }
                         });
+                        if (statMsgs) statMsgs.innerText = snap.size;
                     }
                 }, (err) => {
-                    // If index missing, Firestore provides the creation URL in the error
-                    console.warn('Messages query error (may need Firestore index):', err.message);
+                    console.error('Messages listener error:', err.message);
+                    this.showToast('⚠️ Errore messaggi: controlla le Firestore Rules.', 'error');
                 });
             },
 
@@ -2162,13 +2185,33 @@ service cloud.firestore {
                 if (id === 'games') { document.getElementById('game-stage').classList.remove('hidden'); setTimeout(() => window.dispatchEvent(new Event('resize')), 100); }
                 else { document.getElementById('game-stage').classList.add('hidden'); if (this.state.me.camActive) document.getElementById('local-video-container').style.display = 'block'; }
 
-                // FIX: Subscribe to new room with query constraints
-                this.subscribeToRoom(id);
+                // Re-render messages for the new room from cached messages
+                this.renderRoomMessages(id);
 
                 this.state.typingUsers = {};
                 this.renderTypingIndicator();
                 this.clearUnread(id);
                 if (window.innerWidth <= 768) { document.getElementById('sidebar-right').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('active'); }
+            },
+
+            renderRoomMessages(roomId) {
+                const c = document.getElementById('msg-container');
+                if (!c) return;
+                const roomName = this.state.rooms.find(r => r.id === roomId)?.name || roomId;
+                c.innerHTML = `<div class="flex justify-center mb-6 mt-2"><span class="bg-indigo-50 text-indigo-500 text-[10px] px-6 py-2 rounded-full font-black uppercase tracking-widest border border-indigo-100/50 shadow-sm">📍 ${this.sanitize(roomName)}</span></div>`;
+                const ignoredUids = this.state.ignoredUsers.map(u => u.uid);
+                const msgs = this.state.cachedMessages.filter(m => m.roomId === roomId);
+                const fragment = document.createDocumentFragment();
+                msgs.forEach(m => {
+                    if (!ignoredUids.includes(m.fromUid)) {
+                        const div = document.createElement('div');
+                        div.innerHTML = this.buildMessageHTML(m);
+                        if (div.firstElementChild) fragment.appendChild(div.firstElementChild);
+                    }
+                });
+                const fab = document.getElementById('scroll-to-bottom');
+                if (fab) c.insertBefore(fragment, fab); else c.appendChild(fragment);
+                this.scrollToBottom(true);
             },
 
             submitRoomPassword() {
