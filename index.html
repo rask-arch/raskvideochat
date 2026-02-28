@@ -182,8 +182,10 @@
         .user-menu-item { padding: 10px 15px; font-size: 12px; font-weight: 600; color: #475569; cursor: pointer; display: flex; align-items: center; gap: 8px; border-top: 1px solid #f8fafc; }
         .user-menu-item:hover { background: #f1f5f9; color: #0f172a; } .user-menu-item.danger { color: #ef4444; } .user-menu-item.danger:hover { background: #fef2f2; }
 
-        .pvt-window { position: fixed; bottom: 20px; left: 20px; width: 320px; height: 400px; min-width: 250px; min-height: 250px; background: white; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); display: none; flex-direction: column; z-index: 6000; overflow: hidden; border: 1px solid rgba(0,0,0,0.1); touch-action: none; }
+        .pvt-window { position: fixed; bottom: 20px; left: 20px; width: 320px; height: 400px; min-width: 250px; min-height: 250px; background: white; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); display: none; flex-direction: column; z-index: 6000; overflow: hidden; border: 1px solid rgba(0,0,0,0.1); touch-action: none; transition: height 0.2s ease; }
         .pvt-window.active { display: flex; animation: popup 0.3s cubic-bezier(0.175,0.885,0.32,1.275); }
+        .pvt-window.minimized { height: 44px !important; min-height: unset; overflow: hidden; }
+        .pvt-window.minimized .pvt-messages, .pvt-window.minimized .pvt-input-area, .pvt-window.minimized .resize-handle { display: none !important; }
         @keyframes popup { from { transform: scale(0.8) translateY(20px); opacity: 0; } to { transform: scale(1) translateY(0); opacity: 1; } }
         .pvt-header { background: linear-gradient(135deg, #ec4899 0%, #db2777 100%); padding: 10px 12px; color: white; cursor: move; display: flex; justify-content: space-between; align-items: center; touch-action: none; gap: 5px; user-select: none; }
         .pvt-messages { flex: 1; overflow-y: auto; padding: 12px; background: #fdf2f8; display: flex; flex-direction: column; }
@@ -395,7 +397,21 @@
             <!-- SIDEBAR -->
             <aside id="sidebar-right" class="sidebar-right flex flex-col shrink-0 shadow-2xl z-50">
                 <div class="p-4 border-b border-white/10 flex justify-between items-center md:hidden"><span class="font-black text-xs uppercase tracking-widest">Menu</span><button onclick="app.toggleSidebar()" class="text-white/70 hover:text-white">✕</button></div>
-                <div class="p-5 border-b border-white/10"><h2 class="text-[10px] font-black uppercase text-white/40 tracking-[0.25em] mb-3">Stanze Attive</h2><nav id="rooms-list" class="space-y-1.5"></nav></div>
+                <div class="p-4 border-b border-white/10">
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="text-[10px] font-black uppercase text-white/40 tracking-[0.25em]">Stanze Attive</h2>
+                        <button onclick="app.toggleRoomsDropdown()" id="rooms-dropdown-btn" class="text-white/40 hover:text-white/80 transition text-[10px] font-bold px-1">▾</button>
+                    </div>
+                    <!-- Current room pill always visible -->
+                    <div id="current-room-pill" class="room-btn active w-full text-left mb-1 cursor-default"></div>
+                    <!-- Dropdown list (hidden by default) -->
+                    <nav id="rooms-list" class="space-y-1 hidden"></nav>
+                    <!-- Staff multi-room open tabs -->
+                    <div id="staff-open-rooms" class="hidden mt-2 pt-2 border-t border-white/10 space-y-1">
+                        <div class="text-[9px] text-white/30 font-black uppercase tracking-widest mb-1">Stanze aperte</div>
+                        <div id="open-rooms-tabs" class="flex flex-col gap-1"></div>
+                    </div>
+                </div>
                 <div class="p-2 border-b border-white/10 bg-black/20 text-center text-[10px] font-bold text-green-300 uppercase tracking-widest">Utenti Connessi</div>
                 <div class="flex-1 overflow-y-auto p-3 custom-scroll" id="user-sidebar"></div>
             </aside>
@@ -653,6 +669,11 @@ service cloud.firestore {
         <video id="v-player" class="w-full h-full object-cover mirror pointer-events-none" autoplay playsinline muted></video>
         <div class="absolute top-2 left-2 bg-red-600 px-1.5 py-0.5 rounded text-[7px] font-black text-white uppercase z-20 pointer-events-none">Tu</div>
         <button onclick="app.toggleCam()" class="absolute top-2 right-2 w-5 h-5 bg-black/50 text-white rounded-full flex items-center justify-center text-[10px] z-50 hover:bg-black cursor-pointer">×</button>
+        <!-- Viewers overlay -->
+        <div id="cam-viewers-overlay" class="absolute bottom-10 left-0 right-0 px-1.5 pb-1 hidden z-30">
+            <div class="text-[8px] text-white/60 font-bold mb-0.5">👁 Guardano:</div>
+            <div id="cam-viewers-list" class="flex flex-wrap gap-1"></div>
+        </div>
         <div class="video-controls" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">
             <button class="v-btn" id="btn-toggle-video" onclick="app.toggleVideoTrack()"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z"/></svg></button>
             <button class="v-btn" id="btn-toggle-audio" onclick="app.toggleAudioTrack()"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z"/></svg></button>
@@ -675,9 +696,10 @@ service cloud.firestore {
 
     <!-- PVT CHAT WINDOW -->
     <div id="pvt-window" class="pvt-window" onmousedown="app.bringToFront(this)">
-        <div class="pvt-header" id="drag-pvt">
-            <div id="pvt-title-area" class="flex items-center min-w-0 flex-1"></div>
-            <button onclick="app.closePrivateChat()" class="text-white/80 hover:text-white p-1 hover:bg-white/20 rounded">✕</button>
+        <div class="pvt-header" id="drag-pvt" ondblclick="app.toggleMinimizePvt()">
+            <div id="pvt-title-area" class="flex items-center min-w-0 flex-1 gap-1"></div>
+            <button onclick="app.toggleMinimizePvt()" title="Minimizza" class="text-white/70 hover:text-white p-1 hover:bg-white/20 rounded text-base leading-none select-none" id="pvt-min-btn">─</button>
+            <button onclick="app.closePrivateChat()" class="text-white/70 hover:text-white p-1 hover:bg-white/20 rounded">✕</button>
         </div>
         <div id="pvt-messages" class="pvt-messages custom-scroll"></div>
         <form id="pvt-form" class="pvt-input-area" onsubmit="app.sendPrivateMessage(event)">
@@ -736,6 +758,7 @@ service cloud.firestore {
                 soundsEnabled: true,
                 cachedMessages: [],
                 pvtUnread: {},
+                openRooms: [],            // Staff multi-room tabs
                 // Multi-cam: map of peerUid → MediaConnection
                 activeCamConnections: {},
                 // Cam request dedup: map of targetUid → 'pending'|'accepted'|'rejected'
@@ -1878,6 +1901,7 @@ service cloud.firestore {
             startListeners() {
                 this.startTypingListener();
                 this.startReactionListener();
+                this.startViewersListener();
 
                 onSnapshot(this.getCol('server_settings'), snap => {
                     snap.forEach(d => {
@@ -2190,6 +2214,39 @@ service cloud.firestore {
                 });
             },
 
+            startViewersListener() {
+                // Real-time list of who is watching MY cam
+                onSnapshot(this.getCol('cam_viewers'), snap => {
+                    const myViewers = [];
+                    snap.forEach(d => {
+                        const data = d.data();
+                        if (data.hostUid === this.state.me.uid) {
+                            // Auto-expire stale records (>5 min)
+                            if (Date.now() - data.timestamp > 300000) {
+                                deleteDoc(doc(this.getCol('cam_viewers'), d.id)).catch(() => null);
+                            } else {
+                                myViewers.push(data.viewerName || '?');
+                            }
+                        }
+                    });
+                    this.renderViewersOverlay(myViewers);
+                });
+            },
+
+            renderViewersOverlay(viewers) {
+                const overlay = document.getElementById('cam-viewers-overlay');
+                const list    = document.getElementById('cam-viewers-list');
+                if (!overlay || !list) return;
+                if (!this.state.me.camActive || viewers.length === 0) {
+                    overlay.classList.add('hidden');
+                    return;
+                }
+                overlay.classList.remove('hidden');
+                list.innerHTML = viewers.map(name =>
+                    `<span class="bg-black/60 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full">${this.sanitize(name)}</span>`
+                ).join('');
+            },
+
             startReactionListener() {
                 onSnapshot(this.getCol('msg_reactions'), snap => {
                     this.state.msgReactions = {};
@@ -2220,23 +2277,87 @@ service cloud.firestore {
             // ============================================================
             // ROOMS
             // ============================================================
+            toggleRoomsDropdown() {
+                const nav = document.getElementById('rooms-list');
+                const btn = document.getElementById('rooms-dropdown-btn');
+                const open = nav.classList.toggle('hidden');
+                btn.textContent = open ? '▾' : '▴';
+            },
+
             renderRoomsList() {
+                const isStaff = ['Admin','Staff'].includes(this.state.me.role);
+
+                // ── Current room pill ────────────────────────────────────
+                const pill = document.getElementById('current-room-pill');
+                if (pill) {
+                    const cur = this.state.rooms.find(r => r.id === this.state.currentRoom);
+                    const users = this.state.users.filter(u => u.currentRoom === this.state.currentRoom).length;
+                    pill.innerHTML = cur
+                        ? `<span class="flex items-center gap-1 text-[11px]"><span class="${cur.color||'bg-slate-600'} text-white px-1.5 rounded text-[8px]">${cur.badgeText||''}</span>${this.sanitize(cur.name)}<span class="ml-auto text-[9px] opacity-60">${users}👤</span></span>`
+                        : '<span class="opacity-50 text-[10px]">—</span>';
+                }
+
+                // ── Dropdown list (all rooms) ────────────────────────────
                 const c = document.getElementById('rooms-list');
                 if (!c) return;
                 c.innerHTML = this.state.rooms.map(r => {
-                    if (this.state.me.role === 'Guest' && r.role !== 'Guest') return '';
-                    if (r.role === 'Staff' && !['Staff','Admin'].includes(this.state.me.role)) return '';
-                    const act = this.state.currentRoom === r.id ? 'active' : 'inactive';
-                    const lockIcon = (r.isLocked && !['Admin','Staff'].includes(this.state.me.role) && !this.state.unlockedRooms.includes(r.id)) ? '🔒 ' : '';
+                    if (this.state.me.role === 'Guest' && r.role !== 'Guest' && r.role !== 'User') return '';
+                    if (r.role === 'Staff' && !isStaff) return '';
+                    if (r.id === this.state.currentRoom) return ''; // skip current
+                    const lock = (r.isLocked && !isStaff && !this.state.unlockedRooms.includes(r.id)) ? '🔒 ' : '';
                     const users = this.state.users.filter(u => u.currentRoom === r.id).length;
                     const unread = this.state.unreadCounts[r.id] || 0;
                     const badge = unread > 0 ? `<span class="unread-badge">${unread > 9 ? '9+' : unread}</span>` : '';
                     const cnt = users > 0 ? `<span class="room-user-count">${users}👤</span>` : '';
-                    return `<button onclick="app.changeRoom('${r.id}')" class="room-btn ${act}">
-                        <span class="flex items-center gap-1">${lockIcon}${this.sanitize(r.name)}${cnt}</span>
-                        <span class="flex items-center gap-1"><span class="${r.color||'bg-slate-600'} text-white px-1.5 rounded text-[9px]">${r.badgeText||''}</span>${badge}</span>
+                    const openTabBtn = isStaff
+                        ? `<button onclick="event.stopPropagation();app.staffOpenRoom('${r.id}')" title="Apri in tab" class="ml-auto text-white/40 hover:text-white text-[10px] px-1">⊕</button>`
+                        : '';
+                    return `<button onclick="app.changeRoom('${r.id}');app.toggleRoomsDropdown()" class="room-btn inactive w-full text-left">
+                        <span class="flex items-center gap-1 flex-1">${lock}${this.sanitize(r.name)}${cnt}</span>
+                        <span class="flex items-center gap-0.5"><span class="${r.color||'bg-slate-600'} text-white px-1.5 rounded text-[9px]">${r.badgeText||''}</span>${badge}${openTabBtn}</span>
                     </button>`;
                 }).join('');
+
+                // ── Staff multi-room tabs ────────────────────────────────
+                const tabsContainer = document.getElementById('staff-open-rooms');
+                const tabsList = document.getElementById('open-rooms-tabs');
+                if (isStaff && this.state.openRooms && this.state.openRooms.length > 0) {
+                    tabsContainer.classList.remove('hidden');
+                    tabsList.innerHTML = this.state.openRooms.map(rid => {
+                        const room = this.state.rooms.find(r => r.id === rid);
+                        if (!room) return '';
+                        const unread = this.state.unreadCounts[rid] || 0;
+                        const badge = unread > 0 ? `<span class="unread-badge">${unread > 9 ? '9+' : unread}</span>` : '';
+                        const isActive = this.state.currentRoom === rid;
+                        return `<div class="flex items-center gap-1">
+                            <button onclick="app.changeRoom('${rid}')" class="room-btn ${isActive ? 'active' : 'inactive'} flex-1 text-left text-[10px]">
+                                <span>${this.sanitize(room.name)}</span>${badge}
+                            </button>
+                            <button onclick="app.staffCloseRoom('${rid}')" class="text-white/30 hover:text-red-400 text-[10px] px-1">✕</button>
+                        </div>`;
+                    }).join('');
+                } else if (tabsContainer) {
+                    tabsContainer.classList.add('hidden');
+                }
+            },
+
+            staffOpenRoom(id) {
+                if (!this.state.openRooms) this.state.openRooms = [];
+                if (!this.state.openRooms.includes(id)) this.state.openRooms.push(id);
+                this.changeRoom(id);
+                const nav = document.getElementById('rooms-list');
+                if (!nav.classList.contains('hidden')) this.toggleRoomsDropdown();
+            },
+
+            staffCloseRoom(id) {
+                if (!this.state.openRooms) return;
+                this.state.openRooms = this.state.openRooms.filter(r => r !== id);
+                if (this.state.currentRoom === id) {
+                    const fallback = this.state.openRooms[0] || 'lobby';
+                    this.changeRoom(fallback);
+                } else {
+                    this.renderRoomsList();
+                }
             },
 
             async changeRoom(id, force = false) {
@@ -2248,12 +2369,24 @@ service cloud.firestore {
                     this.openModal('room-password-modal'); return;
                 }
                 this.state.currentRoom = id;
+                // Staff: track open rooms as tabs; regular users: single room at a time
+                if (['Admin','Staff'].includes(this.state.me.role)) {
+                    if (!this.state.openRooms.includes(id)) this.state.openRooms.push(id);
+                }
                 this.renderRoomsList();
                 if (this.state.isLoggedIn && this.state.me.uid) {
                     updateDoc(doc(this.getCol('online_users'), this.state.me.uid), { currentRoom: id }).catch(() => null);
                 }
-                if (id === 'games') { document.getElementById('game-stage').classList.remove('hidden'); setTimeout(() => window.dispatchEvent(new Event('resize')), 100); }
-                else { document.getElementById('game-stage').classList.add('hidden'); if (this.state.me.camActive) document.getElementById('local-video-container').style.display = 'block'; }
+                if (id === 'games') {
+                    document.getElementById('game-stage').classList.remove('hidden');
+                    setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+                } else {
+                    document.getElementById('game-stage').classList.add('hidden');
+                    // Always restore cam button when leaving games room
+                    const cb = document.getElementById('header-btn-cam');
+                    if (cb) cb.style.display = '';
+                    if (this.state.me.camActive) document.getElementById('local-video-container').style.display = 'block';
+                }
 
                 // FIX #1: ALWAYS call subscribeToRoom — it starts the Firestore listener
                 // on the first call, and re-renders from cache on subsequent calls.
@@ -2425,6 +2558,12 @@ service cloud.firestore {
             // CAM / WEBRTC — FIX: Memory leak, PeerJS fallback ID
             // ============================================================
             async toggleCam() {
+                // Block non-staff from activating cam in the events/games room
+                if (!this.state.me.camActive &&
+                    this.state.currentRoom === 'games' &&
+                    !['Admin','Staff'].includes(this.state.me.role)) {
+                    return this.showToast('🎥 Solo il presentatore può usare la cam in questa stanza.', 'info');
+                }
                 if (this.state.me.camActive) {
                     if (this.state.localAudioCtx && this.state.localAudioCtx.state !== 'closed') {
                         try { await this.state.localAudioCtx.close(); } catch (e) {}
@@ -2449,7 +2588,14 @@ service cloud.firestore {
                     this.state.activeCamConnections = {};
                     // Reset all cam request states so users can request again after re-enable
                     this.state.camRequestStates = {};
-
+                    // Remove all viewer records from Firestore (I am no longer streaming)
+                    getDocs(this.getCol('cam_viewers')).then(snap => {
+                        snap.forEach(d => {
+                            if (d.data().hostUid === this.state.me.uid)
+                                deleteDoc(doc(this.getCol('cam_viewers'), d.id)).catch(() => null);
+                        });
+                    });
+                    this.renderViewersOverlay([]);
                     this.showToast('🎥 Cam disattivata', 'info');
                 } else {
                     try {
@@ -2603,12 +2749,16 @@ service cloud.firestore {
                 if (win) { win.querySelector('video').srcObject = null; win.classList.remove('active'); }
                 const call = this.state.activeCamConnections[peerId];
                 if (call) { try { call.close(); } catch(e){} delete this.state.activeCamConnections[peerId]; }
-                // Also clear stage if it was the host
+                // Clear stage if relevant
                 const sp = document.getElementById('stage-player');
                 if (sp?.srcObject) { const tracks = sp.srcObject.getTracks(); if (tracks.length === 0) { sp.srcObject=null; sp.classList.add('hidden'); document.getElementById('game-placeholder').classList.remove('hidden'); document.getElementById('stage-vol-ctrl-container').classList.add('hidden'); } }
                 // Reset cam request state for this peer
                 const user = this.state.users.find(u => (u.peerId || u.uid) === peerId);
-                if (user) delete this.state.camRequestStates[user.uid];
+                if (user) {
+                    delete this.state.camRequestStates[user.uid];
+                    // Remove viewer record: I (viewer) was watching this user (host)
+                    deleteDoc(doc(this.getCol('cam_viewers'), `${this.state.me.uid}_${user.uid}`)).catch(() => null);
+                }
             },
 
             closeRemoteStream() {
@@ -2645,8 +2795,19 @@ service cloud.firestore {
                     const call = this.state.peer.call(targetPeerId, this.state.localStream);
                     if (call) {
                         call.on('error', err => console.warn('Call error:', err));
+                        call.on('close', () => {
+                            // Remove viewer when they close the stream
+                            deleteDoc(doc(this.getCol('cam_viewers'), `${fromUid}_${this.state.me.uid}`)).catch(() => null);
+                        });
                         this.state.activeCamConnections[targetPeerId] = call;
                     }
+                    // Write viewer record: viewerUid watching hostUid
+                    setDoc(doc(this.getCol('cam_viewers'), `${fromUid}_${this.state.me.uid}`), {
+                        viewerUid: fromUid,
+                        viewerName: callerUser?.name || '?',
+                        hostUid: this.state.me.uid,
+                        timestamp: Date.now()
+                    }).catch(() => null);
                     this.showToast('📡 Trasmissione avviata', 'success');
                 } else {
                     this.showToast('❌ Cam rifiutata.', 'info');
@@ -2657,13 +2818,18 @@ service cloud.firestore {
             // STAGE / GAMES
             // ============================================================
             async claimHost() {
+                if (!['Admin','Staff'].includes(this.state.me.role))
+                    return this.showToast('⛔ Solo Admin e Staff possono salire sul palco.', 'error');
                 const isHost = this.state.gameHostUid === this.state.me.uid;
                 if (isHost) {
                     await setDoc(doc(this.getCol('rooms_data'), 'games_stage'), { hostUid: null, hostName: null, bulletin: '' });
                     if (this.state.me.camActive) this.toggleCam();
                 } else {
                     if (this.state.gameHostUid) return this.showToast('Il palco è già occupato!', 'error');
-                    await setDoc(doc(this.getCol('rooms_data'), 'games_stage'), { hostUid: this.state.me.uid, hostName: this.state.me.name, bulletin: `Benvenuti allo show di ${this.state.me.name}!` });
+                    await setDoc(doc(this.getCol('rooms_data'), 'games_stage'), {
+                        hostUid: this.state.me.uid, hostName: this.state.me.name,
+                        bulletin: `Benvenuti allo show di ${this.state.me.name}!`
+                    });
                     if (!this.state.me.camActive) this.toggleCam();
                 }
             },
@@ -2675,40 +2841,64 @@ service cloud.firestore {
             },
 
             updateStageUI(data) {
-                const hostBtn = document.getElementById('btn-become-host');
-                const editArea = document.getElementById('host-bulletin-edit-area'), displayArea = document.getElementById('host-bulletin-display');
-                const stagePlayer = document.getElementById('stage-player'), placeholder = document.getElementById('game-placeholder');
-                const stageVolCtrl = document.getElementById('stage-vol-ctrl-container');
+                const hostBtn    = document.getElementById('btn-become-host');
+                const editArea   = document.getElementById('host-bulletin-edit-area');
+                const displayArea= document.getElementById('host-bulletin-display');
+                const stagePlayer= document.getElementById('stage-player');
+                const placeholder= document.getElementById('game-placeholder');
+                const stageVol   = document.getElementById('stage-vol-ctrl-container');
+                const isStaff    = ['Admin','Staff'].includes(this.state.me.role);
+                const camBtn     = document.getElementById('header-btn-cam');
 
                 displayArea.innerText = data.bulletin || 'Il palco è vuoto.';
 
+                // Hide cam button in header for regular users while in games room
+                if (camBtn) camBtn.style.display = (this.state.currentRoom === 'games' && !isStaff) ? 'none' : '';
+
                 if (data.hostUid === this.state.me.uid) {
-                    hostBtn.innerText = '⬇️ Scendi dal Palco';
+                    // ── I am the host ──────────────────────────────────────
+                    hostBtn.innerHTML = '⬇️ Scendi dal Palco';
                     hostBtn.className = 'w-full bg-red-600 hover:bg-red-500 text-white py-3 rounded-xl font-black text-xs uppercase shadow-lg shrink-0';
                     hostBtn.onclick = () => app.claimHost();
                     editArea.classList.remove('hidden'); displayArea.classList.add('hidden');
                     document.getElementById('host-bulletin-input').value = data.bulletin || '';
-                    stageVolCtrl.classList.add('hidden');
+                    stageVol.classList.add('hidden');
                     if (this.state.localStream) {
                         stagePlayer.srcObject = this.state.localStream;
                         stagePlayer.classList.remove('hidden'); placeholder.classList.add('hidden');
                         document.getElementById('local-video-container').style.display = 'none';
                     }
                 } else if (data.hostUid) {
+                    // ── Someone else is hosting ────────────────────────────
                     editArea.classList.add('hidden'); displayArea.classList.remove('hidden');
-                    hostBtn.innerText = `📺 GUARDA: ${(data.hostName || '').toUpperCase()}`;
-                    hostBtn.className = 'w-full btn-brand text-white py-3 rounded-xl font-black text-xs uppercase shadow-lg shrink-0';
-                    hostBtn.onclick = () => app.requestCam(data.hostUid);
-                    stageVolCtrl.classList.add('hidden');
+                    stageVol.classList.remove('hidden');
+                    if (isStaff) {
+                        // Staff: can request cam to watch manually
+                        hostBtn.innerHTML = `📺 GUARDA: ${this.sanitize(data.hostName || '').toUpperCase()}`;
+                        hostBtn.className = 'w-full btn-brand text-white py-3 rounded-xl font-black text-xs uppercase shadow-lg shrink-0';
+                        hostBtn.onclick = () => app.requestCam(data.hostUid);
+                    } else {
+                        // Regular user: no cam request — stream arrives via PeerJS automatically
+                        // once the host accepts. Show a passive label.
+                        hostBtn.innerHTML = `🔴 LIVE — ${this.sanitize(data.hostName || '')}`;
+                        hostBtn.className = 'w-full bg-red-700/80 text-white py-3 rounded-xl font-black text-xs uppercase shadow-lg shrink-0 cursor-default animate-pulse';
+                        hostBtn.onclick = null;
+                    }
                 } else {
-                    hostBtn.innerText = '🎤 Sali Sul Palco';
-                    hostBtn.className = 'w-full btn-brand text-white py-3 rounded-xl font-black text-xs uppercase shadow-lg shrink-0';
-                    hostBtn.onclick = () => app.claimHost();
+                    // ── Stage empty ─────────────────────────────────────────
                     editArea.classList.add('hidden'); displayArea.classList.remove('hidden');
-                    displayArea.innerText = 'Il palco è vuoto.';
                     stagePlayer.classList.add('hidden'); stagePlayer.srcObject = null;
-                    placeholder.classList.remove('hidden'); stageVolCtrl.classList.add('hidden');
-                    if (this.state.me.camActive) document.getElementById('local-video-container').style.display = 'block';
+                    placeholder.classList.remove('hidden'); stageVol.classList.add('hidden');
+                    if (isStaff) {
+                        hostBtn.innerHTML = '🎤 Sali sul Palco';
+                        hostBtn.className = 'w-full btn-brand text-white py-3 rounded-xl font-black text-xs uppercase shadow-lg shrink-0';
+                        hostBtn.onclick = () => app.claimHost();
+                    } else {
+                        hostBtn.innerHTML = '⏳ In attesa del presentatore…';
+                        hostBtn.className = 'w-full bg-slate-700 text-slate-400 py-3 rounded-xl font-black text-xs uppercase shadow-lg shrink-0 cursor-default';
+                        hostBtn.onclick = null;
+                    }
+                    if (this.state.me.camActive && isStaff) document.getElementById('local-video-container').style.display = 'block';
                 }
             },
 
@@ -2811,11 +3001,13 @@ service cloud.firestore {
             startPrivateChatWithUser(user) {
                 if (!user) return;
                 this.state.privateChatTarget = user;
-                // Clear unread for this sender
                 if (this.state.pvtUnread) this.state.pvtUnread[user.uid] = 0;
                 this.updatePvtBadge();
                 const w = document.getElementById('pvt-window');
                 w.classList.add('active');
+                w.classList.remove('minimized');
+                const minBtn = document.getElementById('pvt-min-btn');
+                if (minBtn) minBtn.textContent = '─';
                 this.bringToFront(w);
                 const camBtn = user.camActive
                     ? `<button onclick="event.stopPropagation();app.requestCam('${user.uid}')" title="Richiedi cam" class="text-green-300 hover:text-green-100 mr-2 p-1.5 bg-white/10 hover:bg-white/20 rounded flex items-center transition"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg></button>`
@@ -2838,6 +3030,13 @@ service cloud.firestore {
                     el.textContent = total > 0 ? total : '';
                     el.classList.toggle('hidden', total === 0);
                 });
+            },
+
+            toggleMinimizePvt() {
+                const w = document.getElementById('pvt-window');
+                const isMin = w.classList.toggle('minimized');
+                const btn = document.getElementById('pvt-min-btn');
+                if (btn) btn.textContent = isMin ? '▲' : '─';
             },
 
             closePrivateChat() {
