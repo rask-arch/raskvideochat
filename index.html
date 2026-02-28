@@ -120,6 +120,13 @@
         #scroll-to-bottom { position: sticky; bottom: 8px; float: right; margin-right: 4px; z-index: 150; background: var(--brand-col-2); color: white; border: none; border-radius: 50%; width: 34px; height: 34px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3); display: none; align-items: center; justify-content: center; transition: all 0.2s; font-size: 15px; clear: both; }
         #scroll-to-bottom.visible { display: flex; }
 
+        /* === ROOMS DROPDOWN === */
+        #rooms-list { animation: none; }
+        #rooms-list.open { animation: dropIn 0.15s ease; }
+        @keyframes dropIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
+        #rooms-chevron.open { transform: rotate(180deg); }
+        #rooms-list .room-btn { border-radius: 10px; font-size: 11px; }
+
         /* === UNREAD BADGE === */
         .unread-badge { background: #ef4444; color: white; border-radius: 10px; padding: 1px 5px; font-size: 9px; font-weight: 900; min-width: 16px; text-align: center; }
         .room-user-count { font-size: 9px; opacity: 0.55; font-weight: 700; margin-left: 4px; }
@@ -367,10 +374,24 @@
                     <div class="flex items-center gap-1.5"><label class="text-[9px] font-black text-white/70 uppercase">Colore</label><input type="color" id="text-color" value="#1e293b" oninput="app.savePrefs()" class="w-5 h-5 border border-white/30 p-0 bg-transparent cursor-pointer rounded"></div>
                     <div class="flex items-center gap-1.5"><label class="text-[9px] font-black text-white/70 uppercase">Size</label><select id="text-size" onchange="app.savePrefs()" class="text-[10px] font-bold bg-white/20 text-white rounded-lg px-2 py-1 outline-none border border-white/20 appearance-none"><option value="12px" class="text-slate-900">S</option><option value="14px" selected class="text-slate-900">M</option><option value="18px" class="text-slate-900">L</option></select></div>
                     <div class="h-4 w-[1px] bg-white/20"></div>
-                    <!-- FIX: Uses **bold** markdown instead of raw HTML tags -->
                     <button onclick="app.insertBold()" class="toolbar-icon bg-white/10 text-white hover:bg-white/30 border border-white/20" title="Grassetto (**testo**)">B</button>
                     <button onclick="app.triggerImageUpload()" class="toolbar-icon bg-white/10 text-white hover:bg-white/30 border border-white/20 flex gap-1 px-2 w-auto"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg><span class="text-[10px] uppercase">Img</span></button>
                     <button id="btn-voice-record" onclick="app.toggleVoiceRecord()" class="toolbar-icon bg-white/10 text-white hover:bg-white/30 border border-white/20">🎤</button>
+                    <!-- Staff-only controls — shown/hidden by updateToolbarStaffControls() -->
+                    <div id="toolbar-staff-controls" class="hidden items-center gap-2 ml-auto">
+                        <div class="h-4 w-[1px] bg-white/20"></div>
+                        <button id="btn-lock-chat-toolbar" onclick="app.toolbarToggleChatLock()"
+                            class="toolbar-icon bg-white/10 text-white hover:bg-red-500/80 border border-white/20 flex gap-1 px-2 w-auto transition"
+                            title="Blocca/Sblocca Chat">
+                            <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25z"/></svg>
+                            <span class="text-[9px] uppercase font-black" id="lock-chat-toolbar-label">Blocca</span>
+                        </button>
+                        <button onclick="app.toolbarSendRullo()"
+                            class="toolbar-icon bg-white/10 text-white hover:bg-yellow-500/80 border border-white/20 flex gap-1 px-2 w-auto transition"
+                            title="Invia annuncio in evidenza">
+                            📣<span class="text-[9px] uppercase font-black">Rullo</span>
+                        </button>
+                    </div>
                 </div>
 
                 <!-- INPUT AREA -->
@@ -397,20 +418,23 @@
             <!-- SIDEBAR -->
             <aside id="sidebar-right" class="sidebar-right flex flex-col shrink-0 shadow-2xl z-50">
                 <div class="p-4 border-b border-white/10 flex justify-between items-center md:hidden"><span class="font-black text-xs uppercase tracking-widest">Menu</span><button onclick="app.toggleSidebar()" class="text-white/70 hover:text-white">✕</button></div>
-                <div class="p-4 border-b border-white/10">
-                    <div class="flex items-center justify-between mb-2">
-                        <h2 class="text-[10px] font-black uppercase text-white/40 tracking-[0.25em]">Stanze Attive</h2>
-                        <button onclick="app.toggleRoomsDropdown()" id="rooms-dropdown-btn" class="text-white/40 hover:text-white/80 transition text-[10px] font-bold px-1">▾</button>
-                    </div>
-                    <!-- Current room pill always visible -->
-                    <div id="current-room-pill" class="room-btn active w-full text-left mb-1 cursor-default"></div>
-                    <!-- Dropdown list (hidden by default) -->
-                    <nav id="rooms-list" class="space-y-1 hidden"></nav>
-                    <!-- Staff multi-room open tabs -->
-                    <div id="staff-open-rooms" class="hidden mt-2 pt-2 border-t border-white/10 space-y-1">
-                        <div class="text-[9px] text-white/30 font-black uppercase tracking-widest mb-1">Stanze aperte</div>
-                        <div id="open-rooms-tabs" class="flex flex-col gap-1"></div>
-                    </div>
+                <div class="border-b border-white/10">
+                    <!-- Header bar — always visible, click to open/close dropdown -->
+                    <button onclick="app.toggleRoomsDropdown()" id="rooms-header-btn"
+                            class="w-full px-4 py-3 flex items-center gap-2 hover:bg-white/5 transition-colors group select-none">
+                        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-brand/70 shrink-0">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                        </svg>
+                        <span class="text-[10px] font-black uppercase text-white/60 tracking-[0.2em] flex-1 text-left">Stanze</span>
+                        <span id="rooms-cur-name" class="text-[10px] text-white font-bold truncate max-w-[90px]"></span>
+                        <span id="rooms-unread-dot" class="hidden w-2 h-2 rounded-full bg-red-500 shrink-0"></span>
+                        <svg id="rooms-chevron" class="w-3 h-3 text-white/40 group-hover:text-white/70 transition-transform duration-200 shrink-0"
+                             fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="m19 9-7 7-7-7"/>
+                        </svg>
+                    </button>
+                    <!-- Dropdown panel (hidden by default) -->
+                    <nav id="rooms-list" class="hidden px-2 pb-2 space-y-0.5 max-h-72 overflow-y-auto custom-scroll"></nav>
                 </div>
                 <div class="p-2 border-b border-white/10 bg-black/20 text-center text-[10px] font-bold text-green-300 uppercase tracking-widest">Utenti Connessi</div>
                 <div class="flex-1 overflow-y-auto p-3 custom-scroll" id="user-sidebar"></div>
@@ -669,17 +693,28 @@ service cloud.firestore {
         <video id="v-player" class="w-full h-full object-cover mirror pointer-events-none" autoplay playsinline muted></video>
         <div class="absolute top-2 left-2 bg-red-600 px-1.5 py-0.5 rounded text-[7px] font-black text-white uppercase z-20 pointer-events-none">Tu</div>
         <button onclick="app.toggleCam()" class="absolute top-2 right-2 w-5 h-5 bg-black/50 text-white rounded-full flex items-center justify-center text-[10px] z-50 hover:bg-black cursor-pointer">×</button>
-        <!-- Viewers overlay -->
-        <div id="cam-viewers-overlay" class="absolute bottom-10 left-0 right-0 px-1.5 pb-1 hidden z-30">
-            <div class="text-[8px] text-white/60 font-bold mb-0.5">👁 Guardano:</div>
-            <div id="cam-viewers-list" class="flex flex-wrap gap-1"></div>
-        </div>
+        <!-- Eye button: unobtrusive, bottom-left corner -->
+        <button id="btn-viewers-eye" onclick="app.toggleViewersPanel()" class="hidden absolute bottom-9 left-1 w-6 h-6 bg-black/50 hover:bg-black/80 text-white rounded-full flex items-center justify-center z-50 cursor-pointer transition" title="Chi ti guarda">
+            <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.641 0-8.573-3.007-9.964-7.178z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/></svg>
+        </button>
         <div class="video-controls" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">
             <button class="v-btn" id="btn-toggle-video" onclick="app.toggleVideoTrack()"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25Z"/></svg></button>
             <button class="v-btn" id="btn-toggle-audio" onclick="app.toggleAudioTrack()"><svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 18.75a6 6 0 0 0 6-6v-1.5m-6 7.5a6 6 0 0 1-6-6v-1.5m6 7.5v3.75m-3.75 0h7.5M12 15.75a3 3 0 0 1-3-3V4.5a3 3 0 1 1 6 0v8.25a3 3 0 0 1-3 3Z"/></svg></button>
             <div class="vol-slider-cont"><input type="range" class="vol-slider" id="mic-volume-slider" min="0" max="100" value="100" oninput="app.setMicGain(this.value)"></div>
         </div>
         <div class="resize-handle" id="resize-local"></div>
+    </div>
+
+    <!-- VIEWERS POPOVER — attached to the side of the cam window, not inside it -->
+    <div id="viewers-panel" class="hidden" style="position:fixed;z-index:7000;min-width:140px;max-width:180px;">
+        <div class="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden">
+            <div class="px-3 py-2 border-b border-slate-700 flex items-center gap-1.5">
+                <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-brand/80"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.641 0-8.573-3.007-9.964-7.178z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/></svg>
+                <span class="text-[9px] font-black uppercase text-white/60 tracking-wider">Chi guarda</span>
+                <span id="viewers-count" class="ml-auto text-[9px] text-brand font-black">0</span>
+            </div>
+            <div id="viewers-panel-list" class="py-1 max-h-40 overflow-y-auto custom-scroll"></div>
+        </div>
     </div>
 
     <div id="watch-video-container" class="video-window">
@@ -1470,6 +1505,7 @@ service cloud.firestore {
 
                 this.initPeerJS();
                 this.startListeners();
+                this.updateToolbarStaffControls();
 
                 // Wait a tick for rooms listener to populate, then join lobby
                 setTimeout(() => {
@@ -1909,6 +1945,7 @@ service cloud.firestore {
                             this.state.serverConfig = { ...this.state.serverConfig, ...d.data() };
                             this.applyAppearanceSettings();
                             this.updateChatInputState();
+                            this.syncLockChatToolbarBtn();
                         }
                     });
                 });
@@ -2233,18 +2270,127 @@ service cloud.firestore {
                 });
             },
 
-            renderViewersOverlay(viewers) {
-                const overlay = document.getElementById('cam-viewers-overlay');
-                const list    = document.getElementById('cam-viewers-list');
-                if (!overlay || !list) return;
-                if (!this.state.me.camActive || viewers.length === 0) {
-                    overlay.classList.add('hidden');
-                    return;
+            // Called after login to show/hide staff toolbar controls
+            updateToolbarStaffControls() {
+                const div = document.getElementById('toolbar-staff-controls');
+                if (!div) return;
+                const isStaff = ['Admin','Staff'].includes(this.state.me.role);
+                if (isStaff) {
+                    div.classList.remove('hidden');
+                    div.classList.add('flex');
+                } else {
+                    div.classList.add('hidden');
+                    div.classList.remove('flex');
                 }
-                overlay.classList.remove('hidden');
-                list.innerHTML = viewers.map(name =>
-                    `<span class="bg-black/60 text-white text-[8px] font-bold px-1.5 py-0.5 rounded-full">${this.sanitize(name)}</span>`
-                ).join('');
+                this.syncLockChatToolbarBtn();
+            },
+
+            syncLockChatToolbarBtn() {
+                const locked = this.state.serverConfig?.chatLocked;
+                const btn   = document.getElementById('btn-lock-chat-toolbar');
+                const label = document.getElementById('lock-chat-toolbar-label');
+                if (!btn || !label) return;
+                if (locked) {
+                    btn.classList.add('bg-red-600/70'); btn.classList.remove('bg-white/10');
+                    label.textContent = 'Sblocca';
+                } else {
+                    btn.classList.remove('bg-red-600/70'); btn.classList.add('bg-white/10');
+                    label.textContent = 'Blocca';
+                }
+            },
+
+            toolbarToggleChatLock() {
+                const newVal = !this.state.serverConfig?.chatLocked;
+                setDoc(doc(this.getCol('server_settings'), 'config'), { chatLocked: newVal }, { merge: true });
+                this.state.serverConfig.chatLocked = newVal;
+                this.syncLockChatToolbarBtn();
+                this.showToast(newVal ? '🔒 Chat bloccata' : '🔓 Chat sbloccata', newVal ? 'error' : 'success');
+            },
+
+            async toolbarSendRullo() {
+                const txt = prompt('📣 Testo del Rullo (annuncio in evidenza):');
+                if (!txt?.trim()) return;
+                await addDoc(this.getCol('messages'), {
+                    fromUid: this.state.me.uid,
+                    fromName: `📣 ${this.state.me.name}`,
+                    text: `__RULLO__${txt.trim()}`,
+                    color: '#f59e0b',
+                    size: '14px',
+                    roomId: this.state.currentRoom,
+                    timestamp: Date.now()
+                });
+            },
+
+            toggleViewersPanel() {
+                const panel  = document.getElementById('viewers-panel');
+                const camWin = document.getElementById('local-video-container');
+                if (!panel || !camWin) return;
+                const isHidden = panel.classList.toggle('hidden');
+                if (!isHidden) {
+                    // Position panel to the right of the cam window
+                    const rect = camWin.getBoundingClientRect();
+                    let left = rect.right + 6;
+                    let top  = rect.top;
+                    // If overflows viewport right, show to the left
+                    if (left + 185 > window.innerWidth) left = rect.left - 185;
+                    panel.style.left = left + 'px';
+                    panel.style.top  = top  + 'px';
+                    // Close on outside click
+                    const close = e => {
+                        if (!panel.contains(e.target) && e.target.id !== 'btn-viewers-eye') {
+                            panel.classList.add('hidden');
+                            document.removeEventListener('click', close, true);
+                        }
+                    };
+                    setTimeout(() => document.addEventListener('click', close, true), 50);
+                }
+            },
+
+            renderViewersOverlay(viewers) {
+                // Store for panel use
+                this.state._currentViewers = viewers;
+
+                // Update the eye button: show/hide, add count badge
+                const eyeBtn = document.getElementById('btn-viewers-eye');
+                if (eyeBtn) {
+                    if (this.state.me.camActive) {
+                        eyeBtn.classList.remove('hidden');
+                        eyeBtn.classList.add('flex');
+                        // Show viewer count in a tiny badge
+                        const existing = eyeBtn.querySelector('.viewer-badge');
+                        if (viewers.length > 0) {
+                            if (!existing) {
+                                const badge = document.createElement('span');
+                                badge.className = 'viewer-badge absolute -top-1 -right-1 bg-brand text-white text-[7px] font-black rounded-full w-3.5 h-3.5 flex items-center justify-center leading-none';
+                                badge.textContent = viewers.length > 9 ? '9+' : viewers.length;
+                                eyeBtn.style.position = 'absolute';
+                                eyeBtn.appendChild(badge);
+                            } else {
+                                existing.textContent = viewers.length > 9 ? '9+' : viewers.length;
+                            }
+                        } else if (existing) {
+                            existing.remove();
+                        }
+                    } else {
+                        eyeBtn.classList.add('hidden');
+                        eyeBtn.classList.remove('flex');
+                    }
+                }
+
+                // Update panel content (if open)
+                const panel = document.getElementById('viewers-panel');
+                const list  = document.getElementById('viewers-panel-list');
+                const count = document.getElementById('viewers-count');
+                if (list) {
+                    if (count) count.textContent = viewers.length;
+                    list.innerHTML = viewers.length > 0
+                        ? viewers.map(name => `<div class="px-3 py-1.5 text-[11px] text-white/80 font-medium flex items-center gap-2">
+                            <span class="w-1.5 h-1.5 rounded-full bg-green-400 shrink-0"></span>${this.sanitize(name)}
+                          </div>`).join('')
+                        : `<div class="px-3 py-2 text-[10px] text-white/30 italic text-center">Nessuno al momento</div>`;
+                }
+                // Close panel if cam is off
+                if (!this.state.me.camActive && panel) panel.classList.add('hidden');
             },
 
             startReactionListener() {
@@ -2278,86 +2424,54 @@ service cloud.firestore {
             // ROOMS
             // ============================================================
             toggleRoomsDropdown() {
-                const nav = document.getElementById('rooms-list');
-                const btn = document.getElementById('rooms-dropdown-btn');
-                const open = nav.classList.toggle('hidden');
-                btn.textContent = open ? '▾' : '▴';
+                const nav  = document.getElementById('rooms-list');
+                const chev = document.getElementById('rooms-chevron');
+                const wasHidden = nav.classList.toggle('hidden');
+                nav.classList.toggle('open', !wasHidden);
+                chev.classList.toggle('open', !wasHidden);
             },
 
             renderRoomsList() {
                 const isStaff = ['Admin','Staff'].includes(this.state.me.role);
 
-                // ── Current room pill ────────────────────────────────────
-                const pill = document.getElementById('current-room-pill');
-                if (pill) {
-                    const cur = this.state.rooms.find(r => r.id === this.state.currentRoom);
-                    const users = this.state.users.filter(u => u.currentRoom === this.state.currentRoom).length;
-                    pill.innerHTML = cur
-                        ? `<span class="flex items-center gap-1 text-[11px]"><span class="${cur.color||'bg-slate-600'} text-white px-1.5 rounded text-[8px]">${cur.badgeText||''}</span>${this.sanitize(cur.name)}<span class="ml-auto text-[9px] opacity-60">${users}👤</span></span>`
-                        : '<span class="opacity-50 text-[10px]">—</span>';
-                }
+                // ── Header: current room name + unread dot ───────────────
+                const cur = this.state.rooms.find(r => r.id === this.state.currentRoom);
+                const curNameEl = document.getElementById('rooms-cur-name');
+                if (curNameEl) curNameEl.textContent = cur ? cur.name : '—';
 
-                // ── Dropdown list (all rooms) ────────────────────────────
+                const totalUnread = Object.entries(this.state.unreadCounts)
+                    .filter(([rid]) => rid !== this.state.currentRoom)
+                    .reduce((s, [, v]) => s + v, 0);
+                const dot = document.getElementById('rooms-unread-dot');
+                if (dot) dot.classList.toggle('hidden', totalUnread === 0);
+
+                // ── Dropdown list ────────────────────────────────────────
                 const c = document.getElementById('rooms-list');
                 if (!c) return;
-                c.innerHTML = this.state.rooms.map(r => {
+                const rows = this.state.rooms.map(r => {
                     if (this.state.me.role === 'Guest' && r.role !== 'Guest' && r.role !== 'User') return '';
                     if (r.role === 'Staff' && !isStaff) return '';
-                    if (r.id === this.state.currentRoom) return ''; // skip current
-                    const lock = (r.isLocked && !isStaff && !this.state.unlockedRooms.includes(r.id)) ? '🔒 ' : '';
-                    const users = this.state.users.filter(u => u.currentRoom === r.id).length;
+                    const isCur  = r.id === this.state.currentRoom;
+                    const lock   = (r.isLocked && !isStaff && !this.state.unlockedRooms.includes(r.id)) ? '🔒 ' : '';
+                    const users  = this.state.users.filter(u => u.currentRoom === r.id).length;
                     const unread = this.state.unreadCounts[r.id] || 0;
-                    const badge = unread > 0 ? `<span class="unread-badge">${unread > 9 ? '9+' : unread}</span>` : '';
-                    const cnt = users > 0 ? `<span class="room-user-count">${users}👤</span>` : '';
-                    const openTabBtn = isStaff
-                        ? `<button onclick="event.stopPropagation();app.staffOpenRoom('${r.id}')" title="Apri in tab" class="ml-auto text-white/40 hover:text-white text-[10px] px-1">⊕</button>`
-                        : '';
-                    return `<button onclick="app.changeRoom('${r.id}');app.toggleRoomsDropdown()" class="room-btn inactive w-full text-left">
-                        <span class="flex items-center gap-1 flex-1">${lock}${this.sanitize(r.name)}${cnt}</span>
-                        <span class="flex items-center gap-0.5"><span class="${r.color||'bg-slate-600'} text-white px-1.5 rounded text-[9px]">${r.badgeText||''}</span>${badge}${openTabBtn}</span>
-                    </button>`;
-                }).join('');
-
-                // ── Staff multi-room tabs ────────────────────────────────
-                const tabsContainer = document.getElementById('staff-open-rooms');
-                const tabsList = document.getElementById('open-rooms-tabs');
-                if (isStaff && this.state.openRooms && this.state.openRooms.length > 0) {
-                    tabsContainer.classList.remove('hidden');
-                    tabsList.innerHTML = this.state.openRooms.map(rid => {
-                        const room = this.state.rooms.find(r => r.id === rid);
-                        if (!room) return '';
-                        const unread = this.state.unreadCounts[rid] || 0;
-                        const badge = unread > 0 ? `<span class="unread-badge">${unread > 9 ? '9+' : unread}</span>` : '';
-                        const isActive = this.state.currentRoom === rid;
-                        return `<div class="flex items-center gap-1">
-                            <button onclick="app.changeRoom('${rid}')" class="room-btn ${isActive ? 'active' : 'inactive'} flex-1 text-left text-[10px]">
-                                <span>${this.sanitize(room.name)}</span>${badge}
-                            </button>
-                            <button onclick="app.staffCloseRoom('${rid}')" class="text-white/30 hover:text-red-400 text-[10px] px-1">✕</button>
+                    const badge  = unread > 0 ? `<span class="unread-badge">${unread > 9 ? '9+' : unread}</span>` : '';
+                    const cnt    = users > 0 ? `<span class="text-[9px] opacity-50">${users}👤</span>` : '';
+                    const dot2   = `<span class="w-1.5 h-1.5 rounded-full shrink-0 ${r.color || 'bg-slate-500'} opacity-70"></span>`;
+                    if (isCur) {
+                        return `<div class="room-btn active flex items-center gap-2 cursor-default">
+                            ${dot2}<span class="truncate flex-1 font-black text-[11px]">${this.sanitize(r.name)}</span>
+                            ${cnt}<span class="text-[8px] bg-white/20 px-1.5 py-0.5 rounded-full font-black">● ora qui</span>
                         </div>`;
-                    }).join('');
-                } else if (tabsContainer) {
-                    tabsContainer.classList.add('hidden');
-                }
-            },
-
-            staffOpenRoom(id) {
-                if (!this.state.openRooms) this.state.openRooms = [];
-                if (!this.state.openRooms.includes(id)) this.state.openRooms.push(id);
-                this.changeRoom(id);
-                const nav = document.getElementById('rooms-list');
-                if (!nav.classList.contains('hidden')) this.toggleRoomsDropdown();
-            },
-
-            staffCloseRoom(id) {
-                if (!this.state.openRooms) return;
-                this.state.openRooms = this.state.openRooms.filter(r => r !== id);
-                if (this.state.currentRoom === id) {
-                    const fallback = this.state.openRooms[0] || 'lobby';
-                    this.changeRoom(fallback);
-                } else {
-                    this.renderRoomsList();
-                }
+                    }
+                    return `<button onclick="app.changeRoom('${r.id}');app.toggleRoomsDropdown()" class="room-btn inactive w-full">
+                        ${dot2}<span class="truncate flex-1">${lock}${this.sanitize(r.name)}</span>${cnt}${badge}
+                    </button>`;
+                });
+                const filtered = rows.filter(Boolean);
+                c.innerHTML = filtered.length
+                    ? filtered.join('')
+                    : `<div class="text-[10px] text-white/25 text-center py-3 italic">Nessun'altra stanza</div>`;
             },
 
             async changeRoom(id, force = false) {
@@ -2369,10 +2483,6 @@ service cloud.firestore {
                     this.openModal('room-password-modal'); return;
                 }
                 this.state.currentRoom = id;
-                // Staff: track open rooms as tabs; regular users: single room at a time
-                if (['Admin','Staff'].includes(this.state.me.role)) {
-                    if (!this.state.openRooms.includes(id)) this.state.openRooms.push(id);
-                }
                 this.renderRoomsList();
                 if (this.state.isLoggedIn && this.state.me.uid) {
                     updateDoc(doc(this.getCol('online_users'), this.state.me.uid), { currentRoom: id }).catch(() => null);
@@ -2501,6 +2611,21 @@ service cloud.firestore {
             },
 
             buildMessageHTML(m) {
+                // ── Special: Rullo announcement ──────────────────────────
+                if (typeof m.text === 'string' && m.text.startsWith('__RULLO__')) {
+                    const rText = this.sanitize(m.text.replace('__RULLO__','').trim());
+                    const time  = new Date(m.timestamp).toLocaleTimeString([], { hour:'2-digit', minute:'2-digit' });
+                    return `<div class="chat-line group" data-msg-id="${m.id||''}">
+                        <div class="my-2 mx-1 rounded-xl bg-amber-500/15 border border-amber-500/30 px-4 py-2.5 flex items-start gap-2">
+                            <span class="text-lg shrink-0">📣</span>
+                            <div class="flex-1 min-w-0">
+                                <div class="text-[9px] font-black uppercase text-amber-500/80 tracking-widest mb-0.5">${this.sanitize(m.fromName||'Staff')} · ${time}</div>
+                                <div class="text-sm font-bold text-amber-900 break-words">${rText}</div>
+                            </div>
+                        </div>
+                    </div>`;
+                }
+
                 const time = new Date(m.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 const avatar = m.avatarUrl ? `<img src="${m.avatarUrl}" class="chat-avatar" loading="lazy" onerror="this.style.opacity='0'">` : `<div class="chat-avatar"></div>`;
                 let quoteHtml = '';
@@ -2694,23 +2819,37 @@ service cloud.firestore {
                 this.state.peer.removeAllListeners('call');
                 this.state.peer.on('call', call => {
                     const peerId = call.peer;
-                    call.answer(this.state.localStream || undefined);
-                    this.playBeep();
+                    // Viewers in games room answer without stream (receive-only)
+                    const callerUser = this.state.users.find(u => (u.peerId || u.uid) === peerId);
+                    const isStageCall = this.state.currentRoom === 'games' &&
+                                        this.state.gameHostUid === callerUser?.uid;
+                    call.answer(isStageCall ? null : (this.state.localStream || null));
+                    if (!isStageCall) this.playBeep();
 
                     call.on('stream', remoteStream => {
-                        // Find user name from peerId
-                        const user = this.state.users.find(u => (u.peerId || u.uid) === peerId);
-                        const label = user?.name || peerId;
-                        if (this.state.currentRoom === 'games' && this.state.gameHostUid === (user?.uid || peerId)) {
+                        const label = callerUser?.name || peerId;
+                        if (this.state.currentRoom === 'games' &&
+                            this.state.gameHostUid &&
+                            callerUser?.uid === this.state.gameHostUid) {
+                            // Route to the stage player
                             const sp = document.getElementById('stage-player');
-                            sp.srcObject = remoteStream; sp.classList.remove('hidden');
+                            sp.srcObject = remoteStream;
+                            sp.classList.remove('hidden');
                             document.getElementById('game-placeholder').classList.add('hidden');
                             document.getElementById('stage-vol-ctrl-container').classList.remove('hidden');
                         } else {
                             this.openCamWindow(peerId, label, remoteStream);
                         }
                     });
-                    call.on('close', () => this.closeCamWindow(peerId));
+                    call.on('close', () => {
+                        if (isStageCall) {
+                            const sp = document.getElementById('stage-player');
+                            if (sp) { sp.srcObject = null; sp.classList.add('hidden'); }
+                            document.getElementById('game-placeholder')?.classList.remove('hidden');
+                            document.getElementById('stage-vol-ctrl-container')?.classList.add('hidden');
+                        }
+                        this.closeCamWindow(peerId);
+                    });
                     call.on('error', () => this.closeCamWindow(peerId));
                     this.state.activeCamConnections[peerId] = call;
                 });
@@ -2820,8 +2959,13 @@ service cloud.firestore {
             async claimHost() {
                 if (!['Admin','Staff'].includes(this.state.me.role))
                     return this.showToast('⛔ Solo Admin e Staff possono salire sul palco.', 'error');
+
                 const isHost = this.state.gameHostUid === this.state.me.uid;
                 if (isHost) {
+                    // Step down: close all viewer calls, stop cam
+                    Object.values(this.state.activeCamConnections).forEach(c => { try { c.close(); } catch(e){} });
+                    this.state.activeCamConnections = {};
+                    this.state.camRequestStates = {};
                     await setDoc(doc(this.getCol('rooms_data'), 'games_stage'), { hostUid: null, hostName: null, bulletin: '' });
                     if (this.state.me.camActive) this.toggleCam();
                 } else {
@@ -2830,8 +2974,40 @@ service cloud.firestore {
                         hostUid: this.state.me.uid, hostName: this.state.me.name,
                         bulletin: `Benvenuti allo show di ${this.state.me.name}!`
                     });
-                    if (!this.state.me.camActive) this.toggleCam();
+                    if (!this.state.me.camActive) {
+                        await this.toggleCam();
+                        // Wait for getUserMedia to complete before broadcasting
+                        await new Promise(r => setTimeout(r, 600));
+                    }
+                    this._broadcastStageFeed();
                 }
+            },
+
+            // Push host's cam to all users currently in the games room
+            _broadcastStageFeed() {
+                if (!this.state.peer || !this.state.localStream) {
+                    this.showToast('⚠️ Webcam non pronta. Riprova tra un secondo.', 'warning');
+                    return;
+                }
+                const viewers = this.state.users.filter(u =>
+                    u.currentRoom === 'games' && u.uid !== this.state.me.uid
+                );
+                let pushed = 0;
+                viewers.forEach(u => {
+                    const pid = u.peerId || u.uid;
+                    if (this.state.activeCamConnections[pid]) return; // already connected
+                    try {
+                        const call = this.state.peer.call(pid, this.state.localStream);
+                        if (call) {
+                            call.on('error', () => { delete this.state.activeCamConnections[pid]; });
+                            call.on('close', () => { delete this.state.activeCamConnections[pid]; });
+                            this.state.activeCamConnections[pid] = call;
+                            pushed++;
+                        }
+                    } catch(e) { console.warn('Cannot push stage to', pid, e); }
+                });
+                const n = pushed || viewers.length;
+                this.showToast(`📡 Live avviato${n ? ` — ${n} spettator${n===1?'e':'i'}` : ''}`, 'success');
             },
 
             async saveBulletin() {
@@ -2852,13 +3028,14 @@ service cloud.firestore {
 
                 displayArea.innerText = data.bulletin || 'Il palco è vuoto.';
 
-                // Hide cam button in header for regular users while in games room
+                // Regular users never see the cam header button in games room
                 if (camBtn) camBtn.style.display = (this.state.currentRoom === 'games' && !isStaff) ? 'none' : '';
 
                 if (data.hostUid === this.state.me.uid) {
                     // ── I am the host ──────────────────────────────────────
+                    hostBtn.style.display = '';
                     hostBtn.innerHTML = '⬇️ Scendi dal Palco';
-                    hostBtn.className = 'w-full bg-red-600 hover:bg-red-500 text-white py-3 rounded-xl font-black text-xs uppercase shadow-lg shrink-0';
+                    hostBtn.className = 'w-full bg-red-600 hover:bg-red-500 text-white py-3 rounded-xl font-black text-xs uppercase shadow-lg shrink-0 transition';
                     hostBtn.onclick = () => app.claimHost();
                     editArea.classList.remove('hidden'); displayArea.classList.add('hidden');
                     document.getElementById('host-bulletin-input').value = data.bulletin || '';
@@ -2873,30 +3050,40 @@ service cloud.firestore {
                     editArea.classList.add('hidden'); displayArea.classList.remove('hidden');
                     stageVol.classList.remove('hidden');
                     if (isStaff) {
-                        // Staff: can request cam to watch manually
-                        hostBtn.innerHTML = `📺 GUARDA: ${this.sanitize(data.hostName || '').toUpperCase()}`;
-                        hostBtn.className = 'w-full btn-brand text-white py-3 rounded-xl font-black text-xs uppercase shadow-lg shrink-0';
+                        // Staff: see a "Guarda" button to request the cam manually
+                        hostBtn.style.display = '';
+                        hostBtn.innerHTML = `📺 Guarda: ${this.sanitize(data.hostName || '')}`;
+                        hostBtn.className = 'w-full btn-brand text-white py-3 rounded-xl font-black text-xs uppercase shadow-lg shrink-0 transition';
                         hostBtn.onclick = () => app.requestCam(data.hostUid);
                     } else {
-                        // Regular user: no cam request — stream arrives via PeerJS automatically
-                        // once the host accepts. Show a passive label.
-                        hostBtn.innerHTML = `🔴 LIVE — ${this.sanitize(data.hostName || '')}`;
-                        hostBtn.className = 'w-full bg-red-700/80 text-white py-3 rounded-xl font-black text-xs uppercase shadow-lg shrink-0 cursor-default animate-pulse';
-                        hostBtn.onclick = null;
+                        // Regular users: hide button, show a passive LIVE banner instead
+                        hostBtn.style.display = 'none';
+                        const existing = document.getElementById('stage-live-banner');
+                        if (!existing) {
+                            const banner = document.createElement('div');
+                            banner.id = 'stage-live-banner';
+                            banner.className = 'w-full bg-red-700/90 text-white py-2.5 rounded-xl font-black text-xs uppercase text-center shadow-lg shrink-0 flex items-center justify-center gap-2';
+                            banner.innerHTML = `<span class="w-2 h-2 rounded-full bg-white animate-pulse inline-block"></span>🔴 Live — ${this.sanitize(data.hostName || '')}`;
+                            hostBtn.parentNode.insertBefore(banner, hostBtn);
+                        } else {
+                            existing.innerHTML = `<span class="w-2 h-2 rounded-full bg-white animate-pulse inline-block"></span>🔴 Live — ${this.sanitize(data.hostName || '')}`;
+                        }
                     }
                 } else {
                     // ── Stage empty ─────────────────────────────────────────
                     editArea.classList.add('hidden'); displayArea.classList.remove('hidden');
                     stagePlayer.classList.add('hidden'); stagePlayer.srcObject = null;
                     placeholder.classList.remove('hidden'); stageVol.classList.add('hidden');
+                    // Remove live banner if present
+                    document.getElementById('stage-live-banner')?.remove();
                     if (isStaff) {
+                        hostBtn.style.display = '';
                         hostBtn.innerHTML = '🎤 Sali sul Palco';
-                        hostBtn.className = 'w-full btn-brand text-white py-3 rounded-xl font-black text-xs uppercase shadow-lg shrink-0';
+                        hostBtn.className = 'w-full btn-brand text-white py-3 rounded-xl font-black text-xs uppercase shadow-lg shrink-0 transition';
                         hostBtn.onclick = () => app.claimHost();
                     } else {
-                        hostBtn.innerHTML = '⏳ In attesa del presentatore…';
-                        hostBtn.className = 'w-full bg-slate-700 text-slate-400 py-3 rounded-xl font-black text-xs uppercase shadow-lg shrink-0 cursor-default';
-                        hostBtn.onclick = null;
+                        // Regular users see nothing interactive
+                        hostBtn.style.display = 'none';
                     }
                     if (this.state.me.camActive && isStaff) document.getElementById('local-video-container').style.display = 'block';
                 }
