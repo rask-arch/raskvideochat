@@ -226,6 +226,31 @@
         /* === AUDIT LOG (Admin) === */
         .audit-row { padding: 8px 12px; border-bottom: 1px solid #1e293b; font-size: 11px; color: #94a3b8; display: flex; gap: 12px; align-items: flex-start; }
         .audit-action { font-weight: 700; color: #f59e0b; flex-shrink: 0; }
+
+        /* === EVENTS ROOM STYLES === */
+        .events-disclaimer-modal {
+            animation: fadeInModal 0.3s ease-out;
+        }
+
+        @keyframes fadeInModal {
+            from {
+                opacity: 0;
+                transform: scale(0.95);
+            }
+            to {
+                opacity: 1;
+                transform: scale(1);
+            }
+        }
+
+        #stage-live-banner {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
     </style>
 </head>
 <body>
@@ -734,6 +759,299 @@ service cloud.firestore {
     <div id="user-menu-modal" class="user-menu-modal"></div>
 
     <!-- ============================================================ -->
+    <!-- EVENTS ROOM MANAGER MODULE (TypeScript)                      -->
+    <!-- ============================================================ -->
+    <script>
+        // EventsRoomManager Module
+        (function() {
+            class EventsRoomManager {
+                constructor(core) {
+                    this.core = core;
+                    this.autoViewActive = false;
+                    this.hasShownDisclaimer = false;
+                }
+
+                // Verifica se l'utente è presentatore
+                isPresenter() {
+                    const { me, currentRoom, gameHostUid } = this.core.state;
+                    const isStaff = ['Admin', 'Staff'].includes(me.role);
+                    return isStaff && currentRoom === 'games' && gameHostUid === me.uid;
+                }
+
+                // Entra nella stanza eventi
+                onRoomEnter(roomId, stageData) {
+                    if (roomId !== 'games') return;
+
+                    const isPresenter = this.isPresenter();
+                    
+                    if (isPresenter) {
+                        this.setupPresenterUI();
+                    } else {
+                        this.setupViewerUI();
+                    }
+
+                    // Se c'è già una live, connetti automaticamente
+                    if (stageData?.hostUid && !isPresenter) {
+                        this.autoConnectToStage(stageData.hostUid);
+                    }
+                }
+
+                // Gestisce i cambiamenti del palco
+                onStageDataChange(stageData) {
+                    const { currentRoom, me } = this.core.state;
+                    if (currentRoom !== 'games') return;
+
+                    const isPresenter = this.isPresenter();
+                    const hostUid = stageData?.hostUid;
+
+                    // Se l'host ha iniziato a trasmettere
+                    if (hostUid && !isPresenter && !this.autoViewActive) {
+                        this.autoConnectToStage(hostUid);
+                    }
+
+                    // Se l'host ha smesso di trasmettere
+                    if (!hostUid && this.autoViewActive) {
+                        this.disconnectFromStage();
+                    }
+
+                    // Aggiorna UI
+                    if (this.core.updateStageUI) {
+                        this.core.updateStageUI(stageData);
+                    }
+                }
+
+                // Setup UI per il presentatore
+                setupPresenterUI() {
+                    // Già gestito da updateStageUI esistente
+                }
+
+                // Setup UI per lo spettatore
+                setupViewerUI() {
+                    // Già gestito da updateStageUI esistente
+                }
+
+                // Sali sul palco (solo staff/admin)
+                async claimStage() {
+                    const { me, currentRoom } = this.core.state;
+                    
+                    // Controlla permessi
+                    if (!['Admin', 'Staff'].includes(me.role)) {
+                        this.core.showToast('⛔ Solo Staff e Admin possono salire sul palco', 'error');
+                        return;
+                    }
+
+                    if (currentRoom !== 'games') {
+                        this.core.showToast('Devi essere nella stanza Games', 'error');
+                        return;
+                    }
+
+                    // Mostra disclaimer la prima volta
+                    if (!this.hasShownDisclaimer) {
+                        const confirmed = await this.showDisclaimerModal();
+                        if (!confirmed) return;
+                        this.hasShownDisclaimer = true;
+                    }
+
+                    // Attiva la cam se non è già attiva
+                    if (!me.camActive) {
+                        await this.core.toggleCam();
+                    }
+
+                    // Prendi possesso del palco
+                    if (this.core.updateStage) {
+                        await this.core.updateStage({
+                            hostUid: me.uid,
+                            hostName: me.name
+                        });
+                    }
+
+                    // Inizia a trasmettere a tutti
+                    setTimeout(() => this.broadcastToAll(), 1000);
+                }
+
+                // Mostra il modal di avviso
+                showDisclaimerModal() {
+                    return new Promise((resolve) => {
+                        const modal = document.createElement('div');
+                        modal.className = 'modal-overlay active events-disclaimer-modal';
+                        modal.innerHTML = `
+                            <div class="bg-white w-[400px] rounded-[32px] p-8 shadow-2xl mx-4 text-center">
+                                <div class="text-5xl mb-4">🎤</div>
+                                <h2 class="text-xl font-black text-slate-800 mb-3">Sali sul Palco?</h2>
+                                <p class="text-sm text-slate-600 mb-6 leading-relaxed">
+                                    Saliendo sul palco, accetti che il tuo video e audio saranno visibili a tutti i partecipanti della stanza.
+                                </p>
+                                <div class="flex gap-3">
+                                    <button id="disclaimer-cancel" class="flex-1 bg-slate-100 text-slate-600 py-3 rounded-xl font-bold text-sm">Annulla</button>
+                                    <button id="disclaimer-confirm" class="flex-1 btn-brand text-white py-3 rounded-xl font-bold text-sm">Accetta e Continua</button>
+                                </div>
+                            </div>
+                        `;
+                        document.body.appendChild(modal);
+
+                        document.getElementById('disclaimer-confirm')?.addEventListener('click', () => {
+                            modal.remove();
+                            resolve(true);
+                        });
+
+                        document.getElementById('disclaimer-cancel')?.addEventListener('click', () => {
+                            modal.remove();
+                            resolve(false);
+                        });
+                    });
+                }
+
+                // Connetti automaticamente uno spettatore alla live
+                autoConnectToStage(hostUid) {
+                    const host = this.core.state.users.find(u => u.uid === hostUid);
+                    if (!host || !this.core.state.peer) return;
+
+                    const peerId = host.peerId || hostUid;
+                    
+                    try {
+                        const call = this.core.state.peer.call(peerId, null); // null = solo ricezione
+
+                        if (call) {
+                            call.on('stream', (remoteStream) => {
+                                const stagePlayer = document.getElementById('stage-player');
+                                if (stagePlayer) {
+                                    stagePlayer.srcObject = remoteStream;
+                                    stagePlayer.classList.remove('hidden');
+                                    const placeholder = document.getElementById('game-placeholder');
+                                    if (placeholder) placeholder.classList.add('hidden');
+                                    this.autoViewActive = true;
+                                }
+                            });
+
+                            call.on('close', () => {
+                                this.disconnectFromStage();
+                            });
+
+                            call.on('error', (err) => {
+                                console.warn('Auto-view error:', err);
+                                this.disconnectFromStage();
+                            });
+
+                            // Salva la connessione
+                            if (!this.core.state.activeCamConnections) {
+                                this.core.state.activeCamConnections = {};
+                            }
+                            this.core.state.activeCamConnections[peerId] = call;
+                        }
+                    } catch (e) {
+                        console.warn('Auto-connect failed:', e);
+                    }
+                }
+
+                // Scollega dalla live
+                disconnectFromStage() {
+                    const stagePlayer = document.getElementById('stage-player');
+                    if (stagePlayer) {
+                        stagePlayer.srcObject = null;
+                        stagePlayer.classList.add('hidden');
+                        const placeholder = document.getElementById('game-placeholder');
+                        if (placeholder) placeholder.classList.remove('hidden');
+                    }
+                    this.autoViewActive = false;
+                }
+
+                // Il presentatore trasmette a tutti
+                broadcastToAll() {
+                    const { users, currentRoom, me, peer, localStream } = this.core.state;
+                    
+                    if (!peer || !localStream || currentRoom !== 'games') return;
+
+                    const viewers = users.filter(u => 
+                        u.currentRoom === 'games' && 
+                        u.uid !== me.uid
+                    );
+
+                    viewers.forEach(viewer => {
+                        const peerId = viewer.peerId || viewer.uid;
+                        
+                        // Evita duplicati
+                        if (this.core.state.activeCamConnections && this.core.state.activeCamConnections[peerId]) return;
+
+                        try {
+                            const call = peer.call(peerId, localStream);
+                            if (call) {
+                                call.on('error', () => {});
+                                if (!this.core.state.activeCamConnections) {
+                                    this.core.state.activeCamConnections = {};
+                                }
+                                this.core.state.activeCamConnections[peerId] = call;
+                            }
+                        } catch (e) {
+                            console.warn('Errore broadcast a', peerId, e);
+                        }
+                    });
+
+                    const count = viewers.length;
+                    if (count > 0) {
+                        this.core.showToast(
+                            `📡 Live avviato - ${count} spettator${count === 1 ? 'e' : 'i'}`,
+                            'success'
+                        );
+                    }
+                }
+
+                // Verifica se mostrare il pulsante camera
+                canShowMainCamButton() {
+                    const { me, currentRoom } = this.core.state;
+                    
+                    // Nella stanza games, solo staff/admin vedono il pulsante
+                    if (currentRoom === 'games') {
+                        return ['Admin', 'Staff'].includes(me.role);
+                    }
+                    
+                    // Nelle altre stanze, tutti possono usare la cam
+                    return true;
+                }
+
+                // Gestisce chiamate in arrivo per la stanza eventi
+                handleIncomingCall(call, callerUid) {
+                    const { currentRoom, gameHostUid } = this.core.state;
+                    
+                    // Se non siamo nella stanza games, ignora
+                    if (currentRoom !== 'games') return false;
+
+                    // Se chi chiama è l'host, accetta in modalità viewer
+                    if (callerUid === gameHostUid) {
+                        try {
+                            call.answer(null); // null = non invio il mio stream
+                            
+                            call.on('stream', (remoteStream) => {
+                                const stagePlayer = document.getElementById('stage-player');
+                                if (stagePlayer) {
+                                    stagePlayer.srcObject = remoteStream;
+                                    stagePlayer.classList.remove('hidden');
+                                    const placeholder = document.getElementById('game-placeholder');
+                                    if (placeholder) placeholder.classList.add('hidden');
+                                    this.autoViewActive = true;
+                                }
+                            });
+
+                            call.on('close', () => {
+                                this.disconnectFromStage();
+                            });
+
+                            return true;
+                        } catch (e) {
+                            console.warn('Errore gestione chiamata host:', e);
+                            return false;
+                        }
+                    }
+
+                    return false; // Lascia gestire ad altri handler
+                }
+            }
+
+            // Esponi la classe globalmente
+            window.EventsRoomManager = EventsRoomManager;
+        })();
+    </script>
+
+    <!-- ============================================================ -->
     <!-- JAVASCRIPT (Versione TypeScript Compilata)                   -->
     <!-- ============================================================ -->
     <script>
@@ -843,9 +1161,13 @@ service cloud.firestore {
                 constructor() {
                     this.state = new AppState();
                     this.listeners = new Map();
+                    this.eventsRoomManager = null; // Aggiunto per il modulo eventi
                 }
 
                 getCol(name) {
+                    // Nota: questa funzione verrà chiamata dopo l'inizializzazione Firebase
+                    // quando this.state.db è disponibile
+                    if (!this.state.db) return null;
                     return collection(this.state.db, 'artifacts', this.state.appId, 'public', 'data', name);
                 }
 
@@ -1143,7 +1465,7 @@ service cloud.firestore {
                         browserLocalPersistence, 
                         setPersistence 
                     } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js');
-                    const { getFirestore } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
+                    const { getFirestore, collection } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
                     const { getStorage } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js');
 
                     const fbApp = initializeApp(cfg);
@@ -1155,7 +1477,7 @@ service cloud.firestore {
                     this.state.auth = auth;
 
                     try {
-                        const { getDocs, collection } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
+                        const { getDocs } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
                         const scSnap = await getDocs(this.getCol('server_settings'));
                         scSnap.forEach(d => {
                             if (d.id === 'config') this.state.serverConfig = { ...this.state.serverConfig, ...d.data() };
@@ -1545,7 +1867,7 @@ service cloud.firestore {
                         onlineSnap.forEach(d => {
                             const data = d.data();
                             if ((data.nameLower || data.name?.toLowerCase()) === username.toLowerCase() && d.id !== uid) {
-                                const { deleteDoc, doc } = require('firebase/firestore');
+                                const { deleteDoc, doc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
                                 deleteDoc(doc(this.getCol('online_users'), d.id)).catch(() => null);
                             }
                         });
@@ -1612,6 +1934,10 @@ service cloud.firestore {
 
                     this.state.isLoggedIn = true;
                     this.state.loginTime = Date.now();
+                    
+                    // Inizializza il manager degli eventi
+                    this.eventsRoomManager = new window.EventsRoomManager(this);
+                    
                     document.getElementById('auth-screen').classList.add('hidden');
                     document.getElementById('main-app').classList.remove('pointer-events-none');
                     document.getElementById('main-app').style.opacity = '1';
@@ -2198,7 +2524,13 @@ service cloud.firestore {
                         if (!snap.exists()) return;
                         const data = snap.data();
                         this.state.gameHostUid = data.hostUid || null;
-                        this.updateStageUI(data);
+                        
+                        // Gestisci cambiamento del palco con il manager eventi
+                        if (this.eventsRoomManager) {
+                            this.eventsRoomManager.onStageDataChange(data);
+                        } else {
+                            this.updateStageUI(data);
+                        }
                     });
 
                     onSnapshot(this.getCol('room_kicks'), snap => {
@@ -2701,6 +3033,16 @@ service cloud.firestore {
                     }
                     if (id === 'games') {
                         document.getElementById('game-stage').classList.remove('hidden');
+                        
+                        // Aggiorna UI della camera
+                        if (this.eventsRoomManager) {
+                            const camBtn = document.getElementById('header-btn-cam');
+                            if (camBtn) {
+                                const showCam = this.eventsRoomManager.canShowMainCamButton();
+                                camBtn.style.display = showCam ? '' : 'none';
+                            }
+                        }
+                        
                         setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
                     } else {
                         document.getElementById('game-stage').classList.add('hidden');
@@ -2714,9 +3056,21 @@ service cloud.firestore {
                     this.state.typingUsers = {};
                     this.renderTypingIndicator();
                     this.clearUnread(id);
+                    
                     if (window.innerWidth <= 768) {
                         document.getElementById('sidebar-right').classList.remove('open');
                         document.getElementById('sidebar-overlay').classList.remove('active');
+                    }
+
+                    // Notifica il manager eventi dell'ingresso nella stanza
+                    if (this.eventsRoomManager && id === 'games') {
+                        setTimeout(() => {
+                            const stageData = {
+                                hostUid: this.state.gameHostUid,
+                                hostName: this.state.users.find(u => u.uid === this.state.gameHostUid)?.name
+                            };
+                            this.eventsRoomManager.onRoomEnter(id, stageData);
+                        }, 500);
                     }
                 }
 
@@ -2917,6 +3271,11 @@ service cloud.firestore {
                 // CAM / WEBRTC
                 // ============================================================
                 async toggleCam() {
+                    // Usa il manager per decidere se mostrare il pulsante
+                    if (this.eventsRoomManager && !this.eventsRoomManager.canShowMainCamButton() && this.state.currentRoom === 'games') {
+                        return this.showToast('🎥 Solo il presentatore può usare la cam in questa stanza.', 'info');
+                    }
+
                     if (!this.state.me.camActive &&
                         this.state.currentRoom === 'games' &&
                         !['Admin','Staff'].includes(this.state.me.role)) {
@@ -2985,6 +3344,14 @@ service cloud.firestore {
                             this.state.micGainNode.connect(dest);
 
                             this.bringToFront(document.getElementById('local-video-container'));
+
+                            // Se siamo in stanza games e siamo host, trasmetti a tutti
+                            if (this.state.currentRoom === 'games' && this.state.gameHostUid === this.state.me.uid && this.eventsRoomManager) {
+                                setTimeout(() => {
+                                    this.eventsRoomManager.broadcastToAll();
+                                }, 1000);
+                            }
+
                         } catch (err) {
                             const msgs = {
                                 NotAllowedError: 'Permesso fotocamera/microfono negato.',
@@ -3078,9 +3445,17 @@ service cloud.firestore {
                 setupPeerCallHandler() {
                     if (!this.state.peer) return;
                     this.state.peer.removeAllListeners('call');
-                    this.state.peer.on('call', call => {
+                    this.state.peer.on('call', (call) => {
                         const peerId = call.peer;
                         const callerUser = this.state.users.find(u => (u.peerId || u.uid) === peerId);
+                        const callerUid = callerUser?.uid || peerId;
+
+                        // Lascia gestire prima al manager della stanza eventi
+                        if (this.eventsRoomManager) {
+                            const handled = this.eventsRoomManager.handleIncomingCall(call, callerUid);
+                            if (handled) return;
+                        }
+
                         const isStageCall = this.state.currentRoom === 'games' &&
                                             this.state.gameHostUid === callerUser?.uid;
                         call.answer(isStageCall ? null : (this.state.localStream || null));
@@ -3259,6 +3634,13 @@ service cloud.firestore {
                 // STAGE / GAMES
                 // ============================================================
                 async claimHost() {
+                    // Usa il manager eventi
+                    if (this.eventsRoomManager) {
+                        await this.eventsRoomManager.claimStage();
+                        return;
+                    }
+
+                    // Fallback al vecchio metodo
                     if (!['Admin','Staff'].includes(this.state.me.role))
                         return this.showToast('⛔ Solo Admin e Staff possono salire sul palco.', 'error');
 
@@ -3337,7 +3719,11 @@ service cloud.firestore {
 
                     displayArea.innerText = data.bulletin || 'Il palco è vuoto.';
 
-                    if (camBtn) camBtn.style.display = (this.state.currentRoom === 'games' && !isStaff) ? 'none' : '';
+                    // Usa il manager per decidere se mostrare il pulsante camera
+                    if (camBtn && this.eventsRoomManager) {
+                        const showCam = this.eventsRoomManager.canShowMainCamButton();
+                        camBtn.style.display = showCam ? '' : 'none';
+                    }
 
                     if (data.hostUid === this.state.me.uid) {
                         hostBtn.style.display = '';
@@ -3935,6 +4321,12 @@ service cloud.firestore {
                 setRadioVolume(val) {
                     const a = document.getElementById('radio-stream');
                     if (a) a.volume = val;
+                }
+
+                // Metodo per aggiornare il palco (usato dal manager eventi)
+                async updateStage(data) {
+                    const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
+                    await updateDoc(doc(this.getCol('rooms_data'), 'games_stage'), data);
                 }
             }
 
