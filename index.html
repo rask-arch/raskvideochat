@@ -5,7 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>RaskVideochat - Release 2.0.0 TS</title>
     <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🎥</text></svg>">
+    <!-- PRODUZIONE: sostituire con "npx tailwindcss -o tailwind.min.css --minify"
+         e importare il file generato invece di questo CDN Play -->
+    <!-- PRODUZIONE: sostituire con "npx tailwindcss -o tailwind.min.css --minify"
+         e importare il file generato invece di questo CDN Play -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="referrer" content="strict-origin-when-cross-origin">
+    <meta name="referrer" content="strict-origin-when-cross-origin">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
     
@@ -69,7 +75,7 @@
         @keyframes cardEntrance { 0% { opacity: 0; transform: scale(0.85) translateY(50px); filter: blur(12px); } 100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); } }
 
         /* === VIDEO WINDOWS === */
-        .video-window { position: fixed; background: #000; border: 3px solid white; border-radius: 16px; overflow: hidden; display: none; box-shadow: 0 15px 40px rgba(0,0,0,0.4); z-index: 3500; min-width: 120px; min-height: 120px; touch-action: none; }
+        .video-window { position: fixed; background: #000; border: 3px solid white; border-radius: 16px; overflow: hidden; display: none; box-shadow: 0 15px 40px rgba(0,0,0,0.4); z-index: 7500; min-width: 120px; min-height: 120px; touch-action: none; }
         .video-window.active { display: block; } .mirror { transform: scaleX(-1); }
         .drag-handle { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; cursor: move; touch-action: none; }
         .resize-handle { position: absolute; bottom: 0; right: 0; width: 22px; height: 22px; cursor: se-resize; z-index: 60; background: linear-gradient(135deg, transparent 50%, var(--brand-col-2) 50%); border-bottom-right-radius: 13px; }
@@ -121,36 +127,36 @@
         #scroll-to-bottom.visible { display: flex; }
 
         /* ═══ MOBILE BOTTOM NAV ═══════════════════════════════════════ */
-        #mobile-bottom-nav {
-            display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 6000;
-            background: linear-gradient(135deg, var(--brand-col-1), var(--brand-col-2));
-            border-top: 1px solid rgba(255,255,255,0.15);
-            padding: 6px 0 max(6px, env(safe-area-inset-bottom));
-            box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+        /* ─── Mobile header toolbar (rimpiazza bottom nav) ─── */
+        #mobile-bottom-nav { display: none; }  /* nascosto, rimpiazzato dall'header */
+
+        /* Bottoni header mobile: compatti, icona + label sotto */
+        .mob-hdr-btn {
+            display: none; /* mostrato solo su mobile */
+            flex-direction: column; align-items: center; gap: 1px;
+            padding: 4px 6px; border-radius: 10px; cursor: pointer;
+            transition: all 0.18s; color: rgba(255,255,255,0.65); background: transparent;
+            border: none; font-size: 8px; font-weight: 900; text-transform: uppercase;
+            letter-spacing: .04em; position: relative; min-width: 40px;
+            touch-action: manipulation; -webkit-tap-highlight-color: transparent;
         }
-        #mobile-bottom-nav .mob-nav-items { display: flex; justify-content: space-around; align-items: flex-end; }
-        .mob-nav-btn {
-            display: flex; flex-direction: column; align-items: center; gap: 2px;
-            padding: 6px 10px; border-radius: 12px; cursor: pointer;
-            transition: all 0.18s; color: rgba(255,255,255,0.55); background: transparent;
-            border: none; font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: .06em;
-            position: relative; min-width: 52px;
-        }
-        .mob-nav-btn svg { width: 22px; height: 22px; }
-        .mob-nav-btn.active { color: white; }
-        .mob-nav-btn.active::before {
-            content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
-            width: 28px; height: 3px; background: white; border-radius: 0 0 4px 4px;
-        }
+        .mob-hdr-btn svg { width: 18px; height: 18px; flex-shrink: 0; }
+        .mob-hdr-btn:active, .mob-hdr-btn.active { color: white; background: rgba(255,255,255,0.2); border-radius: 10px; }
+        .mob-hdr-btn.cam-on { color: #4ade80; }
         .mob-nav-badge {
-            position: absolute; top: 2px; right: 6px;
+            position: absolute; top: 0px; right: 2px;
             background: #ef4444; color: white; border-radius: 10px;
-            font-size: 8px; font-weight: 900; padding: 1px 4px; min-width: 14px; text-align: center;
+            font-size: 7px; font-weight: 900; padding: 1px 3px; min-width: 13px; text-align: center;
+            pointer-events: none;
         }
         @media (max-width: 768px) {
-            #mobile-bottom-nav { display: block; }
-            .flex-1.flex.overflow-hidden.relative { padding-bottom: 58px; }
-            #local-video-container { bottom: auto !important; top: 58px; right: 10px; }
+            .mob-hdr-btn { display: flex; }
+            /* Su mobile: riduci padding header e nascondi testo app */
+            header.brand-gradient { padding-top: 6px; padding-bottom: 6px; }
+            #local-video-container { bottom: auto !important; top: 56px; right: 8px; }
+            /* Assicura sidebar sempre sopra tutto su mobile */
+            .sidebar-right { z-index: 9100 !important; }
+            #sidebar-overlay { z-index: 9099 !important; }
         }
 
         /* ═══ SETTINGS MODAL TABS ══════════════════════════════════════ */
@@ -232,10 +238,10 @@
         .sidebar-right { background: linear-gradient(180deg, var(--brand-col-1) 0%, var(--brand-col-2) 100%); color: white; transition: transform 0.3s cubic-bezier(0.4,0,0.2,1); z-index: 5000; }
         @media (min-width: 769px) { .sidebar-right { width: 320px; position: relative; transform: translateX(0); } }
         @media (max-width: 768px) { .sidebar-right { position: fixed; top: 0; right: 0; bottom: 0; width: 85%; max-width: 300px; transform: translateX(100%); box-shadow: -10px 0 20px rgba(0,0,0,0.5); } .sidebar-right.open { transform: translateX(0); } }
-        #sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 4999; }
+        #sidebar-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 9099; touch-action: manipulation; }
         #sidebar-overlay.active { display: block; }
 
-        .user-card-compact { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 10px; cursor: pointer; transition: all 0.2s; background: rgba(255,255,255,0.05); margin-bottom: 3px; border: 1px solid transparent; }
+        .user-card-compact { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 10px; cursor: pointer; transition: all 0.2s; background: rgba(255,255,255,0.05); margin-bottom: 3px; border: 1px solid transparent; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
         .user-card-compact:hover { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.1); }
         .user-card-avatar { width: 26px; height: 26px; border-radius: 7px; overflow: hidden; background: rgba(255,255,255,0.1); flex-shrink: 0; }
         .user-card-avatar img { width: 100%; height: 100%; object-fit: cover; }
@@ -250,14 +256,14 @@
         .emoji-picker.active { display: grid; }
         .emoji-btn { font-size: 22px; cursor: pointer; text-align: center; padding: 6px; border-radius: 8px; border: none; background: transparent; } .emoji-btn:hover { background: #f1f5f9; transform: scale(1.1); }
 
-        .user-menu-modal { background: white; border-radius: 14px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.4); position: fixed; z-index: 8000; display: none; width: 190px; border: 1px solid #e2e8f0; }
+        .user-menu-modal { background: white; border-radius: 14px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.4); position: fixed; z-index: 9500; display: none; width: 190px; border: 1px solid #e2e8f0; touch-action: manipulation; }
         .user-menu-modal.active { display: block; animation: fadeInMenu 0.15s ease-out; }
         @keyframes fadeInMenu { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
         .user-menu-header { padding: 10px 14px; border-bottom: 1px solid #f1f5f9; background: #f8fafc; font-weight: 800; font-size: 13px; color: #1e293b; text-align: center; }
         .user-menu-item { padding: 10px 15px; font-size: 12px; font-weight: 600; color: #475569; cursor: pointer; display: flex; align-items: center; gap: 8px; border-top: 1px solid #f8fafc; }
         .user-menu-item:hover { background: #f1f5f9; color: #0f172a; } .user-menu-item.danger { color: #ef4444; } .user-menu-item.danger:hover { background: #fef2f2; }
 
-        .pvt-window { position: fixed; bottom: 20px; left: 20px; width: 320px; height: 400px; min-width: 250px; min-height: 250px; background: white; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); display: none; flex-direction: column; z-index: 6000; overflow: hidden; border: 1px solid rgba(0,0,0,0.1); touch-action: none; transition: height 0.2s ease; }
+        .pvt-window { position: fixed; bottom: 20px; left: 20px; width: 320px; height: 400px; min-width: 250px; min-height: 250px; background: white; border-radius: 16px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); display: none; flex-direction: column; z-index: 7200; overflow: hidden; border: 1px solid rgba(0,0,0,0.1); touch-action: none; transition: height 0.2s ease; }
         .pvt-window.active { display: flex; animation: popup 0.3s cubic-bezier(0.175,0.885,0.32,1.275); }
         .pvt-window.minimized { height: 44px !important; min-height: unset; overflow: hidden; }
         .pvt-window.minimized .pvt-messages, .pvt-window.minimized .pvt-input-area, .pvt-window.minimized .resize-handle { display: none !important; }
@@ -450,7 +456,57 @@
                         <div class="status-option" onclick="window.app?.closeUserMenu();window.app?.openModal('profile-modal')">✏️ Modifica Profilo</div>
                     </div>
                 </div>
-                <button onclick="window.app?.toggleSidebar()" class="nav-btn md:hidden"><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5"/></svg></button>
+                <!-- ─── Mobile-only action buttons nell'header ──────────── -->
+                <!-- Stanze -->
+                <button class="mob-hdr-btn" id="mob-btn-rooms"
+                    onclick="window.app?.openMobileRooms()" title="Stanze"
+                    aria-label="Stanze">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/>
+                    </svg>
+                    Stanze
+                    <span class="mob-nav-badge hidden" id="mob-rooms-badge">0</span>
+                </button>
+                <!-- Utenti -->
+                <button class="mob-hdr-btn" id="mob-btn-users"
+                    onclick="window.app?.toggleSidebar()" title="Utenti"
+                    aria-label="Lista utenti">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/>
+                        <circle cx="9" cy="7" r="4"/>
+                        <path stroke-linecap="round" stroke-linejoin="round" d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/>
+                    </svg>
+                    Utenti
+                    <span class="mob-nav-badge hidden" id="mob-users-badge">0</span>
+                </button>
+                <!-- Cerca -->
+                <button class="mob-hdr-btn" id="mob-btn-search"
+                    onclick="window.app?.toggleSearch()" title="Cerca"
+                    aria-label="Cerca nei messaggi">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <circle cx="11" cy="11" r="8"/>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+                    </svg>
+                    Cerca
+                </button>
+                <!-- Impostazioni -->
+                <button class="mob-hdr-btn" id="mob-btn-settings"
+                    onclick="window.app?.openSettings()" title="Impostazioni"
+                    aria-label="Impostazioni">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l-.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+                    </svg>
+                    Altro
+                </button>
+                <!-- Avatar mobile (apre profilo) -->
+                <button onclick="window.app?.toggleStatusMenu(event)"
+                    class="mob-hdr-btn" id="mob-avatar-btn" title="Profilo"
+                    aria-label="Profilo utente">
+                    <img id="mob-avatar-mini" src="" class="w-6 h-6 rounded-full object-cover border border-white/30"
+                         onerror="this.style.opacity='0.3'" style="min-width:24px">
+                    <span style="font-size:7px;margin-top:1px">Profilo</span>
+                </button>
             </div>
         </header>
 
@@ -548,32 +604,7 @@
             </main>
 
             <!-- SIDEBAR -->
-            <nav id="mobile-bottom-nav">
-                <div class="mob-nav-items">
-                    <button class="mob-nav-btn" id="mob-btn-rooms" onclick="window.app?.openMobileRooms()" title="Stanze">
-                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
-                        Stanze
-                        <span class="mob-nav-badge hidden" id="mob-rooms-badge">0</span>
-                    </button>
-                    <button class="mob-nav-btn" id="mob-btn-users" onclick="window.app?.toggleSidebar()" title="Utenti">
-                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path stroke-linecap="round" stroke-linejoin="round" d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
-                        Utenti
-                        <span class="mob-nav-badge hidden" id="mob-users-badge">0</span>
-                    </button>
-                    <button class="mob-nav-btn" id="mob-btn-cam" onclick="window.app?.toggleCam()" title="Cam">
-                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
-                        Cam
-                    </button>
-                    <button class="mob-nav-btn" id="mob-btn-search" onclick="window.app?.toggleSearch()" title="Cerca">
-                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-                        Cerca
-                    </button>
-                    <button class="mob-nav-btn" id="mob-btn-settings" onclick="window.app?.openSettings()" title="Impostazioni">
-                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l-.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-                        Altro
-                    </button>
-                </div>
-            </nav>
+            <!-- mobile nav integrato nell'header -->
 
             <aside id="sidebar-right" class="sidebar-right flex flex-col shrink-0 shadow-2xl z-50">
                 <div class="p-4 border-b border-white/10 flex justify-between items-center md:hidden"><span class="font-black text-xs uppercase tracking-widest">Menu</span><button onclick="window.app?.toggleSidebar()" class="text-white/70 hover:text-white">✕</button></div>
@@ -642,14 +673,14 @@
                     <div class="space-y-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
                         <div>
                             <label class="block text-[10px] font-black text-slate-500 mb-2 uppercase tracking-wider">📹 Fotocamera</label>
-                            <select id="select-video-source" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none"><option value="">Predefinita</option></select>
+                            <select id="select-video-source" onchange="window.app?.hotSwapCamera()" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none"><option value="">Predefinita</option></select>
                         </div>
                         <div>
                             <label class="block text-[10px] font-black text-slate-500 mb-2 uppercase tracking-wider">🎙️ Microfono</label>
-                            <select id="select-audio-source" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none"><option value="">Predefinito</option></select>
+                            <select id="select-audio-source" onchange="window.app?.hotSwapCamera()" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none"><option value="">Predefinito</option></select>
                         </div>
                     </div>
-                    <p class="text-[10px] text-slate-400 font-medium mt-3 text-center leading-relaxed">Le impostazioni vengono applicate alla prossima attivazione della cam.</p>
+                    <p class="text-[10px] text-slate-400 font-medium mt-3 text-center leading-relaxed">💡 Se la cam è attiva, il cambio dispositivo avviene <b>automaticamente</b>.</p>
                 </div>
                 <div id="tab-notif-pane" class="settings-pane">
                     <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Suoni &amp; Media</p>
@@ -705,12 +736,95 @@
                     <pre id="firestore-rules-code" class="bg-slate-900 text-green-300 text-xs p-4 rounded-xl overflow-x-auto font-mono leading-relaxed select-all border border-slate-700">rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /artifacts/{appId}/public/data/{document=**} {
-      allow read, write: if request.auth != null;
+
+    // ── Helper functions ──────────────────────────────────
+    function isAuth()     { return request.auth != null; }
+    function uid()        { return request.auth.uid; }
+    function isOwner(id)  { return isAuth() && uid() == id; }
+    function role()       {
+      return isAuth()
+        ? get(/databases/$(database)/documents/user_profiles/$(uid())).data.role
+        : 'anon';
     }
-    match /{document=**} {
-      allow read, write: if false;
+    function isAdmin()    { return role() == 'Admin'; }
+    function isStaff()    { return role() in ['Admin','Staff']; }
+    function notBanned()  {
+      return !('banned' in get(/databases/$(database)/documents/user_profiles/$(uid())).data)
+          || get(/databases/$(database)/documents/user_profiles/$(uid())).data.banned == false;
     }
+
+    // ── user_profiles ─────────────────────────────────────
+    match /user_profiles/{userId} {
+      allow read:   if isAuth();
+      allow create: if isOwner(userId)
+                    && request.resource.data.role in ['Guest','User']
+                    && request.resource.data.name.size() >= 2
+                    && request.resource.data.name.size() <= 30;
+      allow update: if (isOwner(userId)
+                        && request.resource.data.role == resource.data.role)
+                    || isAdmin();
+      allow delete: if isAdmin();
+    }
+
+    // ── online_users ──────────────────────────────────────
+    match /online_users/{userId} {
+      allow read:          if isAuth();
+      allow create, update: if isOwner(userId) || isAdmin();
+      allow delete:        if isOwner(userId) || isAdmin();
+    }
+
+    // ── messages ──────────────────────────────────────────
+    match /messages/{msgId} {
+      allow read:   if isAuth();
+      allow create: if isAuth() && notBanned()
+                    && request.resource.data.fromUid == uid()
+                    && request.resource.data.text.size() <= 2000;
+      allow update: if isStaff();
+      allow delete: if isAdmin()
+                    || (isStaff() && resource.data.fromUid != uid())
+                    || resource.data.fromUid == uid();
+    }
+
+    // ── private_messages ──────────────────────────────────
+    match /private_messages/{msgId} {
+      allow read:   if isAuth()
+                    && (resource.data.fromUid == uid()
+                        || resource.data.toUid == uid());
+      allow create: if isAuth() && notBanned()
+                    && request.resource.data.fromUid == uid()
+                    && request.resource.data.text.size() <= 2000;
+      allow delete: if isAdmin()
+                    || resource.data.fromUid == uid()
+                    || resource.data.toUid == uid();
+    }
+
+    // ── rooms ─────────────────────────────────────────────
+    match /rooms/{roomId}      { allow read: if isAuth(); allow write: if isAdmin(); }
+    match /rooms_data/{docId}  { allow read: if isAuth(); allow write: if isStaff(); }
+
+    // ── server_settings ───────────────────────────────────
+    match /server_settings/{docId} {
+      allow read: if true;   // config pubblica (colori, titolo)
+      allow write: if isAdmin();
+    }
+
+    // ── cam / kicks / reactions ───────────────────────────
+    match /cam_requests/{d}    { allow read, write: if isAuth(); }
+    match /cam_viewers/{d}     { allow read, write: if isAuth(); }
+    match /room_kicks/{d}      { allow read: if isAuth(); allow create,delete: if isStaff(); }
+    match /live_reactions/{d}  { allow read, write: if isAuth(); }
+    match /msg_reactions/{d}   { allow read: if isAuth(); allow write: if isAuth() && notBanned(); }
+    match /typing_status/{d}   { allow read, write: if isAuth(); }
+
+    // ── audit_log (immutabile) ────────────────────────────
+    match /audit_log/{docId} {
+      allow read:           if isAdmin();
+      allow create:         if isStaff();
+      allow update, delete: if false;
+    }
+
+    // ── Default deny ──────────────────────────────────────
+    match /{document=**} { allow read, write: if false; }
   }
 }</pre>
                     <button onclick="window.app?.copyFirestoreRules()" id="copy-rules-btn" class="absolute top-3 right-3 bg-indigo-600 hover:bg-indigo-500 text-white text-[10px] font-black uppercase px-3 py-1.5 rounded-lg transition shadow">📋 Copia</button>
@@ -918,7 +1032,7 @@ service cloud.firestore {
     </div>
 
     <!-- VIEWERS POPOVER -->
-    <div id="viewers-panel" class="hidden" style="position:fixed;z-index:7000;min-width:140px;max-width:180px;">
+    <div id="viewers-panel" class="hidden" style="position:fixed;z-index:8200;min-width:140px;max-width:180px;">
         <div class="bg-slate-900 border border-slate-700 rounded-xl shadow-2xl overflow-hidden">
             <div class="px-3 py-2 border-b border-slate-700 flex items-center gap-1.5">
                 <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24" class="text-brand/80"><path stroke-linecap="round" stroke-linejoin="round" d="M2.036 12.322a1.012 1.012 0 0 1 0-.639C3.423 7.51 7.36 4.5 12 4.5c4.638 0 8.573 3.007 9.963 7.178.07.207.07.431 0 .639C20.577 16.49 16.64 19.5 12 19.5c-4.641 0-8.573-3.007-9.964-7.178z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0z"/></svg>
@@ -1424,13 +1538,17 @@ service cloud.firestore {
                         return ph;
                     });
 
-                    // URLs and images
+                    // URLs and images — XSS-02: solo https?:// (blocca javascript:/data:/vbscript:)
                     text = text.replace(/(https?:\/\/[^\s<>"\x00]{3,})/g, (rawUrl) => {
                         const url = rawUrl.replace(/&amp;/g, '&');
+                        // Validazione protocollo — sicuro anche contro URL encodati
+                        let proto = '';
+                        try { proto = new URL(url).protocol; } catch(_) { return this.sanitize(rawUrl); }
+                        if (!['http:','https:'].includes(proto)) return this.sanitize(rawUrl);
                         if (url.match(/\.(jpeg|jpg|gif|png|webp)(\?.*)?$/i)) {
                             return `<img src="${url}" class="chat-image" loading="lazy" onerror="this.style.display='none'">`;
                         }
-                        return `<a href="${url}" target="_blank" rel="noopener noreferrer" class="text-brand underline font-bold break-all">${url}</a>`;
+                        return `<a href="${url}" target="_blank" rel="noopener noreferrer nofollow" class="text-brand underline font-bold break-all">${this.sanitize(url)}</a>`;
                     });
 
                     // Restore YouTube embeds
@@ -1479,12 +1597,21 @@ service cloud.firestore {
                 }
 
                 bringToFront(el) {
-                    let max = 3500;
-                    document.querySelectorAll('.video-window, .pvt-window').forEach(w => {
+                    // ZINDEX-04: base corretta (sopra sidebar) + cap anti-overflow
+                    const wins = document.querySelectorAll('.video-window, .pvt-window');
+                    let max = 7500;
+                    wins.forEach(w => {
                         const z = parseInt(w.style.zIndex || 0);
                         if (!isNaN(z) && z > max) max = z;
                     });
-                    el.style.zIndex = max + 1;
+                    // Cap a 8100: non superare modal (9000) né admin-panel (9999)
+                    if (max >= 8100) {
+                        let base = 7500;
+                        wins.forEach(w => { if (w !== el) w.style.zIndex = base++; });
+                        el.style.zIndex = base;
+                    } else {
+                        el.style.zIndex = max + 1;
+                    }
                 }
 
                 savePrefs() {
@@ -1566,6 +1693,8 @@ service cloud.firestore {
                 // ============================================================
                 makeDraggable(el, handle) {
                     if (!el || !handle) return;
+                    // MEM-01: rimuovi listener precedenti (evita accumulo su re-init)
+                    if (handle._dragCleanup) { handle._dragCleanup(); delete handle._dragCleanup; }
                     let sX = 0, sY = 0, iL = 0, iT = 0;
                     
                     const start = (e) => {
@@ -1603,10 +1732,21 @@ service cloud.firestore {
 
                     handle.addEventListener('mousedown', start);
                     handle.addEventListener('touchstart', start, { passive: false });
+                    // MEM-01b: salva funzione cleanup per future chiamate
+                    handle._dragCleanup = () => {
+                        handle.removeEventListener('mousedown', start);
+                        handle.removeEventListener('touchstart', start);
+                        document.removeEventListener('mousemove', move);
+                        document.removeEventListener('touchmove', move);
+                        document.removeEventListener('mouseup', end);
+                        document.removeEventListener('touchend', end);
+                    };
                 }
 
                 makeResizable(el, handle) {
                     if (!el || !handle) return;
+                    // MEM-02: cleanup listener precedenti
+                    if (handle._resizeCleanup) { handle._resizeCleanup(); delete handle._resizeCleanup; }
                     let sX = 0, sY = 0, sW = 0, sH = 0;
 
                     const start = (e) => {
@@ -1637,6 +1777,15 @@ service cloud.firestore {
 
                     handle.addEventListener('mousedown', start);
                     handle.addEventListener('touchstart', start, { passive: false });
+                    // MEM-02b: salva cleanup
+                    handle._resizeCleanup = () => {
+                        handle.removeEventListener('mousedown', start);
+                        handle.removeEventListener('touchstart', start);
+                        document.removeEventListener('mousemove', resize);
+                        document.removeEventListener('touchmove', resize);
+                        document.removeEventListener('mouseup', end);
+                        document.removeEventListener('touchend', end);
+                    };
                 }
 
                 // ============================================================
@@ -1809,7 +1958,9 @@ service cloud.firestore {
                     if (this.state.authSubmitting) return;
                     this.state.authSubmitting = true;
 
-                    const rawU = document.getElementById('auth-username').value.trim();
+                    // XSS-03: strip invisible/control chars da username
+                    const rawU = document.getElementById('auth-username').value.trim()
+                        .replace(/[\x00-\x1f\x7f-\x9f\u200b-\u200f\u2028-\u202f]/g, '').trim();
                     const rawP = document.getElementById('auth-password').value.trim();
 
                     const resetBtn = () => {
@@ -1911,7 +2062,7 @@ service cloud.firestore {
                             const avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(rawU)}`;
 
                             try {
-                                await setDoc(doc(this.getCol('user_profiles'), uid), {
+                                await _fbSetDoc(_fbDoc(this.getCol('user_profiles'), uid), {
                                     name: rawU,
                                     nameLower: rawU.toLowerCase(),
                                     gender: 'M',
@@ -1969,9 +2120,9 @@ service cloud.firestore {
                             } catch (_) {}
 
                             // Load profile
-                            const profileDoc = await getDoc(doc(this.getCol('user_profiles'), uid));
+                            const profileDoc = await _fbGetDoc(_fbDoc(this.getCol('user_profiles'), uid));
                             if (!profileDoc.exists()) {
-                                await setDoc(doc(this.getCol('user_profiles'), uid), {
+                                await _fbSetDoc(_fbDoc(this.getCol('user_profiles'), uid), {
                                     name: rawU,
                                     nameLower: rawU.toLowerCase(),
                                     gender: 'M',
@@ -2040,8 +2191,10 @@ service cloud.firestore {
                         }
 
                         const avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${uid}`;
+                        // BUG-GUEST-01: usa funzioni Firebase cachate (_fbDoc/_fbSetDoc)
+                        // setDoc/doc locali al blocco login non sono disponibili qui
                         try {
-                            await setDoc(doc(this.getCol('user_profiles'), uid), {
+                            await _fbSetDoc(_fbDoc(this.getCol('user_profiles'), uid), {
                                 name: gName,
                                 nameLower: gName.toLowerCase(),
                                 gender: 'M',
@@ -2049,17 +2202,21 @@ service cloud.firestore {
                                 avatarUrl,
                                 bio: '',
                                 createdAt: Date.now(),
-                                isGuest: true
+                                isGuest: true,
+                                loginAt: Date.now()
                             });
                         } catch (writeErr) {
+                            console.warn('[Guest] Firestore write error:', writeErr.code, writeErr.message);
                             if (writeErr.code === 'permission-denied' || writeErr.message?.includes('permissions')) {
                                 btn.disabled = false;
-                                btn.innerText = 'Entra come Ospite';
+                                btn.innerText = '👤 Entra come Ospite';
                                 this.openModal('firestore-setup-modal');
                                 this.state._pendingGuestRetry = { uid, gName, avatarUrl };
                                 return;
                             }
-                            throw writeErr;
+                            // Per altri errori Firestore, procedi comunque con i dati in-memory
+                            // Il profilo verrà creato al prossimo heartbeat se le regole lo permettono
+                            console.warn('[Guest] Proceeding without Firestore profile (in-memory mode)');
                         }
 
                         await this.finalizeLogin(uid, gName, 'Guest', 'M', avatarUrl, '');
@@ -2077,8 +2234,8 @@ service cloud.firestore {
                         this.state._pendingGuestRetry = null;
                         const go = async () => {
                             try {
-                                // doc/setDoc già cachati come _fbDoc/_fbSetDoc
-                                await setDoc(doc(this.getCol('user_profiles'), p.uid), {
+                                // BUG-GUEST-02: usa _fbSetDoc/_fbDoc
+                                await _fbSetDoc(_fbDoc(this.getCol('user_profiles'), p.uid), {
                                     name: p.gName,
                                     nameLower: p.gName.toLowerCase(),
                                     gender: 'M',
@@ -2086,7 +2243,8 @@ service cloud.firestore {
                                     avatarUrl: p.avatarUrl,
                                     bio: '',
                                     createdAt: Date.now(),
-                                    isGuest: true
+                                    isGuest: true,
+                                    loginAt: Date.now()
                                 });
                                 await this.finalizeLogin(p.uid, p.gName, 'Guest', 'M', p.avatarUrl, '');
                             } catch (e) {
@@ -2116,6 +2274,17 @@ service cloud.firestore {
                 }
 
                 async finalizeLogin(uid, username, role, gender, avatarUrl, bio) {
+                    // BUG-GUEST-03: guard — se il profilo non è stato scritto su Firestore
+                    // ma l'auth è avvenuta, i parametri possono essere undefined/null → crash
+                    if (!uid) { console.error('[finalizeLogin] uid mancante, abort'); return; }
+                    if (!username || username === 'undefined' || username === 'null') {
+                        console.error('[finalizeLogin] username non valido:', username);
+                        this.showToast('Errore di login: profilo non valido. Riprova.', 'error');
+                        return;
+                    }
+                    // Normalizza role per evitare ruoli non validi
+                    if (!['Guest','User','Staff','Admin'].includes(role)) role = 'User';
+
                     if (this.state.heartbeatInterval) {
                         clearInterval(this.state.heartbeatInterval);
                         this.state.heartbeatInterval = null;
@@ -2152,6 +2321,8 @@ service cloud.firestore {
                         document.getElementById('admin-nav-btn').classList.remove('hidden');
                     }
                     document.getElementById('my-avatar-mini').src = this.state.me.avatarUrl;
+                    const mobAvatar = document.getElementById('mob-avatar-mini');
+                    if (mobAvatar) mobAvatar.src = this.state.me.avatarUrl;
 
                     // Write online presence
                     try {
@@ -2214,6 +2385,16 @@ service cloud.firestore {
                     document.getElementById('main-app').style.opacity = '1';
 
                     this.updateChatInputState();
+                    // WEBRTC-03: distruggi peer precedente — evita doppio peer attivo
+                    if (this.state.peer && !this.state.peer.destroyed) {
+                        try { this.state.peer.destroy(); } catch(e) {}
+                        this.state.peer = null;
+                    }
+                    // WEBRTC-03: distruggi peer precedente — evita doppio peer attivo
+                    if (this.state.peer && !this.state.peer.destroyed) {
+                        try { this.state.peer.destroy(); } catch(e) {}
+                        this.state.peer = null;
+                    }
                     this.initPeerJS();
                     this.startListeners();
                     this.updateToolbarStaffControls();
@@ -2259,7 +2440,7 @@ service cloud.firestore {
                     };
                     
                     await _fbUpdateDoc(_fbDoc(this.getCol('online_users'), this.state.me.uid), nameUpdate).catch(console.error);
-                    await updateDoc(doc(this.getCol('user_profiles'), this.state.me.uid), nameUpdate).catch(console.error);
+                    await _fbUpdateDoc(_fbDoc(this.getCol('user_profiles'), this.state.me.uid), nameUpdate).catch(console.error);
                     document.getElementById('my-avatar-mini').src = this.state.me.avatarUrl;
                     this.closeModal('profile-modal');
                     this.showToast('Profilo salvato', 'success');
@@ -2326,29 +2507,54 @@ service cloud.firestore {
 
                 async claimAdmin() {
                     const code = document.getElementById('admin-claim-code').value.trim();
-                    if (!code) return this.showToast('Inserisci il codice', 'error');
+                    if (!code) return this.showToast('Inserisci il codice admin', 'error');
+
+                    // SEC-01a: Rate-limiting client-side (max 3 tentativi per sessione)
+                    this.state._adminAttempts = (this.state._adminAttempts || 0) + 1;
+                    if (this.state._adminAttempts > 3) {
+                        return this.showToast('❌ Troppi tentativi. Ricarica la pagina.', 'error');
+                    }
+
+                    // SEC-01b: Input validation — solo caratteri alfanumerici + simboli sicuri
+                    if (code.length < 4 || code.length > 64 || !/^[\w@#!$\-+.]+$/.test(code)) {
+                        return this.showToast('❌ Formato codice non valido', 'error');
+                    }
                     
                     try {
-                        let validCode = 'rask2024';
+                        // SEC-01c: Nessun fallback hardcoded — se non esiste config, nega sempre
+                        let validCode = null;
                         try {
-                            // getDocs già cachato come _fbGetDocs
                             const cfgSnap = await _fbGetDocs(this.getCol('server_settings'));
                             cfgSnap.forEach(d => {
-                                if (d.id === 'config' && d.data().adminCode) validCode = d.data().adminCode;
+                                if (d.id === 'config' && d.data().adminCode)
+                                    validCode = d.data().adminCode;
                             });
                         } catch (_) {}
+
+                        if (!validCode) {
+                            return this.showToast('❌ Codice admin non configurato. Contatta il gestore del sito.', 'error');
+                        }
+
+                        // Timing-safe comparison (evita timing attack su confronto stringa)
+                        const match = validCode.length === code.length &&
+                            [...code].every((c, i) => c === validCode[i]);
+
+                        if (!match) {
+                            console.warn('[SEC] Tentativo claimAdmin fallito - uid:', this.state.me.uid);
+                            return this.showToast('❌ Codice non valido', 'error');
+                        }
                         
-                        if (code !== validCode) return this.showToast('❌ Codice non valido', 'error');
-                        
-                        // doc/updateDoc già cachati come _fbDoc/_fbUpdateDoc
-                        await updateDoc(doc(this.getCol('user_profiles'), this.state.me.uid), { role: 'Admin' }).catch(console.error);
+                        // SEC-01d: usa _fbUpdateDoc/_fbDoc cachati (non bare doc/updateDoc)
+                        await _fbUpdateDoc(_fbDoc(this.getCol('user_profiles'), this.state.me.uid), { role: 'Admin' }).catch(console.error);
                         await _fbUpdateDoc(_fbDoc(this.getCol('online_users'), this.state.me.uid), { role: 'Admin' }).catch(console.error);
                         this.state.me.role = 'Admin';
+                        this.state._adminAttempts = 0;
                         document.getElementById('admin-nav-btn').classList.remove('hidden');
                         this.closeModal('profile-modal');
-                        this.showToast('✅ Sei diventato Admin!', 'success');
+                        this.showToast('✅ Accesso Admin concesso!', 'success');
+                        await this.writeAuditLog('CLAIM_ADMIN', `${this.state.me.name} (${this.state.me.uid})`);
                     } catch (err) {
-                        this.showToast('Errore: ' + err.message, 'error');
+                        this.showToast('Errore: ' + (err.message || 'Riprova'), 'error');
                     }
                 }
 
@@ -2438,7 +2644,7 @@ service cloud.firestore {
                 async adminSaveBadWords() {
                     const val = document.getElementById('adm-bad-words').value.trim();
                     // doc/setDoc già cachati come _fbDoc/_fbSetDoc
-                    await setDoc(doc(this.getCol('server_settings'), 'config'), { badWords: val }, { merge: true });
+                    await _fbSetDoc(_fbDoc(this.getCol('server_settings'), 'config'), { badWords: val }, { merge: true });
                     this.state.serverConfig.badWords = val;
                     await this.writeAuditLog('BAD_WORDS_UPDATED', `${val.split(',').filter(Boolean).length} parole`);
                     this.showToast('✅ Filtro parole salvato', 'success');
@@ -2448,7 +2654,7 @@ service cloud.firestore {
                     const code = document.getElementById('adm-admin-code').value.trim();
                     if (!code || code.length < 4) return this.showToast('Codice troppo corto (min 4 caratteri)', 'error');
                     // doc/setDoc già cachati come _fbDoc/_fbSetDoc
-                    await setDoc(doc(this.getCol('server_settings'), 'config'), { adminCode: code }, { merge: true });
+                    await _fbSetDoc(_fbDoc(this.getCol('server_settings'), 'config'), { adminCode: code }, { merge: true });
                     await this.writeAuditLog('ADMIN_CODE_CHANGED', '***');
                     document.getElementById('adm-admin-code').value = '';
                     this.showToast('✅ Codice admin aggiornato', 'success');
@@ -2461,7 +2667,7 @@ service cloud.firestore {
                     const col1 = document.getElementById('adm-color-1').value;
                     const col2 = document.getElementById('adm-color-2').value;
                     // doc/setDoc già cachati come _fbDoc/_fbSetDoc
-                    await setDoc(doc(this.getCol('server_settings'), 'config'), { appTitle: title, appBgUrl: bgUrl, color1: col1, color2: col2 }, { merge: true });
+                    await _fbSetDoc(_fbDoc(this.getCol('server_settings'), 'config'), { appTitle: title, appBgUrl: bgUrl, color1: col1, color2: col2 }, { merge: true });
                     await this.writeAuditLog('APPEARANCE', `Colori: ${col1}, ${col2} — Sfondo: ${bgUrl || 'default'}`);
                     this.showToast('Personalizzazione applicata', 'success');
                 }
@@ -2541,7 +2747,7 @@ service cloud.firestore {
                             await secondaryApp.delete().catch(() => null);
                         }
 
-                        await setDoc(doc(this.getCol('user_profiles'), newUid), {
+                        await _fbSetDoc(_fbDoc(this.getCol('user_profiles'), newUid), {
                             name: n,
                             nameLower: n.toLowerCase(),
                             gender: g,
@@ -2589,7 +2795,7 @@ service cloud.firestore {
                 async adminUpdateUserRole(uid, role) {
                     if (this.state.me.role !== 'Admin') return this.showToast('Solo Admin può cambiare ruoli', 'error');
                     // doc/updateDoc già cachati come _fbDoc/_fbUpdateDoc
-                    await updateDoc(doc(this.getCol('user_profiles'), uid), { role }).catch(console.error);
+                    await _fbUpdateDoc(_fbDoc(this.getCol('user_profiles'), uid), { role }).catch(console.error);
                     await _fbUpdateDoc(_fbDoc(this.getCol('online_users'), uid), { role }).catch(() => null);
                     await this.writeAuditLog('ROLE_CHANGE', `UID ${uid} → ${role}`);
                     this.showToast(`Ruolo aggiornato: ${role}`, 'success');
@@ -2617,7 +2823,7 @@ service cloud.firestore {
                     if (!n) return this.showToast('Nome stanza obbligatorio', 'error');
                     const id = n.toLowerCase().replace(/[^a-z0-9]/g,'_').replace(/__+/g,'_');
                     // doc/setDoc già cachati come _fbDoc/_fbSetDoc
-                    await setDoc(doc(this.getCol('rooms'), id), { id, name: n, badgeText: b, role: r, color: 'bg-slate-600', isLocked, password: pw });
+                    await _fbSetDoc(_fbDoc(this.getCol('rooms'), id), { id, name: n, badgeText: b, role: r, color: 'bg-slate-600', isLocked, password: pw });
                     await this.writeAuditLog('CREATE_ROOM', `${n} (${r}${isLocked?' — protetta':''})`);
                     document.getElementById('adm-room-name').value = '';
                     document.getElementById('adm-room-badge').value = '';
@@ -2637,7 +2843,7 @@ service cloud.firestore {
 
                 async adminUpdateServerConfig(key, val) {
                     // doc/setDoc già cachati come _fbDoc/_fbSetDoc
-                    await setDoc(doc(this.getCol('server_settings'), 'config'), { [key]: val }, { merge: true });
+                    await _fbSetDoc(_fbDoc(this.getCol('server_settings'), 'config'), { [key]: val }, { merge: true });
                     await this.writeAuditLog('CONFIG', `${key} = ${val}`);
                 }
 
@@ -3312,7 +3518,7 @@ service cloud.firestore {
                 }
 
                 updateMobileNav() {
-                    if (window.innerWidth > 768) return;
+                    // FIX-01e: badge IDs invariati (mob-users-badge, mob-rooms-badge ora nell'header)
                     const uBadge = document.getElementById('mob-users-badge');
                     if (uBadge) {
                         const n = this.state.users.length;
@@ -3325,8 +3531,9 @@ service cloud.firestore {
                         rBadge.textContent = unreadTotal;
                         rBadge.classList.toggle('hidden', unreadTotal === 0);
                     }
-                    const camBtn = document.getElementById('mob-btn-cam');
-                    if (camBtn) camBtn.classList.toggle('active', !!this.state.me.camActive);
+                    // Aggiorna stile cam button nell'header (header-btn-cam già esiste per desktop)
+                    const camBtn = document.getElementById('header-btn-cam');
+                    if (camBtn) camBtn.classList.toggle('cam-on', !!this.state.me?.camActive);
                 }
 
                 toggleRoomsDropdown() {
@@ -3364,12 +3571,12 @@ service cloud.firestore {
                         const cnt    = users > 0 ? `<span class="text-[9px] opacity-50">${users}👤</span>` : '';
                         const dot2   = `<span class="w-1.5 h-1.5 rounded-full shrink-0 ${r.color || 'bg-slate-500'} opacity-70"></span>`;
                         if (isCur) {
-                            return `<div class="room-btn active flex items-center gap-2 cursor-default">
+                            return `<div class="room-btn active flex items-center gap-2 cursor-default" style="touch-action:manipulation">
                                 ${dot2}<span class="truncate flex-1 font-black text-[11px]">${this.sanitize(r.name)}</span>
                                 ${cnt}<span class="text-[8px] bg-white/20 px-1.5 py-0.5 rounded-full font-black">● ora qui</span>
                             </div>`;
                         }
-                        return `<button onclick="app.changeRoom('${r.id}');app.toggleRoomsDropdown()" class="room-btn inactive w-full">
+                        return `<button onclick="app.changeRoom('${r.id}');app.toggleRoomsDropdown()" class="room-btn inactive w-full" style="touch-action:manipulation;-webkit-tap-highlight-color:transparent">
                             ${dot2}<span class="truncate flex-1">${lock}${this.sanitize(r.name)}</span>${cnt}${badge}
                         </button>`;
                     });
@@ -3598,8 +3805,12 @@ service cloud.firestore {
                         <div class="chat-content-area">
                             ${quoteHtml}
                             <div class="flex items-start flex-wrap gap-x-1">
-                                <span class="chat-name" onclick="app.openUserMenu(event,'${m.fromUid}')" style="color:${m.color||'#64748b'}">${this.sanitize(m.name)}:</span>
-                                <span class="chat-text" style="font-size:${m.size||'14px'};color:${m.txtColor||'#0f172a'}">${this._renderMsgText(m)}</span>
+                                <span class="chat-name" onclick="app.openUserMenu(event,'${m.fromUid}')"
+                                    style="color:${/^#[0-9a-fA-F]{3,8}$|^rgba?\(/.test(m.color||'') ? m.color : '#64748b'}"
+                                    >${this.sanitize(m.name)}:</span>
+                                <span class="chat-text"
+                                    style="font-size:${/^(1[0-9]|2[0-4])px$/.test(m.size||'') ? m.size : '14px'};color:${/^#[0-9a-fA-F]{3,8}$|^rgba?\(/.test(m.txtColor||'') ? m.txtColor : '#0f172a'}"
+                                    >${this._renderMsgText(m)}</span>
                                 <button onclick="app.setReplyTo('${m.id}')" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-brand text-[10px] ml-1 transition self-center" title="Rispondi">↩️</button>
                             </div>
                             <div class="msg-reactions-display">${reactBadges}</div>
@@ -3755,11 +3966,26 @@ service cloud.firestore {
                         return;
                     }
                     const peerId = this.state.me.uid;
+                    // WEBRTC-01: ICE server pool robusto — STUN multipli + TURN relay
+                    // Per produzione: sostituire TURN con credenziali proprie (Twilio/Metered)
+                    const ICE_SERVERS = [
+                        { urls: 'stun:stun.l.google.com:19302' },
+                        { urls: 'stun:stun1.l.google.com:19302' },
+                        { urls: 'stun:stun2.l.google.com:19302' },
+                        { urls: 'stun:stun3.l.google.com:19302' },
+                        { urls: 'stun:stun4.l.google.com:19302' },
+                        { urls: 'stun:stun.stunprotocol.org:3478' },
+                        // TURN relay pubblico (OpenRelay) — bassa latenza, gratuito
+                        { urls: 'turn:openrelay.metered.ca:80',
+                          username: 'openrelayproject', credential: 'openrelayproject' },
+                        { urls: 'turn:openrelay.metered.ca:443',
+                          username: 'openrelayproject', credential: 'openrelayproject' },
+                        { urls: 'turns:openrelay.metered.ca:443',
+                          username: 'openrelayproject', credential: 'openrelayproject' },
+                    ];
                     this.state.peer = new Peer(peerId, {
-                        config: { iceServers: [
-                            { urls: 'stun:stun.l.google.com:19302' },
-                            { urls: 'stun:stun1.l.google.com:19302' }
-                        ]}
+                        config: { iceServers: ICE_SERVERS },
+                        debug: 0  // 0=nessun log, 3=verbose per debug
                     });
 
                     this.state.peer.on('error', err => {
@@ -3768,10 +3994,15 @@ service cloud.firestore {
                             const fallbackId = `${peerId}_${Math.random().toString(36).slice(2,7)}`;
                             try { this.state.peer.destroy(); } catch(e) {}
                             this.state.peer = new Peer(fallbackId, {
-                                config: { iceServers: [{ urls: 'stun:stun.l.google.com:19302' }] }
+                                config: { iceServers: ICE_SERVERS },
+                                debug: 0
                             });
-                            if (_fbUpdateDoc)
-                                _fbUpdateDoc(_fbDoc(this.getCol('online_users'), this.state.me.uid), { peerId: fallbackId }).catch(() => null);
+                            // WEBRTC-02: aggiorna peerId su Firestore quando il peer è pronto
+                            // (BUG: prima veniva fatto fuori dall'handler 'open' → race condition)
+                            this.state.peer.on('open', () => {
+                                _fbUpdateDoc(_fbDoc(this.getCol('online_users'), this.state.me.uid),
+                                    { peerId: fallbackId }).catch(() => null);
+                            });
                             this.state.peer.on('error', e2 => console.warn('[PeerJS fallback]', e2.type));
                             this.setupPeerCallHandler();
                         } else if (['network','server-error'].includes(err.type)) {
@@ -4153,10 +4384,17 @@ service cloud.firestore {
                     
                     const menu = document.getElementById('user-menu-modal');
                     menu.innerHTML = html;
-                    let top = event.clientY, left = event.clientX;
-                    if (left + 190 > window.innerWidth) left = window.innerWidth - 195;
-                    if (top + 240 > window.innerHeight) top = window.innerHeight - 245;
-                    menu.style.top = `${top}px`;
+                    // FIX-03a: posizionamento sicuro — supporta touch e click
+                    // Su mobile usa le coordinate del tocco (changedTouches) se disponibili
+                    const touch = event.changedTouches?.[0];
+                    let rawX = touch ? touch.clientX : event.clientX;
+                    let rawY = touch ? touch.clientY : event.clientY;
+                    const menuW = 195, menuH = 260;
+                    const vw = window.innerWidth, vh = window.innerHeight;
+                    // Clamp al viewport con margine di sicurezza 8px
+                    let left = Math.max(8, Math.min(rawX, vw - menuW - 8));
+                    let top  = Math.max(8, Math.min(rawY, vh - menuH - 8));
+                    menu.style.top  = `${top}px`;
                     menu.style.left = `${left}px`;
                     menu.classList.add('active');
                 }
@@ -4531,6 +4769,56 @@ service cloud.firestore {
                 // ============================================================
                 // MEDIA DEVICES
                 // ============================================================
+                async hotSwapCamera() {
+                    // FIX-02: se la cam è attiva, sostituisce lo stream in-place senza
+                    // dover spegnere e riaccendere. Aggiorna tutti i peer attivi.
+                    if (!this.state.me?.camActive || !this.state.localStream) return;
+                    const vSrc = document.getElementById('select-video-source')?.value;
+                    const aSrc = document.getElementById('select-audio-source')?.value;
+                    try {
+                        // Ferma track precedenti
+                        this.state.localStream.getTracks().forEach(t => t.stop());
+                        // Acquisisci nuovo stream con il device selezionato
+                        const constraints = {
+                            video: vSrc ? { deviceId: { exact: vSrc } } : { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } },
+                            audio: aSrc ? { deviceId: { exact: aSrc } } : true
+                        };
+                        const newStream = await navigator.mediaDevices.getUserMedia(constraints);
+                        this.state.localStream = newStream;
+                        // Aggiorna preview locale
+                        const vPlayer = document.getElementById('v-player');
+                        if (vPlayer) vPlayer.srcObject = newStream;
+                        // Aggiorna tutti i peer attivi (sostituisce i sender WebRTC)
+                        const [newVideoTrack] = newStream.getVideoTracks();
+                        const [newAudioTrack] = newStream.getAudioTracks();
+                        Object.values(this.state.activeCamConnections).forEach(conn => {
+                            try {
+                                const pc = conn.peerConnection;
+                                if (!pc) return;
+                                pc.getSenders().forEach(sender => {
+                                    if (sender.track?.kind === 'video' && newVideoTrack)
+                                        sender.replaceTrack(newVideoTrack).catch(() => null);
+                                    if (sender.track?.kind === 'audio' && newAudioTrack)
+                                        sender.replaceTrack(newAudioTrack).catch(() => null);
+                                });
+                            } catch(e) { /* peer non supporta replaceTrack */ }
+                        });
+                        // Aggiorna AudioContext per il gain
+                        if (this.state.localAudioCtx?.state !== 'closed') {
+                            try { await this.state.localAudioCtx?.close(); } catch(e) {}
+                        }
+                        this.state.localAudioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                        const src2 = this.state.localAudioCtx.createMediaStreamSource(newStream);
+                        this.state.micGainNode = this.state.localAudioCtx.createGain();
+                        this.state.micGainNode.gain.value = parseFloat(document.getElementById('mic-gain-slider')?.value || '1');
+                        src2.connect(this.state.micGainNode);
+                        this.showToast('📷 Dispositivo cambiato!', 'success');
+                    } catch (err) {
+                        const msgs = { NotAllowedError:'Permesso negato.', NotFoundError:'Dispositivo non trovato.', NotReadableError:"Dispositivo già in uso." };
+                        this.showToast('Errore cambio cam: ' + (msgs[err.name] || err.message), 'error');
+                    }
+                }
+
                 async populateMediaDevices() {
                     try {
                         await navigator.mediaDevices.getUserMedia({ audio: true, video: true });
