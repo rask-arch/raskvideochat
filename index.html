@@ -836,6 +836,13 @@ service cloud.firestore {
                     if (this._state.currentRoom !== 'games') return;
                     const hostUid = stageData?.hostUid;
 
+                    // Aggiorna cache locale del bulletin
+                    if (stageData?.bulletin !== undefined) {
+                        this._state.lastStageBulletin = stageData.bulletin;
+                    }
+                    // Aggiorna gameHostUid locale
+                    this._state.gameHostUid = hostUid || null;
+
                     if (hostUid && !this.isCurrentHost() && !this.autoViewActive) {
                         this.autoConnectToStage(hostUid);
                     }
@@ -895,20 +902,29 @@ service cloud.firestore {
                         this.hasShownDisclaimer = true;
                     }
 
-                    // ── Attiva cam ────────────────────────────────────────────
+                    // ── Attiva cam (se non già attiva) ───────────────────────────
                     if (!this._me.camActive) {
                         await this.core.toggleCam();
-                        // Verifica che sia andata a buon fine
                         if (!this._me.camActive) {
-                            this.core.showToast('⚠️ Impossibile attivare la cam.', 'error'); return;
+                            this.core.showToast('⚠️ Impossibile attivare la cam. Controlla i permessi.', 'error');
+                            return;
                         }
                     }
 
                     // ── Prendi possesso del palco ─────────────────────────────
+                    const existingBulletin = this._state.lastStageBulletin || '';
                     await this.core.updateStage?.({
                         hostUid:  this._me.uid,
-                        hostName: this._me.name
+                        hostName: this._me.name,
+                        bulletin: existingBulletin
                     });
+
+                    // ── Reset stageCall precedente ────────────────────────────
+                    if (this._stageCall) {
+                        try { this._stageCall.close(); } catch(e) {}
+                        this._stageCall = null;
+                    }
+                    this.autoViewActive = false;
 
                     // ── Broadcast a tutti i presenti ──────────────────────────
                     setTimeout(() => this.broadcastToAll(), 800);
@@ -917,16 +933,34 @@ service cloud.firestore {
 
                 // ── Scendi dal palco ──────────────────────────────────────────
                 async _leaveStage() {
-                    // Chiude le connessioni PeerJS attive verso gli spettatori
+                    // ── STEP 1: Annulla host LOCALMENTE prima di qualsiasi altra cosa ──────
+                    // (impedisce a toggleCam di riaprire la finestra locale via updateStageUI)
+                    this._state.gameHostUid = null;
+
+                    // ── STEP 2: Pulisci stage-player subito ───────────────────────────────
+                    const sp = document.getElementById('stage-player');
+                    if (sp) { sp.srcObject = null; sp.classList.add('hidden'); }
+                    document.getElementById('game-placeholder')?.classList.remove('hidden');
+                    document.getElementById('stage-vol-ctrl-container')?.classList.add('hidden');
+
+                    // ── STEP 3: Chiudi tutte le connessioni PeerJS ────────────────────────
                     const conns = this._state.activeCamConnections || {};
                     Object.values(conns).forEach(call => { try { call.close(); } catch(e) {} });
                     this._state.activeCamConnections = {};
+                    if (this._stageCall) {
+                        try { this._stageCall.close(); } catch(e) {}
+                        this._stageCall = null;
+                    }
 
-                    // Resetta Firestore stage
-                    await this.core.updateStage?.({ hostUid: null, hostName: null, bulletin: '' });
-
-                    // Disattiva cam se ancora attiva
+                    // ── STEP 4: Spegni cam (ora gameHostUid=null → nessun ciclo errato) ──
                     if (this._me.camActive) await this.core.toggleCam();
+
+                    // ── STEP 5: Forza pulizia display sul contenitore cam locale ─────────
+                    const lcv = document.getElementById('local-video-container');
+                    if (lcv) { lcv.style.display = ''; lcv.classList.remove('active'); }
+
+                    // ── STEP 6: Persisti su Firestore ─────────────────────────────────────
+                    await this.core.updateStage?.({ hostUid: null, hostName: null, bulletin: '' });
 
                     this.core.showToast('👋 Sei sceso dal palco.', 'info');
                 }
@@ -961,7 +995,8 @@ service cloud.firestore {
                     if (!host || !this._state.peer) {
                         // Ritenta quando PeerJS è pronto
                         setTimeout(() => {
-                            if (this._state.peer && !this.autoViewActive) this.autoConnectToStage(hostUid);
+                            if (this._state.peer && !this.autoViewActive && this._state.currentRoom === 'games')
+                                this.autoConnectToStage(hostUid);
                         }, 1500);
                         return;
                     }
@@ -1088,7 +1123,7 @@ service cloud.firestore {
             // ── Cache Firebase SDK (Fix: require() non esiste nel browser) ────────
             let _fbCol, _fbDoc, _fbSetDoc, _fbGetDoc, _fbAddDoc,
                 _fbUpdateDoc, _fbDeleteDoc, _fbGetDocs,
-                _fbSnap, _fbQuery, _fbWhere, _fbOrderBy, _fbLimit, _fbServerTs;
+                _fbSnap, _fbQuery, _fbWhere, _fbOrderBy, _fbLimit, _fbServerTs, _fbWriteBatch;
 
 
             // ============================================================
@@ -1487,7 +1522,7 @@ service cloud.firestore {
                     const {
                         getFirestore, collection, doc, setDoc, getDoc, addDoc,
                         updateDoc, deleteDoc, getDocs, onSnapshot,
-                        query, where, orderBy, limit, serverTimestamp
+                        query, where, orderBy, limit, serverTimestamp, writeBatch
                     } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
                     const { getStorage } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-storage.js');
 
@@ -1496,7 +1531,7 @@ service cloud.firestore {
                     _fbAddDoc = addDoc; _fbUpdateDoc = updateDoc; _fbDeleteDoc = deleteDoc;
                     _fbGetDocs = getDocs; _fbSnap = onSnapshot;
                     _fbQuery = query; _fbWhere = where; _fbOrderBy = orderBy;
-                    _fbLimit = limit; _fbServerTs = serverTimestamp;
+                    _fbLimit = limit; _fbServerTs = serverTimestamp; _fbWriteBatch = writeBatch;
                     window.firebaseCollection = collection; // backward compat
 
                     const fbApp = initializeApp(cfg);
@@ -1508,8 +1543,8 @@ service cloud.firestore {
                     this.state.auth = auth;
 
                     try {
-                        const { getDocs } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
-                        const scSnap = await getDocs(this.getCol('server_settings'));
+                        // getDocs già cachato come _fbGetDocs
+                        const scSnap = await _fbGetDocs(this.getCol('server_settings'));
                         scSnap.forEach(d => {
                             if (d.id === 'config') this.state.serverConfig = { ...this.state.serverConfig, ...d.data() };
                         });
@@ -1619,7 +1654,7 @@ service cloud.firestore {
                         if (this.state.authMode === 'register') {
                             // Check username uniqueness
                             try {
-                                const existSnap = await getDocs(
+                                const existSnap = await _fbGetDocs(
                                     query(this.getCol('user_profiles'), where('nameLower', '==', rawU.toLowerCase()))
                                 );
                                 if (!existSnap.empty) {
@@ -1630,7 +1665,7 @@ service cloud.firestore {
 
                             // Check ban list
                             try {
-                                const bansSnap = await getDocs(this.getCol('banned_users'));
+                                const bansSnap = await _fbGetDocs(this.getCol('banned_users'));
                                 let isBanned = false;
                                 bansSnap.forEach(d => {
                                     if ((d.data().usernameLower || d.data().username?.toLowerCase()) === rawU.toLowerCase()) isBanned = true;
@@ -1710,7 +1745,7 @@ service cloud.firestore {
 
                             // Check ban list
                             try {
-                                const bansSnap = await getDocs(this.getCol('banned_users'));
+                                const bansSnap = await _fbGetDocs(this.getCol('banned_users'));
                                 let isBanned = false;
                                 bansSnap.forEach(d => {
                                     if ((d.data().usernameLower || d.data().username?.toLowerCase()) === rawU.toLowerCase()) isBanned = true;
@@ -1774,7 +1809,7 @@ service cloud.firestore {
                         }
 
                         const { signInAnonymously, createUserWithEmailAndPassword } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js');
-                        const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
+                        // doc/setDoc già cachati come _fbDoc/_fbSetDoc
 
                         let uid;
                         const gName = `Ospite_${Math.floor(Math.random() * 90000 + 10000)}`;
@@ -1831,7 +1866,7 @@ service cloud.firestore {
                         this.state._pendingGuestRetry = null;
                         const go = async () => {
                             try {
-                                const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
+                                // doc/setDoc già cachati come _fbDoc/_fbSetDoc
                                 await setDoc(doc(this.getCol('user_profiles'), p.uid), {
                                     name: p.gName,
                                     nameLower: p.gName.toLowerCase(),
@@ -1892,8 +1927,8 @@ service cloud.firestore {
 
                     // Cleanup stale online entries
                     try {
-                        const { getDocs } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
-                        const onlineSnap = await getDocs(this.getCol('online_users'));
+                        // getDocs già cachato come _fbGetDocs
+                        const onlineSnap = await _fbGetDocs(this.getCol('online_users'));
                         onlineSnap.forEach(d => {
                             const data = d.data();
                             if ((data.nameLower || data.name?.toLowerCase()) === username.toLowerCase() && d.id !== uid) {
@@ -1909,8 +1944,8 @@ service cloud.firestore {
 
                     // Write online presence
                     try {
-                        const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
-                        await setDoc(doc(this.getCol('online_users'), uid), {
+                        // doc/setDoc già cachati come _fbDoc/_fbSetDoc
+                        await _fbSetDoc(_fbDoc(this.getCol('online_users'), uid), {
                             name: username,
                             nameLower: username.toLowerCase(),
                             color: this.state.me.color,
@@ -2003,7 +2038,7 @@ service cloud.firestore {
                     if (n && n.length >= 2) this.state.me.name = n;
                     this.state.me.bio = b;
                     
-                    const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
+                    // doc/updateDoc già cachati come _fbDoc/_fbUpdateDoc
                     
                     const nameUpdate = {
                         name: this.state.me.name,
@@ -2012,7 +2047,7 @@ service cloud.firestore {
                         bio: b
                     };
                     
-                    await updateDoc(doc(this.getCol('online_users'), this.state.me.uid), nameUpdate).catch(console.error);
+                    await _fbUpdateDoc(_fbDoc(this.getCol('online_users'), this.state.me.uid), nameUpdate).catch(console.error);
                     await updateDoc(doc(this.getCol('user_profiles'), this.state.me.uid), nameUpdate).catch(console.error);
                     document.getElementById('my-avatar-mini').src = this.state.me.avatarUrl;
                     this.closeModal('profile-modal');
@@ -2029,8 +2064,8 @@ service cloud.firestore {
 
                 async setMyStatus(status) {
                     this.state.me.status = status;
-                    const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
-                    await updateDoc(doc(this.getCol('online_users'), this.state.me.uid), { status }).catch(console.error);
+                    // doc/updateDoc già cachati come _fbDoc/_fbUpdateDoc
+                    await _fbUpdateDoc(_fbDoc(this.getCol('online_users'), this.state.me.uid), { status }).catch(console.error);
                     document.getElementById('status-menu').classList.remove('active');
                     const labels = { online: '🟢 Online', busy: '🟡 Occupato', dnd: '🔴 Non disturbare' };
                     this.showToast(`Stato: ${labels[status]}`, 'info');
@@ -2085,8 +2120,8 @@ service cloud.firestore {
                     try {
                         let validCode = 'rask2024';
                         try {
-                            const { getDocs } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
-                            const cfgSnap = await getDocs(this.getCol('server_settings'));
+                            // getDocs già cachato come _fbGetDocs
+                            const cfgSnap = await _fbGetDocs(this.getCol('server_settings'));
                             cfgSnap.forEach(d => {
                                 if (d.id === 'config' && d.data().adminCode) validCode = d.data().adminCode;
                             });
@@ -2094,9 +2129,9 @@ service cloud.firestore {
                         
                         if (code !== validCode) return this.showToast('❌ Codice non valido', 'error');
                         
-                        const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
+                        // doc/updateDoc già cachati come _fbDoc/_fbUpdateDoc
                         await updateDoc(doc(this.getCol('user_profiles'), this.state.me.uid), { role: 'Admin' }).catch(console.error);
-                        await updateDoc(doc(this.getCol('online_users'), this.state.me.uid), { role: 'Admin' }).catch(console.error);
+                        await _fbUpdateDoc(_fbDoc(this.getCol('online_users'), this.state.me.uid), { role: 'Admin' }).catch(console.error);
                         this.state.me.role = 'Admin';
                         document.getElementById('admin-nav-btn').classList.remove('hidden');
                         this.closeModal('profile-modal');
@@ -2157,8 +2192,8 @@ service cloud.firestore {
 
                 async writeAuditLog(action, detail) {
                     if (!['Admin', 'Staff'].includes(this.state.me.role)) return;
-                    const { addDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
-                    await addDoc(this.getCol('audit_log'), {
+                    if (!_fbAddDoc) return;
+                    await _fbAddDoc(this.getCol('audit_log'), {
                         action, detail, adminName: this.state.me.name, adminUid: this.state.me.uid,
                         timestamp: Date.now()
                     }).catch(console.error);
@@ -2169,9 +2204,8 @@ service cloud.firestore {
                     if (!container) return;
                     container.innerHTML = '<div class="p-4 text-slate-500 text-sm">Caricamento...</div>';
                     try {
-                        const { query, orderBy, limit, getDocs } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
-                        const q = query(this.getCol('audit_log'), orderBy('timestamp', 'desc'), limit(50));
-                        const snap = await getDocs(q);
+                        const q = _fbQuery(this.getCol('audit_log'), _fbOrderBy('timestamp', 'desc'), _fbLimit(50));
+                        const snap = await _fbGetDocs(q);
                         if (snap.empty) {
                             container.innerHTML = '<div class="p-4 text-slate-500 text-sm">Nessuna azione registrata.</div>';
                             return;
@@ -2192,7 +2226,7 @@ service cloud.firestore {
 
                 async adminSaveBadWords() {
                     const val = document.getElementById('adm-bad-words').value.trim();
-                    const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
+                    // doc/setDoc già cachati come _fbDoc/_fbSetDoc
                     await setDoc(doc(this.getCol('server_settings'), 'config'), { badWords: val }, { merge: true });
                     this.state.serverConfig.badWords = val;
                     await this.writeAuditLog('BAD_WORDS_UPDATED', `${val.split(',').filter(Boolean).length} parole`);
@@ -2202,7 +2236,7 @@ service cloud.firestore {
                 async adminSaveAdminCode() {
                     const code = document.getElementById('adm-admin-code').value.trim();
                     if (!code || code.length < 4) return this.showToast('Codice troppo corto (min 4 caratteri)', 'error');
-                    const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
+                    // doc/setDoc già cachati come _fbDoc/_fbSetDoc
                     await setDoc(doc(this.getCol('server_settings'), 'config'), { adminCode: code }, { merge: true });
                     await this.writeAuditLog('ADMIN_CODE_CHANGED', '***');
                     document.getElementById('adm-admin-code').value = '';
@@ -2215,7 +2249,7 @@ service cloud.firestore {
                     const bgUrl = document.getElementById('adm-app-bg').value.trim();
                     const col1 = document.getElementById('adm-color-1').value;
                     const col2 = document.getElementById('adm-color-2').value;
-                    const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
+                    // doc/setDoc già cachati come _fbDoc/_fbSetDoc
                     await setDoc(doc(this.getCol('server_settings'), 'config'), { appTitle: title, appBgUrl: bgUrl, color1: col1, color2: col2 }, { merge: true });
                     await this.writeAuditLog('APPEARANCE', `Colori: ${col1}, ${col2} — Sfondo: ${bgUrl || 'default'}`);
                     this.showToast('Personalizzazione applicata', 'success');
@@ -2279,7 +2313,7 @@ service cloud.firestore {
                     try {
                         const { initializeApp } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js');
                         const { getAuth, createUserWithEmailAndPassword } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js');
-                        const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
+                        // doc/setDoc già cachati come _fbDoc/_fbSetDoc
 
                         const existingMain = this.state.auth.app;
                         const cfg = existingMain.options;
@@ -2322,8 +2356,8 @@ service cloud.firestore {
                 }
 
                 async adminRenderRegisteredUsers() {
-                    const { getDocs } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
-                    const snap = await getDocs(this.getCol('user_profiles'));
+                    // getDocs già cachato come _fbGetDocs
+                    const snap = await _fbGetDocs(this.getCol('user_profiles'));
                     this.state.registeredUsers = [];
                     snap.forEach(d => this.state.registeredUsers.push({ id: d.id, ...d.data() }));
                     const tb = document.getElementById('admin-users-list');
@@ -2343,9 +2377,9 @@ service cloud.firestore {
 
                 async adminUpdateUserRole(uid, role) {
                     if (this.state.me.role !== 'Admin') return this.showToast('Solo Admin può cambiare ruoli', 'error');
-                    const { doc, updateDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
+                    // doc/updateDoc già cachati come _fbDoc/_fbUpdateDoc
                     await updateDoc(doc(this.getCol('user_profiles'), uid), { role }).catch(console.error);
-                    await updateDoc(doc(this.getCol('online_users'), uid), { role }).catch(() => null);
+                    await _fbUpdateDoc(_fbDoc(this.getCol('online_users'), uid), { role }).catch(() => null);
                     await this.writeAuditLog('ROLE_CHANGE', `UID ${uid} → ${role}`);
                     this.showToast(`Ruolo aggiornato: ${role}`, 'success');
                 }
@@ -2371,7 +2405,7 @@ service cloud.firestore {
                     const pw = document.getElementById('adm-room-pw').value.trim();
                     if (!n) return this.showToast('Nome stanza obbligatorio', 'error');
                     const id = n.toLowerCase().replace(/[^a-z0-9]/g,'_').replace(/__+/g,'_');
-                    const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
+                    // doc/setDoc già cachati come _fbDoc/_fbSetDoc
                     await setDoc(doc(this.getCol('rooms'), id), { id, name: n, badgeText: b, role: r, color: 'bg-slate-600', isLocked, password: pw });
                     await this.writeAuditLog('CREATE_ROOM', `${n} (${r}${isLocked?' — protetta':''})`);
                     document.getElementById('adm-room-name').value = '';
@@ -2384,14 +2418,14 @@ service cloud.firestore {
 
                 async adminDeleteRoom(id) {
                     if (['lobby','registration','games','staff'].includes(id)) return this.showToast('Stanza di sistema: non eliminabile.', 'error');
-                    const { doc, deleteDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
-                    await deleteDoc(doc(this.getCol('rooms'), id));
+                    // doc/deleteDoc già cachati come _fbDoc/_fbDeleteDoc
+                    await _fbDeleteDoc(_fbDoc(this.getCol('rooms'), id));
                     await this.writeAuditLog('DELETE_ROOM', id);
                     this.showToast('Stanza eliminata', 'success');
                 }
 
                 async adminUpdateServerConfig(key, val) {
-                    const { doc, setDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
+                    // doc/setDoc già cachati come _fbDoc/_fbSetDoc
                     await setDoc(doc(this.getCol('server_settings'), 'config'), { [key]: val }, { merge: true });
                     await this.writeAuditLog('CONFIG', `${key} = ${val}`);
                 }
@@ -2401,7 +2435,7 @@ service cloud.firestore {
                     if (!t) return this.showToast('Testo broadcast vuoto', 'error');
                     const safeText = this.sanitize(t);
                     const msgHtml = `<div class="bg-red-600 text-white p-3 rounded-lg w-full text-center font-bold">🚨 <b>BROADCAST:</b> ${safeText}</div>`;
-                    const { addDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
+                    // addDoc già cachato come _fbAddDoc
                     const batch = this.state.rooms.map(r =>
                         addDoc(this.getCol('messages'), { roomId: r.id, text: msgHtml, name: 'SYSTEM', fromUid: 'system', timestamp: Date.now() })
                     );
@@ -2429,16 +2463,16 @@ service cloud.firestore {
 
                 async quickMuteUser(name) {
                     this.closeUserMenu();
-                    const { addDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
-                    await addDoc(this.getCol('muted_users'), { username: name, usernameLower: name.toLowerCase() });
+                    // addDoc già cachato come _fbAddDoc
+                    await _fbAddDoc(this.getCol('muted_users'), { username: name, usernameLower: name.toLowerCase() });
                     await this.writeAuditLog('MUTE', name);
                     this.showToast(`${name} mutato.`, 'success');
                 }
 
                 async quickBanUser(name) {
                     this.closeUserMenu();
-                    const { addDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
-                    await addDoc(this.getCol('banned_users'), { username: name, usernameLower: name.toLowerCase() });
+                    // addDoc già cachato come _fbAddDoc
+                    await _fbAddDoc(this.getCol('banned_users'), { username: name, usernameLower: name.toLowerCase() });
                     await this.writeAuditLog('BAN', name);
                     this.showToast(`${name} bannato.`, 'success');
                 }
@@ -2458,15 +2492,15 @@ service cloud.firestore {
                 }
 
                 async adminUnmute(id) {
-                    const { doc, deleteDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
-                    await deleteDoc(doc(this.getCol('muted_users'), id));
+                    // doc/deleteDoc già cachati come _fbDoc/_fbDeleteDoc
+                    await _fbDeleteDoc(_fbDoc(this.getCol('muted_users'), id));
                     await this.writeAuditLog('UNMUTE', id);
                     this.showToast('Mute rimosso', 'success');
                 }
 
                 async adminUnban(id) {
-                    const { doc, deleteDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
-                    await deleteDoc(doc(this.getCol('banned_users'), id));
+                    // doc/deleteDoc già cachati come _fbDoc/_fbDeleteDoc
+                    await _fbDeleteDoc(_fbDoc(this.getCol('banned_users'), id));
                     await this.writeAuditLog('UNBAN', id);
                     this.showToast('Ban rimosso', 'success');
                 }
@@ -2483,16 +2517,16 @@ service cloud.firestore {
                     const u = document.getElementById('adm-radio-url').value.trim();
                     if (!n || !u) return this.showToast('Nome e URL obbligatori', 'error');
                     if (!u.startsWith('http://') && !u.startsWith('https://')) return this.showToast('URL deve iniziare con http/https', 'error');
-                    const { addDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
-                    await addDoc(this.getCol('radio_stations'), { name: n, url: u });
+                    // addDoc già cachato come _fbAddDoc
+                    await _fbAddDoc(this.getCol('radio_stations'), { name: n, url: u });
                     document.getElementById('adm-radio-name').value = '';
                     document.getElementById('adm-radio-url').value = '';
                     this.showToast('Stazione aggiunta', 'success');
                 }
 
                 async adminDeleteStation(id) {
-                    const { doc, deleteDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
-                    await deleteDoc(doc(this.getCol('radio_stations'), id));
+                    // doc/deleteDoc già cachati come _fbDoc/_fbDeleteDoc
+                    await _fbDeleteDoc(_fbDoc(this.getCol('radio_stations'), id));
                     this.showToast('Stazione rimossa', 'success');
                 }
 
@@ -2900,9 +2934,9 @@ service cloud.firestore {
                         const docs = [];
                         snap.forEach(d => docs.push(d.ref));
 
-                        const { writeBatch } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
+                        const batchFn = _fbWriteBatch || (await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js').then(m=>m.writeBatch));
                         for (let i = 0; i < docs.length; i += BATCH_SIZE) {
-                            const batch = writeBatch(this.state.db);
+                            const batch = batchFn(this.state.db);
                             docs.slice(i, i + BATCH_SIZE).forEach(ref => batch.delete(ref));
                             await batch.commit();
                         }
@@ -2910,7 +2944,7 @@ service cloud.firestore {
                         // Pulisce anche le reazioni ai messaggi
                         const reactSnap = await _fbGetDocs(this.getCol('msg_reactions')).catch(() => null);
                         if (reactSnap && !reactSnap.empty) {
-                            const rBatch = writeBatch(this.state.db);
+                            const rBatch = batchFn(this.state.db);
                             reactSnap.forEach(d => rBatch.delete(d.ref));
                             await rBatch.commit().catch(() => null);
                         }
@@ -3177,11 +3211,13 @@ service cloud.firestore {
                     fab ? c.insertBefore(header, fab) : c.appendChild(header);
 
                     const ignoredUids = this.state.ignoredUsers.map(u => u.uid);
-                    // Gli utenti vedono SOLO i messaggi inviati dopo il loro accesso
+                    // Gli utenti vedono SOLO i messaggi inviati dopo il loro accesso.
+                    // Buffer -2000ms per compensare il clock skew tra client e serverTimestamp.
+                    const loginCutoff = this.state.loginTime - 2000;
                     const msgs = this.state.cachedMessages.filter(m =>
                         m.roomId === roomId &&
                         !ignoredUids.includes(m.fromUid) &&
-                        m.timestamp >= this.state.loginTime
+                        m.timestamp >= loginCutoff
                     );
 
                     if (!msgs.length) {
@@ -3367,7 +3403,8 @@ service cloud.firestore {
                         }
                         this.state.localAudioCtx = null; this.state.micGainNode = null;
                         document.getElementById('v-player').srcObject = null;
-                        document.getElementById('local-video-container').classList.remove('active');
+                        const lcv = document.getElementById('local-video-container');
+                        if (lcv) { lcv.classList.remove('active'); lcv.style.display = ''; }
                         document.getElementById('header-btn-cam').classList.remove('cam-on');
                         this.state.me.camActive = false;
                         if (_fbUpdateDoc) _fbUpdateDoc(_fbDoc(this.getCol('online_users'), this.state.me.uid), { camActive: false }).catch(() => null);
@@ -3411,7 +3448,12 @@ service cloud.firestore {
                     }
 
                     if (this.state.currentRoom === 'games') {
-                        if (this.state.gameHostUid === this.state.me.uid) this.updateStageUI({ hostUid: this.state.me.uid });
+                        // Aggiorna UI con lo STATO REALE del palco (non con assunzioni stale)
+                        this.updateStageUI({
+                            hostUid:  this.state.gameHostUid  || null,
+                            hostName: this.state.users.find(u => u.uid === this.state.gameHostUid)?.name || null,
+                            bulletin: this.state.lastStageBulletin || ''
+                        });
                     }
                 }
 
@@ -3506,10 +3548,13 @@ service cloud.firestore {
                             }
                         }
 
+                        // Se siamo nella stanza games come spettatore, rispondi sempre senza stream
+                        const isViewerInGames = this.state.currentRoom === 'games' &&
+                                                !['Admin','Staff'].includes(this.state.me.role);
                         const isStage = this.state.currentRoom === 'games' &&
                                         callerUser?.uid === this.state.gameHostUid;
-                        call.answer(isStage ? null : (this.state.localStream || null));
-                        if (!isStage) this.playBeep();
+                        call.answer((isStage || isViewerInGames) ? null : (this.state.localStream || null));
+                        if (!isStage && !isViewerInGames) this.playBeep();
 
                         call.on('stream', remoteStream => {
                             const label = callerUser?.name || call.peer;
@@ -3569,8 +3614,9 @@ service cloud.firestore {
                     const win = document.getElementById(winId);
                     if (win) {
                         const video = win.querySelector('video');
-                        if (video?.srcObject) { video.srcObject.getTracks().forEach(t => t.stop()); video.srcObject = null; }
+                        if (video) { video.srcObject = null; } // NON stoppare track remoti (non nostri)
                         win.classList.remove('active');
+                        win.style.display = ''; // reset display coerente
                     }
                     const call = this.state.activeCamConnections[peerId];
                     if (call) { try { call.close(); } catch(e){} delete this.state.activeCamConnections[peerId]; }
@@ -3631,13 +3677,15 @@ service cloud.firestore {
                 // STAGE / GAMES
                 // ============================================================
                 async claimHost() {
-                    // Usa il manager eventi
-                    if (this.eventsRoomManager) {
-                        await this.eventsRoomManager.claimStage();
+                    if (!this.eventsRoomManager) {
+                        this.showToast('⚠️ Manager eventi non disponibile. Ricarica la pagina.', 'error');
                         return;
                     }
-
-                    this.showToast('Manager non disponibile', 'error');
+                    if (this.state.currentRoom !== 'games') {
+                        this.showToast('🎤 Funzione disponibile solo nella stanza Live/Eventi.', 'info');
+                        return;
+                    }
+                    await this.eventsRoomManager.claimStage();
                 }
 
                 _broadcastStageFeed() {
@@ -3713,8 +3761,12 @@ service cloud.firestore {
                             stagePlayer.srcObject = this.state.localStream;
                             stagePlayer.classList.remove('hidden');
                             placeholder?.classList.add('hidden');
-                            document.getElementById('local-video-container').style.display = 'none';
+                            // Nascondi la finestra locale (lo stream è già sullo stage)
+                            const lcv = document.getElementById('local-video-container');
+                            if (lcv) { lcv.classList.remove('active'); lcv.style.display = 'none'; }
                         }
+                        // Salva il bulletin in stato per aggiornamenti futuri
+                        this.state.lastStageBulletin = data.bulletin || '';
                         return;
                     }
 
@@ -3757,10 +3809,11 @@ service cloud.firestore {
                         hostBtn.innerHTML = '🎤 Sali sul Palco';
                         hostBtn.onclick = () => app.claimHost();
                         if (this.state.me.camActive) {
-                            document.getElementById('local-video-container').style.display = 'block';
+                            // Usa addClass/active per coerenza con CSS, non style.display diretto
+                            const lcv = document.getElementById('local-video-container');
+                            if (lcv) { lcv.style.display = ''; lcv.classList.add('active'); }
                         }
                     } else {
-                        // Regular user: nascondi tutto il bottone palco
                         hostBtn.style.display = 'none';
                     }
                 }
@@ -4282,13 +4335,17 @@ service cloud.firestore {
                 // Metodo per aggiornare il palco (usato dal manager eventi)
                 async updateStage(data) {
                     this.state.gameHostUid = data.hostUid || null;
+                    const bulletin = data.bulletin !== undefined
+                        ? data.bulletin
+                        : (data.hostName ? `Benvenuti allo show di ${data.hostName}!` : '');
+                    this.state.lastStageBulletin = bulletin; // cache locale per fix#2
                     const stagePayload = {
                         hostUid:  data.hostUid  || null,
                         hostName: data.hostName || null,
-                        bulletin: data.bulletin || (data.hostName ? `Benvenuti allo show di ${data.hostName}!` : '')
+                        bulletin: bulletin
                     };
                     await _fbSetDoc(_fbDoc(this.getCol('rooms_data'), 'games_stage'), stagePayload).catch(console.error);
-                    this.updateStageUI(data);
+                    this.updateStageUI({ ...stagePayload });
                 }
             }
 
