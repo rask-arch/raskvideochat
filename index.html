@@ -120,7 +120,75 @@
         #scroll-to-bottom { position: sticky; bottom: 8px; float: right; margin-right: 4px; z-index: 150; background: var(--brand-col-2); color: white; border: none; border-radius: 50%; width: 34px; height: 34px; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.3); display: none; align-items: center; justify-content: center; transition: all 0.2s; font-size: 15px; clear: both; }
         #scroll-to-bottom.visible { display: flex; }
 
-        /* === ROOMS DROPDOWN === */
+        /* ═══ MOBILE BOTTOM NAV ═══════════════════════════════════════ */
+        #mobile-bottom-nav {
+            display: none; position: fixed; bottom: 0; left: 0; right: 0; z-index: 6000;
+            background: linear-gradient(135deg, var(--brand-col-1), var(--brand-col-2));
+            border-top: 1px solid rgba(255,255,255,0.15);
+            padding: 6px 0 max(6px, env(safe-area-inset-bottom));
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.3);
+        }
+        #mobile-bottom-nav .mob-nav-items { display: flex; justify-content: space-around; align-items: flex-end; }
+        .mob-nav-btn {
+            display: flex; flex-direction: column; align-items: center; gap: 2px;
+            padding: 6px 10px; border-radius: 12px; cursor: pointer;
+            transition: all 0.18s; color: rgba(255,255,255,0.55); background: transparent;
+            border: none; font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: .06em;
+            position: relative; min-width: 52px;
+        }
+        .mob-nav-btn svg { width: 22px; height: 22px; }
+        .mob-nav-btn.active { color: white; }
+        .mob-nav-btn.active::before {
+            content: ''; position: absolute; top: 0; left: 50%; transform: translateX(-50%);
+            width: 28px; height: 3px; background: white; border-radius: 0 0 4px 4px;
+        }
+        .mob-nav-badge {
+            position: absolute; top: 2px; right: 6px;
+            background: #ef4444; color: white; border-radius: 10px;
+            font-size: 8px; font-weight: 900; padding: 1px 4px; min-width: 14px; text-align: center;
+        }
+        @media (max-width: 768px) {
+            #mobile-bottom-nav { display: block; }
+            .flex-1.flex.overflow-hidden.relative { padding-bottom: 58px; }
+            #local-video-container { bottom: auto !important; top: 58px; right: 10px; }
+        }
+
+        /* ═══ SETTINGS MODAL TABS ══════════════════════════════════════ */
+        .settings-tab-bar { display: flex; border-bottom: 1px solid #e2e8f0; background: #f8fafc; }
+        .settings-tab {
+            flex: 1; padding: 12px 6px; font-size: 9px; font-weight: 900;
+            text-transform: uppercase; letter-spacing: .06em; text-align: center;
+            color: #94a3b8; border-bottom: 2.5px solid transparent; cursor: pointer;
+            transition: all 0.18s; background: none; border-top: none; border-left: none; border-right: none;
+            display: flex; flex-direction: column; align-items: center; gap: 3px;
+        }
+        .settings-tab.active { color: var(--brand-col-2); border-bottom-color: var(--brand-col-2); background: white; }
+        .settings-tab svg { width: 15px; height: 15px; }
+        .settings-pane { display: none; padding: 20px; }
+        .settings-pane.active { display: block; }
+        .settings-toggle-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 11px 0; border-bottom: 1px solid #f1f5f9;
+        }
+        .settings-toggle-row:last-child { border-bottom: none; }
+        .settings-toggle-label { font-size: 12px; font-weight: 700; color: #334155; }
+        .settings-toggle-sub { font-size: 10px; color: #94a3b8; font-weight: 600; margin-top: 2px; }
+        .tog { position: relative; display: inline-block; width: 40px; height: 22px; flex-shrink: 0; }
+        .tog input { opacity: 0; width: 0; height: 0; }
+        .tog-slider { position: absolute; inset: 0; background: #cbd5e1; border-radius: 22px; cursor: pointer; transition: .25s; }
+        .tog-slider:before { content: ''; position: absolute; height: 16px; width: 16px; left: 3px; bottom: 3px; background: white; border-radius: 50%; transition: .25s; box-shadow: 0 1px 3px rgba(0,0,0,.2); }
+        .tog input:checked + .tog-slider { background: var(--brand-col-2); }
+        .tog input:checked + .tog-slider:before { transform: translateX(18px); }
+        .ignore-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0; margin-bottom: 6px; }
+        .ignore-item-name { flex: 1; font-size: 12px; font-weight: 700; color: #334155; }
+        .ignore-remove-btn { padding: 4px 10px; background: #fee2e2; color: #ef4444; border: 1px solid #fecaca; border-radius: 8px; font-size: 10px; font-weight: 900; cursor: pointer; transition: all .15s; white-space: nowrap; }
+        .ignore-remove-btn:hover { background: #ef4444; color: white; }
+        .ignore-empty { text-align: center; padding: 24px; color: #94a3b8; font-size: 12px; font-weight: 600; }
+        .img-placeholder-btn { display: inline-flex; align-items: center; gap: 6px; background: #f1f5f9; border: 1.5px dashed #cbd5e1; border-radius: 10px; padding: 8px 14px; font-size: 11px; font-weight: 700; color: #64748b; cursor: pointer; margin-top: 6px; transition: all .15s; }
+        .img-placeholder-btn:hover { background: #e2e8f0; border-color: #94a3b8; }
+
+        /* ═══ ROOMS DROPDOWN ═════════════════════════════════════════════ */
+        
         #rooms-list { animation: none; }
         #rooms-list.open { animation: dropIn 0.15s ease; }
         @keyframes dropIn { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:translateY(0); } }
@@ -368,7 +436,7 @@
                 <div class="h-6 w-[1px] bg-white/20 mx-1 hidden sm:block"></div>
                 <button onclick="window.app?.openModal('rules-modal')" class="nav-btn hidden sm:flex"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20M4 19.5A2.5 2.5 0 0 0 6.5 22H20M4 19.5V3a1 1 0 0 1 1-1h15v15H6.5a1 1 0 0 0-1 1z"/></svg></button>
                 <button onclick="window.app?.toggleSearch()" class="nav-btn hidden sm:flex"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></button>
-                <button onclick="window.app?.openModal('settings-modal')" class="nav-btn hidden sm:flex"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68V4.6l.01-.01L9 4.6V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+                <button onclick="window.app?.openSettings()" class="nav-btn hidden sm:flex"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68V4.6l.01-.01L9 4.6V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
                 <button id="admin-nav-btn" onclick="window.app?.openAdminPanel()" class="nav-btn admin hidden"><svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></button>
 
                 <!-- STATUS PICKER -->
@@ -480,6 +548,33 @@
             </main>
 
             <!-- SIDEBAR -->
+            <nav id="mobile-bottom-nav">
+                <div class="mob-nav-items">
+                    <button class="mob-nav-btn" id="mob-btn-rooms" onclick="window.app?.openMobileRooms()" title="Stanze">
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                        Stanze
+                        <span class="mob-nav-badge hidden" id="mob-rooms-badge">0</span>
+                    </button>
+                    <button class="mob-nav-btn" id="mob-btn-users" onclick="window.app?.toggleSidebar()" title="Utenti">
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path stroke-linecap="round" stroke-linejoin="round" d="M23 21v-2a4 4 0 00-3-3.87M16 3.13a4 4 0 010 7.75"/></svg>
+                        Utenti
+                        <span class="mob-nav-badge hidden" id="mob-users-badge">0</span>
+                    </button>
+                    <button class="mob-nav-btn" id="mob-btn-cam" onclick="window.app?.toggleCam()" title="Cam">
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+                        Cam
+                    </button>
+                    <button class="mob-nav-btn" id="mob-btn-search" onclick="window.app?.toggleSearch()" title="Cerca">
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                        Cerca
+                    </button>
+                    <button class="mob-nav-btn" id="mob-btn-settings" onclick="window.app?.openSettings()" title="Impostazioni">
+                        <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l-.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        Altro
+                    </button>
+                </div>
+            </nav>
+
             <aside id="sidebar-right" class="sidebar-right flex flex-col shrink-0 shadow-2xl z-50">
                 <div class="p-4 border-b border-white/10 flex justify-between items-center md:hidden"><span class="font-black text-xs uppercase tracking-widest">Menu</span><button onclick="window.app?.toggleSidebar()" class="text-white/70 hover:text-white">✕</button></div>
                 <div class="border-b border-white/10">
@@ -516,17 +611,80 @@
     </div>
 
     <div id="settings-modal" class="modal-overlay" onclick="if(event.target===this) window.app?.closeModal('settings-modal')">
-        <div class="bg-white w-[420px] rounded-[32px] overflow-hidden shadow-2xl flex flex-col mx-4">
-            <div class="p-6 border-b border-slate-100 flex justify-between items-center"><h2 class="text-lg font-black text-slate-800">Impostazioni</h2><button onclick="window.app?.closeModal('settings-modal')" class="text-slate-300 text-xl">✕</button></div>
-            <div class="p-6 space-y-6">
+        <div class="bg-white w-[440px] rounded-[32px] overflow-hidden shadow-2xl flex flex-col mx-4" style="max-height:90vh">
+            <div class="px-6 pt-5 pb-4 border-b border-slate-100 flex justify-between items-center flex-shrink-0">
                 <div>
-                    <h3 class="text-[10px] font-black uppercase text-slate-400 tracking-widest mb-3 flex justify-between items-center"><span>Hardware (Audio/Video)</span><button onclick="window.app?.populateMediaDevices()" class="text-brand hover:underline font-bold bg-slate-100 px-2 py-1 rounded text-[9px]">Rileva</button></h3>
-                    <div class="space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
-                        <div><label class="block text-[10px] font-bold text-slate-500 mb-1">Fotocamera</label><select id="select-video-source" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-2 text-xs outline-none"><option value="">Predefinita</option></select></div>
-                        <div><label class="block text-[10px] font-bold text-slate-500 mb-1">Microfono</label><select id="select-audio-source" class="w-full bg-white border border-slate-200 rounded-lg px-2 py-2 text-xs outline-none"><option value="">Predefinito</option></select></div>
-                        <div class="pt-2 border-t border-slate-200 flex justify-between items-center"><span class="text-xs font-bold text-slate-700">Suoni Notifiche</span><input type="checkbox" checked onchange="if(window.app) window.app.state.soundsEnabled = this.checked" class="w-4 h-4 cursor-pointer"></div>
+                    <h2 class="text-base font-black text-slate-800">⚙️ Impostazioni</h2>
+                    <p class="text-[10px] text-slate-400 font-semibold mt-0.5">Personalizza la tua esperienza</p>
+                </div>
+                <button onclick="window.app?.closeModal('settings-modal')" class="w-8 h-8 rounded-full bg-slate-100 hover:bg-red-100 text-slate-400 hover:text-red-500 transition flex items-center justify-center font-bold text-sm">✕</button>
+            </div>
+            <div class="settings-tab-bar flex-shrink-0">
+                <button class="settings-tab active" data-tab="tab-devices" onclick="window.app?.switchSettingsTab('tab-devices')">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M23 7l-7 5 7 5V7z"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg>
+                    Cam &amp; Mic
+                </button>
+                <button class="settings-tab" data-tab="tab-notif" onclick="window.app?.switchSettingsTab('tab-notif')">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+                    Notifiche
+                </button>
+                <button class="settings-tab" data-tab="tab-ignora" onclick="window.app?.switchSettingsTab('tab-ignora');window.app?.renderIgnoreList()">
+                    <svg fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
+                    Ignora
+                </button>
+            </div>
+            <div class="flex-1 overflow-y-auto custom-scroll">
+                <div id="tab-devices-pane" class="settings-pane active">
+                    <div class="flex justify-between items-center mb-4">
+                        <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest">Sorgente Hardware</p>
+                        <button onclick="window.app?.populateMediaDevices()" class="text-[10px] font-bold text-indigo-600 bg-indigo-50 hover:bg-indigo-100 border border-indigo-100 px-3 py-1.5 rounded-lg transition">🔍 Rileva</button>
+                    </div>
+                    <div class="space-y-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-500 mb-2 uppercase tracking-wider">📹 Fotocamera</label>
+                            <select id="select-video-source" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none"><option value="">Predefinita</option></select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-black text-slate-500 mb-2 uppercase tracking-wider">🎙️ Microfono</label>
+                            <select id="select-audio-source" class="w-full bg-white border border-slate-200 rounded-xl px-3 py-2.5 text-xs font-semibold outline-none"><option value="">Predefinito</option></select>
+                        </div>
+                    </div>
+                    <p class="text-[10px] text-slate-400 font-medium mt-3 text-center leading-relaxed">Le impostazioni vengono applicate alla prossima attivazione della cam.</p>
+                </div>
+                <div id="tab-notif-pane" class="settings-pane">
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Suoni &amp; Media</p>
+                    <div class="bg-slate-50 rounded-2xl border border-slate-100 px-4">
+                        <div class="settings-toggle-row">
+                            <div>
+                                <div class="settings-toggle-label">🔔 Suoni messaggi chat</div>
+                                <div class="settings-toggle-sub">Beep per ogni nuovo messaggio ricevuto in stanza</div>
+                            </div>
+                            <label class="tog"><input type="checkbox" id="tog-sound-chat" checked onchange="if(window.app){window.app.state.soundChatEnabled=this.checked;window.app.savePrefs();}"><span class="tog-slider"></span></label>
+                        </div>
+                        <div class="settings-toggle-row">
+                            <div>
+                                <div class="settings-toggle-label">💬 Suoni messaggi privati</div>
+                                <div class="settings-toggle-sub">Beep per ogni messaggio privato ricevuto</div>
+                            </div>
+                            <label class="tog"><input type="checkbox" id="tog-sound-pvt" checked onchange="if(window.app){window.app.state.soundPvtEnabled=this.checked;window.app.savePrefs();}"><span class="tog-slider"></span></label>
+                        </div>
+                        <div class="settings-toggle-row">
+                            <div>
+                                <div class="settings-toggle-label">🖼️ Mostra immagini automaticamente</div>
+                                <div class="settings-toggle-sub">Se disattivo mostra un pulsante "visualizza" al posto dell'immagine</div>
+                            </div>
+                            <label class="tog"><input type="checkbox" id="tog-auto-img" checked onchange="if(window.app){window.app.state.autoShowImages=this.checked;window.app.savePrefs();window.app.renderRoomMessages(window.app.state.currentRoom);}"><span class="tog-slider"></span></label>
+                        </div>
                     </div>
                 </div>
+                <div id="tab-ignora-pane" class="settings-pane">
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Utenti ignorati</p>
+                    <p class="text-[11px] text-slate-500 font-medium mb-4 leading-relaxed">Gli utenti ignorati non mostrano i loro messaggi in chat. Puoi rimuoverli in qualsiasi momento.</p>
+                    <div id="ignore-list-container"><div class="ignore-empty">✅ Nessun utente ignorato</div></div>
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t border-slate-100 flex-shrink-0">
+                <button onclick="window.app?.closeModal('settings-modal')" class="w-full py-3 btn-brand text-white rounded-2xl font-bold text-xs transition shadow">✅ Salva e Chiudi</button>
             </div>
         </div>
     </div>
@@ -1194,7 +1352,10 @@ service cloud.firestore {
                     this.msgReactions = {};
                     this.unreadCounts = {};
                     this.searchOpen = false;
-                    this.soundsEnabled = true;
+                    this.soundsEnabled    = true;
+                    this.soundChatEnabled  = true;
+                    this.soundPvtEnabled   = true;
+                    this.autoShowImages    = true;
                     this.cachedMessages = [];
                     this.pvtUnread = {};
                     this.openRooms = [];
@@ -1285,8 +1446,9 @@ service cloud.firestore {
                     return text;
                 }
 
-                playBeep() {
-                    if (!this.state.soundsEnabled) return;
+                playBeep(type = 'chat') {
+                    if (type === 'pvt'  && !this.state.soundPvtEnabled)  return;
+                    if (type === 'chat' && !this.state.soundChatEnabled) return;
                     try {
                         const ctx = new (window.AudioContext || window.webkitAudioContext)();
                         const osc = ctx.createOscillator(), gain = ctx.createGain();
@@ -1327,9 +1489,14 @@ service cloud.firestore {
 
                 savePrefs() {
                     try {
+                        const ignoredSafe = this.state.ignoredUsers.map(u => ({ uid: u.uid, name: u.name }));
                         localStorage.setItem('rask_prefs', JSON.stringify({
-                            textColor: document.getElementById('text-color').value,
-                            textSize: document.getElementById('text-size').value,
+                            textColor:        document.getElementById('text-color')?.value,
+                            textSize:         document.getElementById('text-size')?.value,
+                            soundChatEnabled: this.state.soundChatEnabled,
+                            soundPvtEnabled:  this.state.soundPvtEnabled,
+                            autoShowImages:   this.state.autoShowImages,
+                            ignoredUsers:     ignoredSafe,
                         }));
                     } catch (e) {}
                 }
@@ -1337,9 +1504,53 @@ service cloud.firestore {
                 loadPrefs() {
                     try {
                         const p = JSON.parse(localStorage.getItem('rask_prefs') || '{}');
-                        if (p.textColor) document.getElementById('text-color').value = p.textColor;
-                        if (p.textSize) document.getElementById('text-size').value = p.textSize;
+                        if (p.textColor) { const el = document.getElementById('text-color'); if (el) el.value = p.textColor; }
+                        if (p.textSize)  { const el = document.getElementById('text-size');  if (el) el.value = p.textSize;  }
+                        if (p.soundChatEnabled !== undefined) this.state.soundChatEnabled = p.soundChatEnabled;
+                        if (p.soundPvtEnabled  !== undefined) this.state.soundPvtEnabled  = p.soundPvtEnabled;
+                        if (p.autoShowImages   !== undefined) this.state.autoShowImages    = p.autoShowImages;
+                        if (Array.isArray(p.ignoredUsers))   this.state.ignoredUsers      = p.ignoredUsers;
                     } catch (e) {}
+                }
+
+                openSettings() {
+                    this.openModal('settings-modal');
+                    // Sync toggle UI con stato corrente
+                    const togChat = document.getElementById('tog-sound-chat');
+                    const togPvt  = document.getElementById('tog-sound-pvt');
+                    const togImg  = document.getElementById('tog-auto-img');
+                    if (togChat) togChat.checked = this.state.soundChatEnabled;
+                    if (togPvt)  togPvt.checked  = this.state.soundPvtEnabled;
+                    if (togImg)  togImg.checked   = this.state.autoShowImages;
+                    this.switchSettingsTab('tab-devices');
+                    this.populateMediaDevices();
+                }
+
+                switchSettingsTab(tabId) {
+                    document.querySelectorAll('.settings-tab').forEach(t =>
+                        t.classList.toggle('active', t.dataset.tab === tabId));
+                    document.querySelectorAll('.settings-pane').forEach(p =>
+                        p.classList.toggle('active', p.id === tabId + '-pane'));
+                }
+
+                renderIgnoreList() {
+                    const cont = document.getElementById('ignore-list-container');
+                    if (!cont) return;
+                    const list = this.state.ignoredUsers;
+                    if (!list || !list.length) {
+                        cont.innerHTML = '<div class="ignore-empty">✅ Nessun utente ignorato</div>';
+                        return;
+                    }
+                    cont.innerHTML = list.map(u => `
+                        <div class="ignore-item">
+                            <div class="flex-1 min-w-0">
+                                <div class="ignore-item-name">🚫 ${this.sanitize(u.name)}</div>
+                            </div>
+                            <button class="ignore-remove-btn"
+                                onclick="app.unignoreUser('${u.uid}',true);app.renderIgnoreList()">
+                                Rimuovi
+                            </button>
+                        </div>`).join('');
                 }
 
                 getTextColor() {
@@ -2814,7 +3025,7 @@ service cloud.firestore {
                                 if (child) {
                                     fab ? c.insertBefore(child, fab) : c.appendChild(child);
                                     this.scrollToBottom(false);
-                                    if (m.fromUid !== this.state.me.uid) this.playBeep();
+                                    if (m.fromUid !== this.state.me.uid) this.playBeep('pvt');
                                 }
                             } else if (m.fromUid !== this.state.me.uid) {
                                 this.incrementUnread(m.roomId);
@@ -3084,6 +3295,40 @@ service cloud.firestore {
                 // ============================================================
                 // ROOMS
                 // ============================================================
+                openMobileRooms() {
+                    const sb = document.getElementById('sidebar-right');
+                    const ov = document.getElementById('sidebar-overlay');
+                    if (sb && !sb.classList.contains('open')) {
+                        sb.classList.add('open');
+                        if (ov) ov.classList.add('active');
+                    }
+                    const list    = document.getElementById('rooms-list');
+                    const chevron = document.getElementById('rooms-chevron');
+                    if (list && !list.classList.contains('open')) {
+                        list.classList.remove('hidden');
+                        list.classList.add('open');
+                        if (chevron) chevron.classList.add('open');
+                    }
+                }
+
+                updateMobileNav() {
+                    if (window.innerWidth > 768) return;
+                    const uBadge = document.getElementById('mob-users-badge');
+                    if (uBadge) {
+                        const n = this.state.users.length;
+                        uBadge.textContent = n;
+                        uBadge.classList.toggle('hidden', n === 0);
+                    }
+                    const rBadge = document.getElementById('mob-rooms-badge');
+                    if (rBadge) {
+                        const unreadTotal = Object.values(this.state.unreadCounts || {}).reduce((a,b)=>a+b,0);
+                        rBadge.textContent = unreadTotal;
+                        rBadge.classList.toggle('hidden', unreadTotal === 0);
+                    }
+                    const camBtn = document.getElementById('mob-btn-cam');
+                    if (camBtn) camBtn.classList.toggle('active', !!this.state.me.camActive);
+                }
+
                 toggleRoomsDropdown() {
                     const nav  = document.getElementById('rooms-list');
                     const chev = document.getElementById('rooms-chevron');
@@ -3311,6 +3556,19 @@ service cloud.firestore {
                     }
                 }
 
+                _renderMsgText(m) {
+                    const txt = m.text;
+                    if (typeof txt === 'string' && txt.startsWith('<img ') && !this.state.autoShowImages) {
+                        const srcMatch = txt.match(/src=["']([^"']+)["']/);
+                        const src = srcMatch ? srcMatch[1].replace(/"/g, '&quot;') : '';
+                        return '<button class="img-placeholder-btn" data-s="' + src + '" ' +
+                            'onclick="var img=document.createElement(\'img\');img.src=this.dataset.s;' +
+                            'img.className=\'chat-image\';img.onclick=function(){window.open(img.src)};' +
+                            'this.replaceWith(img)">🖼️ Immagine — tocca per visualizzare</button>';
+                    }
+                    return txt;
+                }
+
                 buildMessageHTML(m) {
                     // RULLO (annuncio staff)
                     if (typeof m.text === 'string' && m.text.startsWith('__RULLO__')) {
@@ -3341,7 +3599,7 @@ service cloud.firestore {
                             ${quoteHtml}
                             <div class="flex items-start flex-wrap gap-x-1">
                                 <span class="chat-name" onclick="app.openUserMenu(event,'${m.fromUid}')" style="color:${m.color||'#64748b'}">${this.sanitize(m.name)}:</span>
-                                <span class="chat-text" style="font-size:${m.size||'14px'};color:${m.txtColor||'#0f172a'}">${m.text}</span>
+                                <span class="chat-text" style="font-size:${m.size||'14px'};color:${m.txtColor||'#0f172a'}">${this._renderMsgText(m)}</span>
                                 <button onclick="app.setReplyTo('${m.id}')" class="opacity-0 group-hover:opacity-100 text-slate-400 hover:text-brand text-[10px] ml-1 transition self-center" title="Rispondi">↩️</button>
                             </div>
                             <div class="msg-reactions-display">${reactBadges}</div>
@@ -3842,6 +4100,7 @@ service cloud.firestore {
                 renderSidebar() {
                     const c = document.getElementById('user-sidebar');
                     if (!c) return;
+                    this.updateMobileNav();
                     
                     const statusDot = (s) => {
                         if (s === 'busy') return '<div class="status-dot status-busy"></div>';
@@ -3867,6 +4126,7 @@ service cloud.firestore {
                 }
 
                 toggleSidebar() {
+                    this.updateMobileNav();
                     const sb = document.getElementById('sidebar-right');
                     const ov = document.getElementById('sidebar-overlay');
                     const open = sb.classList.contains('open');
@@ -3910,15 +4170,17 @@ service cloud.firestore {
                     const user = this.state.users.find(u => u.uid === uid);
                     if (user && !this.state.ignoredUsers.some(u => u.uid === uid)) {
                         this.state.ignoredUsers.push({ uid, name: user.name });
-                        this.showToast(`${user.name} ignorato.`, 'info');
+                        this.showToast(`🚫 ${user.name} ignorato.`, 'info');
                         this.renderRoomMessages(this.state.currentRoom);
+                        this.savePrefs();
                     }
                 }
 
-                unignoreUser(uid) {
-                    this.closeUserMenu();
+                unignoreUser(uid, skipMenu = false) {
+                    if (!skipMenu) this.closeUserMenu();
                     this.state.ignoredUsers = this.state.ignoredUsers.filter(u => u.uid !== uid);
                     this.renderRoomMessages(this.state.currentRoom);
+                    this.savePrefs();
                 }
 
                 async kickUser(uid) {
