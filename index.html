@@ -56,8 +56,39 @@
         #admin-panel.active { display: flex; }
         .admin-sidebar { width: 250px; background: #1e293b; border-right: 1px solid #334155; display: flex; flex-direction: column; flex-shrink: 0; }
         .admin-content { flex: 1; padding: 2rem; overflow-y: auto; background: #0f172a; }
-        .admin-nav-item { padding: 1rem 1.5rem; cursor: pointer; color: #94a3b8; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 10px; border-left: 3px solid transparent; transition: all 0.2s; }
+        .admin-nav-item { padding: 1rem 1.5rem; cursor: pointer; color: #94a3b8; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 10px; border-left: 3px solid transparent; transition: all 0.2s; touch-action: manipulation; }
         .admin-nav-item:hover { background: #334155; color: white; } .admin-nav-item.active { color: var(--brand-col-2); border-left-color: var(--brand-col-2); }
+        /* ── Admin mobile responsive ───────────────────────────── */
+        #adm-mobile-bar { display: none; }
+        @media (max-width: 768px) {
+            #admin-panel { flex-direction: column; }
+            .admin-sidebar { display: none; }
+            #adm-mobile-bar {
+                display: flex; align-items: center; gap: 0;
+                background: #1e293b; border-bottom: 1px solid #334155;
+                overflow-x: auto; overflow-y: hidden; flex-shrink: 0;
+                -webkit-overflow-scrolling: touch; scrollbar-width: none;
+                padding: 0 4px;
+            }
+            #adm-mobile-bar::-webkit-scrollbar { display: none; }
+            .adm-mob-tab {
+                display: flex; flex-direction: column; align-items: center; gap: 2px;
+                padding: 10px 12px; cursor: pointer; color: #64748b;
+                font-size: 9px; font-weight: 900; text-transform: uppercase;
+                letter-spacing: .04em; white-space: nowrap; border-bottom: 3px solid transparent;
+                transition: all 0.18s; touch-action: manipulation; flex-shrink: 0;
+            }
+            .adm-mob-tab .adm-tab-icon { font-size: 18px; line-height: 1; }
+            .adm-mob-tab:hover { color: #94a3b8; }
+            .adm-mob-tab.active { color: var(--brand-col-2); border-bottom-color: var(--brand-col-2); }
+            .admin-content { padding: 1rem; }
+            /* Rendi le tabelle scrollabili orizzontalmente su mobile */
+            .admin-table { font-size: 11px; }
+            .admin-table th, .admin-table td { padding: 8px 6px; }
+            /* Grids → 1 colonna su mobile */
+            #adm-tab-security .grid.grid-cols-2 { grid-template-columns: 1fr; }
+            #adm-tab-users .grid { grid-template-columns: 1fr; }
+        }
         .stat-card { background: #1e293b; padding: 1.5rem; border-radius: 12px; border: 1px solid #334155; }
         .admin-table { width: 100%; border-collapse: collapse; font-size: 13px; }
         .admin-table th { text-align: left; padding: 10px; color: #64748b; font-size: 11px; text-transform: uppercase; border-bottom: 1px solid #334155; }
@@ -424,7 +455,7 @@
         <!-- HEADER -->
         <header class="brand-gradient px-4 py-3 sm:px-6 flex justify-between items-center z-[150] shadow-xl relative border-b border-white/10 shrink-0">
             <div class="flex items-center gap-3 sm:gap-4">
-                <div class="w-9 h-9 bg-white/15 rounded-xl flex items-center justify-center backdrop-blur-md border border-white/20 shadow-inner"><svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M15.9 14.3H15L4.93 14.3C3.87 14.3 3 13.43 3 12.37V4.93C3 3.87 3.87 3 4.93 3H15.06C16.12 3 17 3.87 17 4.93V7.9L21 4V13.3L17 9.4V12.37C17 13.43 16.13 14.3 15.9 14.3Z"/></svg></div>
+                <div id="header-logo-container" class="w-9 h-9 bg-white/15 rounded-xl flex items-center justify-center backdrop-blur-md border border-white/20 shadow-inner"><svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M15.9 14.3H15L4.93 14.3C3.87 14.3 3 13.43 3 12.37V4.93C3 3.87 3.87 3 4.93 3H15.06C16.12 3 17 3.87 17 4.93V7.9L21 4V13.3L17 9.4V12.37C17 13.43 16.13 14.3 15.9 14.3Z"/></svg></div>
                 <div class="hidden sm:block"><h1 class="text-white font-extrabold text-lg tracking-tight leading-none app-title-display">RaskVideochat</h1><p class="text-white/40 text-[9px] font-bold uppercase tracking-[0.2em] mt-0.5">Release 2.0.0 TS</p></div>
             </div>
 
@@ -500,7 +531,7 @@
                     Altro
                 </button>
                 <!-- Avatar mobile (apre profilo) -->
-                <button onclick="window.app?.toggleStatusMenu(event)"
+                <button onclick="window.app?.openMobileProfile(event)"
                     class="mob-hdr-btn" id="mob-avatar-btn" title="Profilo"
                     aria-label="Profilo utente">
                     <img id="mob-avatar-mini" src="" class="w-6 h-6 rounded-full object-cover border border-white/30"
@@ -846,7 +877,7 @@ service cloud.firestore {
     </div>
 
     <div id="profile-modal" class="modal-overlay" onclick="if(event.target===this) window.app?.closeModal('profile-modal')">
-        <div class="bg-white w-[380px] rounded-[40px] overflow-hidden shadow-2xl mx-4">
+        <div class="bg-white w-full max-w-[380px] rounded-[28px] sm:rounded-[40px] overflow-hidden shadow-2xl mx-3 sm:mx-4">
             <div class="h-24 brand-gradient relative">
                 <button onclick="window.app?.closeModal('profile-modal')" class="absolute top-4 right-4 w-8 h-8 rounded-full bg-white/20 hover:bg-white/40 text-white flex items-center justify-center text-lg font-bold transition">✕</button>
             </div>
@@ -896,6 +927,7 @@ service cloud.firestore {
     <!-- ADMIN PANEL                                                   -->
     <!-- ============================================================ -->
     <div id="admin-panel">
+        <!-- Desktop sidebar -->
         <div class="admin-sidebar">
             <div class="p-6 border-b border-slate-700"><h2 class="text-white font-black text-2xl tracking-tighter">Admin<span class="text-brand">Panel</span></h2><p class="text-slate-500 text-[9px] mt-1 uppercase font-bold tracking-widest">v2.0 — Secured</p></div>
             <nav class="flex-1 mt-4">
@@ -909,6 +941,17 @@ service cloud.firestore {
             </nav>
             <div class="p-4 border-t border-slate-700"><button onclick="window.app?.closeAdminPanel()" class="w-full py-3 bg-red-600/10 text-red-500 rounded-lg font-bold text-xs hover:bg-red-600/20 transition">CHIUDI PANNELLO</button></div>
         </div>
+        <!-- Mobile tab bar (visibile solo su mobile) -->
+        <div id="adm-mobile-bar">
+            <div class="adm-mob-tab active" onclick="window.app?.adminSwitchTab('dashboard', event)"><span class="adm-tab-icon">📊</span>Dashboard</div>
+            <div class="adm-mob-tab" onclick="window.app?.adminSwitchTab('users', event)"><span class="adm-tab-icon">👥</span>Utenti</div>
+            <div class="adm-mob-tab" onclick="window.app?.adminSwitchTab('rooms', event)"><span class="adm-tab-icon">🏠</span>Stanze</div>
+            <div class="adm-mob-tab" onclick="window.app?.adminSwitchTab('security', event)"><span class="adm-tab-icon">🛡️</span>Mod.</div>
+            <div class="adm-mob-tab" onclick="window.app?.adminSwitchTab('appearance', event)"><span class="adm-tab-icon">🎨</span>Grafica</div>
+            <div class="adm-mob-tab" onclick="window.app?.adminSwitchTab('radio', event)"><span class="adm-tab-icon">📻</span>Radio</div>
+            <div class="adm-mob-tab" onclick="window.app?.adminSwitchTab('auditlog', event)"><span class="adm-tab-icon">📋</span>Log</div>
+            <div class="adm-mob-tab" style="color:#ef4444;margin-left:auto" onclick="window.app?.closeAdminPanel()"><span class="adm-tab-icon">✕</span>Chiudi</div>
+        </div>
         <div class="admin-content custom-scroll">
             <!-- Dashboard -->
             <div id="adm-tab-dashboard" class="space-y-6"><h3 class="text-2xl font-bold mb-6">Panoramica Server</h3><div class="grid grid-cols-1 md:grid-cols-3 gap-6"><div class="stat-card"><p class="text-slate-400 text-xs font-bold uppercase">Utenti Connessi</p><p class="text-3xl font-black text-indigo-400 mt-2" id="stat-users">0</p></div><div class="stat-card"><p class="text-slate-400 text-xs font-bold uppercase">Stanze Attive</p><p class="text-3xl font-black text-green-400 mt-2" id="stat-rooms">0</p></div><div class="stat-card"><p class="text-slate-400 text-xs font-bold uppercase">Messaggi (sessione)</p><p class="text-3xl font-black text-pink-400 mt-2" id="stat-msgs">0</p></div></div></div>
@@ -916,7 +959,7 @@ service cloud.firestore {
             <!-- Users -->
             <div id="adm-tab-users" class="hidden space-y-6">
                 <h3 class="text-2xl font-bold mb-6">Gestione Utenti</h3>
-                <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden mb-8"><div class="p-4 border-b border-slate-700 flex justify-between items-center"><h4 class="text-green-400 font-bold text-sm">🟢 Utenti Online Ora</h4></div><table class="admin-table"><thead><tr><th>Avatar</th><th>Nome</th><th>Ruolo</th><th>Stanza</th><th>Azioni</th></tr></thead><tbody id="admin-live-users-list"></tbody></table></div>
+                <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden mb-8"><div class="p-4 border-b border-slate-700 flex justify-between items-center"><h4 class="text-green-400 font-bold text-sm">🟢 Utenti Online Ora</h4></div><div class="overflow-x-auto"><table class="admin-table"><thead><tr><th>Avatar</th><th>Nome</th><th>Ruolo</th><th>Stanza</th><th>Azioni</th></tr></thead><tbody id="admin-live-users-list"></tbody></table></div></div>
                 <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 mb-6">
                     <h4 class="text-white font-bold text-sm mb-4">👥 Aggiungi Account (Firebase Auth)</h4>
                     <div class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end mb-4">
@@ -927,7 +970,7 @@ service cloud.firestore {
                         <button onclick="window.app?.adminRegisterUser()" class="btn-brand text-white px-4 py-2.5 rounded-lg text-xs font-bold">REGISTRA</button>
                     </div>
                 </div>
-                <div class="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden"><table class="admin-table"><thead><tr><th>Utente</th><th>Sesso</th><th>Ruolo</th><th>Azioni</th></tr></thead><tbody id="admin-users-list"></tbody></table></div>
+                <div class="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden"><div class="overflow-x-auto"><table class="admin-table"><thead><tr><th>Utente</th><th>Sesso</th><th>Ruolo</th><th>Azioni</th></tr></thead><tbody id="admin-users-list"></tbody></table></div></div>
             </div>
 
             <!-- Rooms -->
@@ -942,7 +985,7 @@ service cloud.firestore {
                         <div><label class="text-[9px] text-slate-500 uppercase block mb-1">Password</label><input type="password" id="adm-room-pw" disabled class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg disabled:opacity-50"></div>
                     </div>
                     <button onclick="window.app?.adminAddRoom()" class="bg-green-600 hover:bg-green-500 text-white px-6 py-2.5 rounded-lg text-xs font-bold">CREA STANZA</button>
-                    <div class="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden mt-6"><table class="admin-table"><thead><tr><th>Nome</th><th>Badge</th><th>Accesso</th><th>Status Pw</th><th>Azioni</th></tr></thead><tbody id="admin-rooms-list"></tbody></table></div>
+                    <div class="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden mt-6"><div class="overflow-x-auto"><table class="admin-table"><thead><tr><th>Nome</th><th>Badge</th><th>Accesso</th><th>Status Pw</th><th>Azioni</th></tr></thead><tbody id="admin-rooms-list"></tbody></table></div></div>
                 </div>
             </div>
 
@@ -959,7 +1002,7 @@ service cloud.firestore {
                     <textarea id="adm-bad-words" rows="3" class="w-full bg-slate-900 border border-slate-700 text-white text-xs p-3 rounded-lg resize-none font-mono" placeholder="parolaccia,parolabrutta,spam,..."></textarea>
                     <button onclick="window.app?.adminSaveBadWords()" class="mt-3 bg-yellow-600 hover:bg-yellow-500 text-white px-6 py-2.5 rounded-lg text-xs font-black uppercase shadow-lg transition">💾 Salva Filtro</button>
                 </div>
-                <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 mb-8"><h4 class="text-white font-bold text-sm mb-2">Invia Broadcast Globale (tutte le stanze)</h4><div class="flex gap-2"><input type="text" id="adm-broadcast-text" class="flex-1 bg-slate-900 border border-slate-600 text-white text-sm p-3 rounded-lg" placeholder="Messaggio globale..."><button onclick="window.app?.adminSendBroadcast()" class="bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-lg font-bold uppercase shadow-lg">Invia</button></div></div>
+                <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 mb-8"><h4 class="text-white font-bold text-sm mb-2">📣 Broadcast Globale (tutte le stanze)</h4><div class="flex flex-col sm:flex-row gap-2"><input type="text" id="adm-broadcast-text" class="flex-1 bg-slate-900 border border-slate-600 text-white text-sm p-3 rounded-lg" placeholder="Messaggio globale..."><button onclick="window.app?.adminSendBroadcast()" class="bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-lg font-bold uppercase shadow-lg">Invia</button></div></div>
                 <div class="grid grid-cols-2 gap-6">
                     <div class="bg-slate-800 p-5 rounded-xl border border-yellow-500/30"><h4 class="text-xs font-black uppercase text-yellow-400 mb-3">Utenti Mutati</h4><div class="flex gap-2 mb-3"><input type="text" id="adm-mute-name" class="flex-1 bg-slate-900 border border-slate-700 text-xs text-white p-2 rounded" placeholder="Username..."><button onclick="window.app?.adminMuteUserBtn()" class="bg-yellow-600 text-white px-3 rounded text-xs">Muta</button></div><table class="admin-table"><tbody id="admin-muted-list"></tbody></table></div>
                     <div class="bg-slate-800 p-5 rounded-xl border border-red-500/30"><h4 class="text-xs font-black uppercase text-red-400 mb-3">Blacklist (Ban)</h4><div class="flex gap-2 mb-3"><input type="text" id="adm-ban-name" class="flex-1 bg-slate-900 border border-slate-700 text-xs text-white p-2 rounded" placeholder="Username..."><button onclick="window.app?.adminBanUserBtn()" class="bg-red-600 text-white px-3 rounded text-xs">Ban</button></div><table class="admin-table"><tbody id="admin-banned-list"></tbody></table></div>
@@ -971,7 +1014,17 @@ service cloud.firestore {
                 <h3 class="text-2xl font-bold mb-6">Personalizzazione Grafica</h3>
                 <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-5">
                     <div><label class="text-[10px] text-slate-400 uppercase font-black block mb-2">Nome App</label><input type="text" id="adm-app-title" class="w-full bg-slate-900 border border-slate-600 text-white text-sm p-3.5 rounded-lg font-bold" placeholder="RaskVideochat"></div>
+                    <div>
+                        <label class="text-[10px] text-slate-400 uppercase font-black block mb-2">🖼️ Logo Header (URL immagine)</label>
+                        <input type="text" id="adm-logo-url" class="w-full bg-slate-900 border border-slate-600 text-white text-sm p-3.5 rounded-lg" placeholder="https://... (.png, .svg, .webp)">
+                        <p class="text-[10px] text-slate-500 mt-1">Sostituisce l'icona videocamera nell'header. Lascia vuoto per usare l'icona predefinita.</p>
+                    </div>
                     <div><label class="text-[10px] text-slate-400 uppercase font-black block mb-2">Sfondo App (URL Immagine)</label><input type="text" id="adm-app-bg" class="w-full bg-slate-900 border border-slate-600 text-white text-sm p-3.5 rounded-lg" placeholder="https://..."></div>
+                    <div>
+                        <label class="text-[10px] text-slate-400 uppercase font-black block mb-2">🌅 Sfondo Schermata Login (URL video/immagine)</label>
+                        <input type="text" id="adm-login-bg" class="w-full bg-slate-900 border border-slate-600 text-white text-sm p-3.5 rounded-lg" placeholder="https://... (MP4 o immagine)">
+                        <p class="text-[10px] text-slate-500 mt-1">Sostituisce il video animato nella schermata di login.</p>
+                    </div>
                     <div class="grid grid-cols-2 gap-6 border-t border-slate-700 pt-5">
                         <div><label class="text-[10px] text-slate-400 uppercase font-black block mb-2">Colore Brand Primario</label><div class="flex items-center gap-3"><input type="color" id="adm-color-1" class="w-12 h-12 bg-slate-900 border border-slate-600 rounded-lg cursor-pointer p-1"><span class="text-xs text-slate-400">Top/Sinistra</span></div></div>
                         <div><label class="text-[10px] text-slate-400 uppercase font-black block mb-2">Colore Brand Secondario</label><div class="flex items-center gap-3"><input type="color" id="adm-color-2" class="w-12 h-12 bg-slate-900 border border-slate-600 rounded-lg cursor-pointer p-1"><span class="text-xs text-slate-400">Bottom/Destra</span></div></div>
@@ -980,7 +1033,7 @@ service cloud.firestore {
                 </div>
                 <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 mt-6">
                     <h4 class="text-[10px] text-slate-400 uppercase font-black mb-3">🔑 Codice Admin (per "Diventa Admin")</h4>
-                    <p class="text-[11px] text-slate-500 mb-3">Gli utenti che conoscono questo codice possono promuoversi Admin dal loro profilo. Default: <code class="text-yellow-400">rask2024</code></p>
+                    <p class="text-[11px] text-slate-500 mb-3">Gli utenti che conoscono questo codice possono promuoversi Admin dal loro profilo. Imposta un codice sicuro e non condividerlo pubblicamente.</p>
                     <div class="flex gap-3">
                         <input type="text" id="adm-admin-code" class="flex-1 bg-slate-900 border border-slate-600 text-white text-sm p-3 rounded-lg" placeholder="Nuovo codice admin...">
                         <button onclick="window.app?.adminSaveAdminCode()" class="btn-brand text-white px-6 rounded-xl font-black text-xs">Salva</button>
@@ -2321,6 +2374,8 @@ service cloud.firestore {
                         document.getElementById('admin-nav-btn').classList.remove('hidden');
                     }
                     document.getElementById('my-avatar-mini').src = this.state.me.avatarUrl;
+                    const mobAv = document.getElementById('mob-avatar-mini');
+                    if (mobAv) mobAv.src = this.state.me.avatarUrl;
                     const mobAvatar = document.getElementById('mob-avatar-mini');
                     if (mobAvatar) mobAvatar.src = this.state.me.avatarUrl;
 
@@ -2451,7 +2506,18 @@ service cloud.firestore {
                 // ============================================================
                 toggleStatusMenu(e) {
                     e.stopPropagation();
+                    // Su mobile il menu status è in posizione assoluta nel container desktop
+                    // → se la larghezza è mobile, apri direttamente il profilo
+                    if (window.innerWidth <= 768) {
+                        this.openModal('profile-modal');
+                        return;
+                    }
                     document.getElementById('status-menu').classList.toggle('active');
+                }
+
+                openMobileProfile(e) {
+                    if (e) e.stopPropagation();
+                    this.openModal('profile-modal');
                 }
 
                 async setMyStatus(status) {
@@ -2574,6 +2640,10 @@ service cloud.firestore {
                         document.getElementById('adm-app-bg').value = this.state.serverConfig.appBgUrl || '';
                         document.getElementById('adm-color-1').value = this.state.serverConfig.color1 || '#4338ca';
                         document.getElementById('adm-color-2').value = this.state.serverConfig.color2 || '#7e22ce';
+                        const logoField = document.getElementById('adm-logo-url');
+                        if (logoField) logoField.value = this.state.serverConfig.logoUrl || '';
+                        const loginBgField = document.getElementById('adm-login-bg');
+                        if (loginBgField) loginBgField.value = this.state.serverConfig.loginBgUrl || '';
                     }
                 }
 
@@ -2585,7 +2655,8 @@ service cloud.firestore {
                     ['dashboard','users','rooms','security','appearance','radio','auditlog'].forEach(t => {
                         document.getElementById(`adm-tab-${t}`).classList.add('hidden');
                     });
-                    document.querySelectorAll('.admin-nav-item').forEach(el => el.classList.remove('active'));
+                    // Aggiorna sia sidebar desktop che mobile tab bar
+                    document.querySelectorAll('.admin-nav-item, .adm-mob-tab').forEach(el => el.classList.remove('active'));
                     document.getElementById(`adm-tab-${id}`).classList.remove('hidden');
                     if (e && e.currentTarget) e.currentTarget.classList.add('active');
                     if (id === 'users') {
@@ -2662,26 +2733,58 @@ service cloud.firestore {
 
                 async adminSaveAppearance() {
                     if (!['Admin', 'Staff'].includes(this.state.me.role)) return;
-                    const title = document.getElementById('adm-app-title').value.trim() || 'RaskVideochat';
-                    const bgUrl = document.getElementById('adm-app-bg').value.trim();
-                    const col1 = document.getElementById('adm-color-1').value;
-                    const col2 = document.getElementById('adm-color-2').value;
-                    // doc/setDoc già cachati come _fbDoc/_fbSetDoc
-                    await _fbSetDoc(_fbDoc(this.getCol('server_settings'), 'config'), { appTitle: title, appBgUrl: bgUrl, color1: col1, color2: col2 }, { merge: true });
-                    await this.writeAuditLog('APPEARANCE', `Colori: ${col1}, ${col2} — Sfondo: ${bgUrl || 'default'}`);
-                    this.showToast('Personalizzazione applicata', 'success');
+                    const title   = document.getElementById('adm-app-title').value.trim() || 'RaskVideochat';
+                    const bgUrl   = document.getElementById('adm-app-bg').value.trim();
+                    const logoUrl = (document.getElementById('adm-logo-url')?.value || '').trim();
+                    const loginBg = (document.getElementById('adm-login-bg')?.value || '').trim();
+                    const col1    = document.getElementById('adm-color-1').value;
+                    const col2    = document.getElementById('adm-color-2').value;
+                    const payload = { appTitle: title, appBgUrl: bgUrl, color1: col1, color2: col2, logoUrl, loginBgUrl: loginBg };
+                    await _fbSetDoc(_fbDoc(this.getCol('server_settings'), 'config'), payload, { merge: true });
+                    this.state.serverConfig = { ...this.state.serverConfig, ...payload };
+                    this.applyAppearanceSettings();
+                    await this.writeAuditLog('APPEARANCE', `Colori: ${col1}, ${col2} | Logo: ${logoUrl||'default'} | Login BG: ${loginBg||'default'}`);
+                    this.showToast('✅ Personalizzazione applicata!', 'success');
                 }
 
                 applyAppearanceSettings() {
                     const c = this.state.serverConfig;
+                    // Titolo app
                     if (c.appTitle) document.querySelectorAll('.app-title-display').forEach(el => el.innerText = c.appTitle);
+                    // Sfondo app principale
                     const bg = document.getElementById('app-bg-container');
-                    if (c.appBgUrl) bg.style.background = `url(${c.appBgUrl}) center/cover no-repeat fixed`;
-                    else bg.style.background = 'radial-gradient(circle at top right, #2e1065, #020617 70%)';
+                    if (bg) {
+                        if (c.appBgUrl) bg.style.background = `url(${c.appBgUrl}) center/cover no-repeat fixed`;
+                        else bg.style.background = 'radial-gradient(circle at top right, #2e1065, #020617 70%)';
+                    }
+                    // Colori brand
                     if (c.color1 && c.color2) {
                         document.documentElement.style.setProperty('--brand-col-1', c.color1);
                         document.documentElement.style.setProperty('--brand-col-2', this.interpColor(c.color1, c.color2, 0.5));
                         document.documentElement.style.setProperty('--brand-col-3', c.color2);
+                    }
+                    // Logo header: sostituisce SVG con <img> se configurato
+                    const logoContainer = document.getElementById('header-logo-container');
+                    if (logoContainer) {
+                        if (c.logoUrl) {
+                            logoContainer.innerHTML = `<img src="${c.logoUrl}" class="w-full h-full object-contain" onerror="this.parentElement.innerHTML='<svg width=\"20\" height=\"20\" viewBox=\"0 0 24 24\" fill=\"white\"><path d=\"M15.9 14.3H15L4.93 14.3C3.87 14.3 3 13.43 3 12.37V4.93C3 3.87 3.87 3 4.93 3H15.06C16.12 3 17 3.87 17 4.93V7.9L21 4V13.3L17 9.4V12.37C17 13.43 16.13 14.3 15.9 14.3Z\"/></svg>'">`;
+                        } else {
+                            logoContainer.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M15.9 14.3H15L4.93 14.3C3.87 14.3 3 13.43 3 12.37V4.93C3 3.87 3.87 3 4.93 3H15.06C16.12 3 17 3.87 17 4.93V7.9L21 4V13.3L17 9.4V12.37C17 13.43 16.13 14.3 15.9 14.3Z"/></svg>';
+                        }
+                    }
+                    // Sfondo schermata di login
+                    const authBgContainer = document.getElementById('auth-bg-container');
+                    if (authBgContainer && c.loginBgUrl) {
+                        // Controlla se è un video (MP4/WebM) o immagine
+                        const isVideo = /\.(mp4|webm|ogg)$/i.test(c.loginBgUrl);
+                        if (isVideo) {
+                            authBgContainer.innerHTML = `<video autoplay loop muted playsinline class="auth-video-bg"><source src="${c.loginBgUrl}" type="video/mp4"></video>`;
+                        } else {
+                            authBgContainer.style.background = `url(${c.loginBgUrl}) center/cover no-repeat`;
+                            // rimuovi il video se c'era
+                            const vid = authBgContainer.querySelector('video');
+                            if (vid) { vid.pause(); vid.remove(); }
+                        }
                     }
                 }
 
