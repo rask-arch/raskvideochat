@@ -55,11 +55,15 @@
         #admin-panel { position: fixed; inset: 0; z-index: 9999; background: #0f172a; color: #f8fafc; display: none; flex-direction: row; }
         #admin-panel.active { display: flex; }
         .admin-sidebar { width: 250px; background: #1e293b; border-right: 1px solid #334155; display: flex; flex-direction: column; flex-shrink: 0; }
-        .admin-content { flex: 1; padding: 2rem; overflow-y: auto; background: #0f172a; }
+        .admin-content { flex: 1; padding: 2rem; overflow-y: auto; background: #0f172a; scroll-behavior: smooth; -webkit-overflow-scrolling: touch; }
         .admin-nav-item { padding: 1rem 1.5rem; cursor: pointer; color: #94a3b8; font-weight: 600; font-size: 13px; display: flex; align-items: center; gap: 10px; border-left: 3px solid transparent; transition: all 0.2s; touch-action: manipulation; }
         .admin-nav-item:hover { background: #334155; color: white; } .admin-nav-item.active { color: var(--brand-col-2); border-left-color: var(--brand-col-2); }
         /* ── Admin mobile responsive ───────────────────────────── */
         #adm-mobile-bar { display: none; }
+        @media (max-width: 480px) {
+            #chat-box .p-2 { padding: 6px; }
+            #msg-input { font-size: 16px; } /* prevent iOS zoom */
+        }
         @media (max-width: 768px) {
             #admin-panel { flex-direction: column; }
             .admin-sidebar { display: none; }
@@ -73,8 +77,8 @@
             #adm-mobile-bar::-webkit-scrollbar { display: none; }
             .adm-mob-tab {
                 display: flex; flex-direction: column; align-items: center; gap: 2px;
-                padding: 10px 12px; cursor: pointer; color: #64748b;
-                font-size: 9px; font-weight: 900; text-transform: uppercase;
+                padding: 8px 10px; cursor: pointer; color: #64748b;
+                font-size: 8px; font-weight: 900; text-transform: uppercase;
                 letter-spacing: .04em; white-space: nowrap; border-bottom: 3px solid transparent;
                 transition: all 0.18s; touch-action: manipulation; flex-shrink: 0;
             }
@@ -102,7 +106,8 @@
         #auth-bg-container { position: absolute; inset: 0; z-index: 1; overflow: hidden; }
         .auth-video-bg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; filter: hue-rotate(240deg) saturate(1.8) brightness(0.4) contrast(1.3); }
         #auth-bg-container::after { content: ''; position: absolute; inset: 0; background: rgba(30,27,75,0.5); mix-blend-mode: overlay; z-index: 2; }
-        .auth-card { background: rgba(255,255,255,0.95); backdrop-filter: blur(20px); width: 100%; max-width: 400px; padding: 2.5rem; border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8); position: relative; z-index: 10; animation: cardEntrance 1.2s cubic-bezier(0.16,1,0.3,1) 0.6s both; }
+        .auth-card { background: rgba(255,255,255,0.95); backdrop-filter: blur(20px); width: 100%; max-width: 400px; padding: 2rem; border-radius: 24px; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.8); position: relative; z-index: 10; animation: cardEntrance 1.2s cubic-bezier(0.16,1,0.3,1) 0.6s both; margin: 0 12px; box-sizing: border-box; }
+        @media (max-width: 400px) { .auth-card { padding: 1.5rem; border-radius: 18px; } }
         @keyframes cardEntrance { 0% { opacity: 0; transform: scale(0.85) translateY(50px); filter: blur(12px); } 100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); } }
 
         /* === VIDEO WINDOWS === */
@@ -183,7 +188,7 @@
         @media (max-width: 768px) {
             .mob-hdr-btn { display: flex; }
             /* Su mobile: riduci padding header e nascondi testo app */
-            header.brand-gradient { padding-top: 6px; padding-bottom: 6px; }
+            header.brand-gradient { padding-top: 4px; padding-bottom: 4px; padding-left: 8px; padding-right: 8px; }
             #local-video-container { bottom: auto !important; top: 56px; right: 8px; }
             /* Assicura sidebar sempre sopra tutto su mobile */
             .sidebar-right { z-index: 9100 !important; }
@@ -275,6 +280,9 @@
         .user-card-compact { display: flex; align-items: center; gap: 8px; padding: 5px 8px; border-radius: 10px; cursor: pointer; transition: all 0.2s; background: rgba(255,255,255,0.05); margin-bottom: 3px; border: 1px solid transparent; touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
         .user-card-compact:hover { background: rgba(255,255,255,0.15); border-color: rgba(255,255,255,0.1); }
         .user-card-avatar { width: 26px; height: 26px; border-radius: 7px; overflow: hidden; background: rgba(255,255,255,0.1); flex-shrink: 0; }
+        .user-card-avatar.gender-f { box-shadow: 0 0 0 2px #f472b6, 0 0 0 3px rgba(244,114,182,0.3); border-radius: 8px; }
+        .user-card-avatar.gender-m { box-shadow: 0 0 0 2px #60a5fa, 0 0 0 3px rgba(96,165,250,0.3); border-radius: 8px; }
+        .user-card-avatar.gender-guest { box-shadow: 0 0 0 2px #94a3b8; border-radius: 8px; }
         .user-card-avatar img { width: 100%; height: 100%; object-fit: cover; }
         .user-card-name { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.9); }
         .user-card-status-text { font-size: 9px; font-weight: 600; color: rgba(255,255,255,0.45); }
@@ -357,7 +365,7 @@
         #offline-banner.visible { display: block; }
 
         /* === STATUS SELECTOR === */
-        .status-menu { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); display: none; position: absolute; right: 0; top: calc(100% + 8px); z-index: 8500; min-width: 140px; }
+        .status-menu { background: white; border: 1px solid #e2e8f0; border-radius: 12px; padding: 6px; box-shadow: 0 8px 24px rgba(0,0,0,0.12); display: none; position: absolute; right: 0; top: calc(100% + 8px); z-index: 9600; min-width: 140px; }
         .status-menu.active { display: block; animation: fadeInMenu 0.15s ease-out; }
         .status-option { padding: 8px 12px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
         .status-option:hover { background: #f8fafc; }
@@ -410,6 +418,7 @@
         </div>
         <div class="auth-card">
             <div class="text-center mb-6">
+                <div id="auth-logo-container"></div>
                 <h1 class="text-2xl font-black text-slate-900 tracking-tight app-title-display">RaskVideochat</h1>
                 <p class="text-[10px] font-bold text-brand uppercase tracking-widest mt-1">Release 2.0.0 TS</p>
             </div>
@@ -436,6 +445,22 @@
                 <div>
                     <label class="block text-[10px] font-black uppercase text-slate-500 mb-1 ml-1">Password</label>
                     <input type="password" id="auth-password" placeholder="Min. 6 caratteri" required autocomplete="current-password" class="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl text-sm font-bold outline-none focus:ring-2 focus:ring-indigo-500 transition">
+                </div>
+                <!-- Selettore sesso - visibile solo in modalità registrazione -->
+                <div id="gender-picker" class="hidden">
+                    <label class="block text-[10px] font-black uppercase text-slate-500 mb-2 ml-1">Sesso</label>
+                    <div class="flex gap-3">
+                        <label class="flex-1 flex items-center gap-3 p-3 rounded-xl border-2 border-blue-200 bg-blue-50 cursor-pointer hover:bg-blue-100 transition has-[:checked]:border-blue-500 has-[:checked]:bg-blue-100">
+                            <input type="radio" name="auth-gender" id="gender-m" value="M" checked class="accent-blue-500">
+                            <span class="text-2xl">👦</span>
+                            <span class="text-sm font-black text-blue-700">Uomo</span>
+                        </label>
+                        <label class="flex-1 flex items-center gap-3 p-3 rounded-xl border-2 border-pink-200 bg-pink-50 cursor-pointer hover:bg-pink-100 transition has-[:checked]:border-pink-500 has-[:checked]:bg-pink-100">
+                            <input type="radio" name="auth-gender" id="gender-f" value="F" class="accent-pink-500">
+                            <span class="text-2xl">👧</span>
+                            <span class="text-sm font-black text-pink-600">Donna</span>
+                        </label>
+                    </div>
                 </div>
                 <button type="submit" id="auth-submit-btn" class="w-full btn-brand text-white py-4 rounded-xl font-black text-sm uppercase tracking-wider shadow-lg flex justify-center items-center transition gap-2">
                     <span id="btn-text">Accedi</span>
@@ -954,7 +979,7 @@ service cloud.firestore {
         </div>
         <div class="admin-content custom-scroll">
             <!-- Dashboard -->
-            <div id="adm-tab-dashboard" class="space-y-6"><h3 class="text-2xl font-bold mb-6">Panoramica Server</h3><div class="grid grid-cols-1 md:grid-cols-3 gap-6"><div class="stat-card"><p class="text-slate-400 text-xs font-bold uppercase">Utenti Connessi</p><p class="text-3xl font-black text-indigo-400 mt-2" id="stat-users">0</p></div><div class="stat-card"><p class="text-slate-400 text-xs font-bold uppercase">Stanze Attive</p><p class="text-3xl font-black text-green-400 mt-2" id="stat-rooms">0</p></div><div class="stat-card"><p class="text-slate-400 text-xs font-bold uppercase">Messaggi (sessione)</p><p class="text-3xl font-black text-pink-400 mt-2" id="stat-msgs">0</p></div></div></div>
+            <div id="adm-tab-dashboard" class="space-y-6"><h3 class="text-2xl font-bold mb-6">Panoramica Server</h3><div class="grid grid-cols-1 sm:grid-cols-3 gap-4"><div class="stat-card"><p class="text-slate-400 text-xs font-bold uppercase">👥 Utenti Online</p><p class="text-3xl font-black text-indigo-400 mt-2" id="stat-users">0</p></div><div class="stat-card"><p class="text-slate-400 text-xs font-bold uppercase">🏠 Stanze Attive</p><p class="text-3xl font-black text-green-400 mt-2" id="stat-rooms">0</p></div><div class="stat-card"><p class="text-slate-400 text-xs font-bold uppercase">💬 Messaggi (sessione)</p><p class="text-3xl font-black text-pink-400 mt-2" id="stat-msgs">0</p></div></div></div>
 
             <!-- Users -->
             <div id="adm-tab-users" class="hidden space-y-6">
@@ -962,12 +987,12 @@ service cloud.firestore {
                 <div class="bg-slate-800 rounded-xl border border-slate-700 overflow-hidden mb-8"><div class="p-4 border-b border-slate-700 flex justify-between items-center"><h4 class="text-green-400 font-bold text-sm">🟢 Utenti Online Ora</h4></div><div class="overflow-x-auto"><table class="admin-table"><thead><tr><th>Avatar</th><th>Nome</th><th>Ruolo</th><th>Stanza</th><th>Azioni</th></tr></thead><tbody id="admin-live-users-list"></tbody></table></div></div>
                 <div class="bg-slate-800 p-5 rounded-xl border border-slate-700 mb-6">
                     <h4 class="text-white font-bold text-sm mb-4">👥 Aggiungi Account (Firebase Auth)</h4>
-                    <div class="grid grid-cols-1 md:grid-cols-5 gap-3 items-end mb-4">
-                        <div><label class="text-[9px] text-slate-500 uppercase block mb-1">Username</label><input type="text" id="adm-reg-name" class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg"></div>
-                        <div><label class="text-[9px] text-slate-500 uppercase block mb-1">Password</label><input type="password" id="adm-reg-pass" class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg" placeholder="Min. 6 caratteri"></div>
-                        <div><label class="text-[9px] text-slate-500 uppercase block mb-1">Sesso</label><select id="adm-reg-gender" class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg"><option value="M">Uomo</option><option value="F">Donna</option></select></div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 items-end mb-4">
+                        <div class="sm:col-span-1"><label class="text-[9px] text-slate-500 uppercase block mb-1">Username</label><input type="text" id="adm-reg-name" class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg"></div>
+                        <div class="sm:col-span-1"><label class="text-[9px] text-slate-500 uppercase block mb-1">Password</label><input type="password" id="adm-reg-pass" class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg" placeholder="Min. 6 caratteri"></div>
+                        <div><label class="text-[9px] text-slate-500 uppercase block mb-1">Sesso</label><select id="adm-reg-gender" class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg"><option value="M">💙 Uomo</option><option value="F">🩷 Donna</option></select></div>
                         <div><label class="text-[9px] text-slate-500 uppercase block mb-1">Ruolo</label><select id="adm-reg-role" class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg"><option value="User">User</option><option value="Staff">Staff</option><option value="Admin">Admin</option></select></div>
-                        <button onclick="window.app?.adminRegisterUser()" class="btn-brand text-white px-4 py-2.5 rounded-lg text-xs font-bold">REGISTRA</button>
+                        <button onclick="window.app?.adminRegisterUser()" class="btn-brand text-white px-4 py-2.5 rounded-lg text-xs font-bold sm:col-span-2 md:col-span-1">REGISTRA</button>
                     </div>
                 </div>
                 <div class="bg-slate-900 rounded-xl border border-slate-700 overflow-hidden"><div class="overflow-x-auto"><table class="admin-table"><thead><tr><th>Utente</th><th>Sesso</th><th>Ruolo</th><th>Azioni</th></tr></thead><tbody id="admin-users-list"></tbody></table></div></div>
@@ -977,11 +1002,11 @@ service cloud.firestore {
             <div id="adm-tab-rooms" class="hidden space-y-6">
                 <h3 class="text-2xl font-bold mb-6">Gestione Stanze</h3>
                 <div class="bg-slate-800 p-5 rounded-xl border border-slate-700">
-                    <div class="grid grid-cols-1 md:grid-cols-6 gap-3 items-end mb-4">
-                        <div class="col-span-2"><label class="text-[9px] text-slate-500 uppercase block mb-1">Nome Stanza</label><input type="text" id="adm-room-name" class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg"></div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-6 gap-3 items-end mb-4">
+                        <div class="sm:col-span-2 md:col-span-2"><label class="text-[9px] text-slate-500 uppercase block mb-1">Nome Stanza</label><input type="text" id="adm-room-name" class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg"></div>
                         <div><label class="text-[9px] text-slate-500 uppercase block mb-1">Badge</label><input type="text" id="adm-room-badge" class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg"></div>
                         <div><label class="text-[9px] text-slate-500 uppercase block mb-1">Accesso</label><select id="adm-room-role" class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg"><option value="Guest">Tutti</option><option value="User">Registrati</option><option value="Staff">Solo Staff</option></select></div>
-                        <div class="flex flex-col items-center justify-center"><label class="text-[9px] text-slate-500 uppercase block mb-2">Con Pw 🔒</label><input type="checkbox" id="adm-room-locked" onchange="document.getElementById('adm-room-pw').disabled = !this.checked" class="w-4 h-4 cursor-pointer"></div>
+                        <div class="flex items-center gap-3 pt-4"><input type="checkbox" id="adm-room-locked" onchange="document.getElementById('adm-room-pw').disabled = !this.checked" class="w-4 h-4 cursor-pointer"><label class="text-[9px] text-slate-500 uppercase">Con Password 🔒</label></div>
                         <div><label class="text-[9px] text-slate-500 uppercase block mb-1">Password</label><input type="password" id="adm-room-pw" disabled class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg disabled:opacity-50"></div>
                     </div>
                     <button onclick="window.app?.adminAddRoom()" class="bg-green-600 hover:bg-green-500 text-white px-6 py-2.5 rounded-lg text-xs font-bold">CREA STANZA</button>
@@ -1003,9 +1028,9 @@ service cloud.firestore {
                     <button onclick="window.app?.adminSaveBadWords()" class="mt-3 bg-yellow-600 hover:bg-yellow-500 text-white px-6 py-2.5 rounded-lg text-xs font-black uppercase shadow-lg transition">💾 Salva Filtro</button>
                 </div>
                 <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 mb-8"><h4 class="text-white font-bold text-sm mb-2">📣 Broadcast Globale (tutte le stanze)</h4><div class="flex flex-col sm:flex-row gap-2"><input type="text" id="adm-broadcast-text" class="flex-1 bg-slate-900 border border-slate-600 text-white text-sm p-3 rounded-lg" placeholder="Messaggio globale..."><button onclick="window.app?.adminSendBroadcast()" class="bg-red-600 hover:bg-red-500 text-white px-6 py-3 rounded-lg font-bold uppercase shadow-lg">Invia</button></div></div>
-                <div class="grid grid-cols-2 gap-6">
-                    <div class="bg-slate-800 p-5 rounded-xl border border-yellow-500/30"><h4 class="text-xs font-black uppercase text-yellow-400 mb-3">Utenti Mutati</h4><div class="flex gap-2 mb-3"><input type="text" id="adm-mute-name" class="flex-1 bg-slate-900 border border-slate-700 text-xs text-white p-2 rounded" placeholder="Username..."><button onclick="window.app?.adminMuteUserBtn()" class="bg-yellow-600 text-white px-3 rounded text-xs">Muta</button></div><table class="admin-table"><tbody id="admin-muted-list"></tbody></table></div>
-                    <div class="bg-slate-800 p-5 rounded-xl border border-red-500/30"><h4 class="text-xs font-black uppercase text-red-400 mb-3">Blacklist (Ban)</h4><div class="flex gap-2 mb-3"><input type="text" id="adm-ban-name" class="flex-1 bg-slate-900 border border-slate-700 text-xs text-white p-2 rounded" placeholder="Username..."><button onclick="window.app?.adminBanUserBtn()" class="bg-red-600 text-white px-3 rounded text-xs">Ban</button></div><table class="admin-table"><tbody id="admin-banned-list"></tbody></table></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-slate-800 p-5 rounded-xl border border-yellow-500/30"><h4 class="text-xs font-black uppercase text-yellow-400 mb-3">🔇 Utenti Mutati</h4><div class="flex gap-2 mb-3"><input type="text" id="adm-mute-name" class="flex-1 bg-slate-900 border border-slate-700 text-xs text-white p-2.5 rounded-lg min-w-0" placeholder="Username..."><button onclick="window.app?.adminMuteUserBtn()" class="bg-yellow-600 hover:bg-yellow-500 text-white px-3 py-2 rounded-lg text-xs font-bold transition">Muta</button></div><div class="overflow-x-auto"><table class="admin-table"><tbody id="admin-muted-list"></tbody></table></div></div>
+                    <div class="bg-slate-800 p-5 rounded-xl border border-red-500/30"><h4 class="text-xs font-black uppercase text-red-400 mb-3">🔨 Blacklist (Ban)</h4><div class="flex gap-2 mb-3"><input type="text" id="adm-ban-name" class="flex-1 bg-slate-900 border border-slate-700 text-xs text-white p-2.5 rounded-lg min-w-0" placeholder="Username..."><button onclick="window.app?.adminBanUserBtn()" class="bg-red-600 hover:bg-red-500 text-white px-3 py-2 rounded-lg text-xs font-bold transition">Ban</button></div><div class="overflow-x-auto"><table class="admin-table"><tbody id="admin-banned-list"></tbody></table></div></div>
                 </div>
             </div>
 
@@ -1015,19 +1040,40 @@ service cloud.firestore {
                 <div class="bg-slate-800 p-6 rounded-xl border border-slate-700 space-y-5">
                     <div><label class="text-[10px] text-slate-400 uppercase font-black block mb-2">Nome App</label><input type="text" id="adm-app-title" class="w-full bg-slate-900 border border-slate-600 text-white text-sm p-3.5 rounded-lg font-bold" placeholder="RaskVideochat"></div>
                     <div>
-                        <label class="text-[10px] text-slate-400 uppercase font-black block mb-2">🖼️ Logo Header (URL immagine)</label>
-                        <input type="text" id="adm-logo-url" class="w-full bg-slate-900 border border-slate-600 text-white text-sm p-3.5 rounded-lg" placeholder="https://... (.png, .svg, .webp)">
-                        <p class="text-[10px] text-slate-500 mt-1">Sostituisce l'icona videocamera nell'header. Lascia vuoto per usare l'icona predefinita.</p>
+                        <label class="text-[10px] text-slate-400 uppercase font-black block mb-2">🖼️ Logo Header (URL o file)</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="adm-logo-url" class="flex-1 bg-slate-900 border border-slate-600 text-white text-sm p-3.5 rounded-lg" placeholder="https://... (.png, .svg, .webp)">
+                            <label class="flex items-center gap-1 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black rounded-lg cursor-pointer transition whitespace-nowrap">
+                                📁 File
+                                <input type="file" accept="image/*" class="hidden" onchange="window.app?.adminLoadImageFile(this,'adm-logo-url',80)">
+                            </label>
+                        </div>
+                        <p class="text-[10px] text-slate-500 mt-1">Sostituisce l'icona videocamera nell'header. Lascia vuoto per l'icona predefinita.</p>
                     </div>
-                    <div><label class="text-[10px] text-slate-400 uppercase font-black block mb-2">Sfondo App (URL Immagine)</label><input type="text" id="adm-app-bg" class="w-full bg-slate-900 border border-slate-600 text-white text-sm p-3.5 rounded-lg" placeholder="https://..."></div>
                     <div>
-                        <label class="text-[10px] text-slate-400 uppercase font-black block mb-2">🌅 Sfondo Schermata Login (URL video/immagine)</label>
-                        <input type="text" id="adm-login-bg" class="w-full bg-slate-900 border border-slate-600 text-white text-sm p-3.5 rounded-lg" placeholder="https://... (MP4 o immagine)">
+                        <label class="text-[10px] text-slate-400 uppercase font-black block mb-2">🌄 Sfondo App (URL o file)</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="adm-app-bg" class="flex-1 bg-slate-900 border border-slate-600 text-white text-sm p-3.5 rounded-lg" placeholder="https://...">
+                            <label class="flex items-center gap-1 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black rounded-lg cursor-pointer transition whitespace-nowrap">
+                                📁 File
+                                <input type="file" accept="image/*" class="hidden" onchange="window.app?.adminLoadImageFile(this,'adm-app-bg',400)">
+                            </label>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="text-[10px] text-slate-400 uppercase font-black block mb-2">🌅 Sfondo Login (URL video/immagine o file)</label>
+                        <div class="flex gap-2">
+                            <input type="text" id="adm-login-bg" class="flex-1 bg-slate-900 border border-slate-600 text-white text-sm p-3.5 rounded-lg" placeholder="https://... (MP4 o immagine)">
+                            <label class="flex items-center gap-1 px-3 py-2 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-black rounded-lg cursor-pointer transition whitespace-nowrap">
+                                📁 File
+                                <input type="file" accept="image/*,video/*" class="hidden" onchange="window.app?.adminLoadImageFile(this,'adm-login-bg',500)">
+                            </label>
+                        </div>
                         <p class="text-[10px] text-slate-500 mt-1">Sostituisce il video animato nella schermata di login.</p>
                     </div>
-                    <div class="grid grid-cols-2 gap-6 border-t border-slate-700 pt-5">
-                        <div><label class="text-[10px] text-slate-400 uppercase font-black block mb-2">Colore Brand Primario</label><div class="flex items-center gap-3"><input type="color" id="adm-color-1" class="w-12 h-12 bg-slate-900 border border-slate-600 rounded-lg cursor-pointer p-1"><span class="text-xs text-slate-400">Top/Sinistra</span></div></div>
-                        <div><label class="text-[10px] text-slate-400 uppercase font-black block mb-2">Colore Brand Secondario</label><div class="flex items-center gap-3"><input type="color" id="adm-color-2" class="w-12 h-12 bg-slate-900 border border-slate-600 rounded-lg cursor-pointer p-1"><span class="text-xs text-slate-400">Bottom/Destra</span></div></div>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 border-t border-slate-700 pt-5">
+                        <div><label class="text-[10px] text-slate-400 uppercase font-black block mb-2">🎨 Colore Brand Primario</label><div class="flex items-center gap-3"><input type="color" id="adm-color-1" class="w-12 h-12 bg-slate-900 border border-slate-600 rounded-lg cursor-pointer p-1"><span class="text-xs text-slate-400">Header / Top</span></div></div>
+                        <div><label class="text-[10px] text-slate-400 uppercase font-black block mb-2">🎨 Colore Brand Secondario</label><div class="flex items-center gap-3"><input type="color" id="adm-color-2" class="w-12 h-12 bg-slate-900 border border-slate-600 rounded-lg cursor-pointer p-1"><span class="text-xs text-slate-400">Accento / Bottom</span></div></div>
                     </div>
                     <button onclick="window.app?.adminSaveAppearance()" class="w-full btn-brand text-white py-4 rounded-xl font-black uppercase tracking-widest mt-4 shadow-lg text-sm">Salva e Applica</button>
                 </div>
@@ -1045,7 +1091,7 @@ service cloud.firestore {
             <div id="adm-tab-radio" class="hidden space-y-6">
                 <h3 class="text-2xl font-bold mb-6">Configurazione Radio</h3>
                 <div class="bg-slate-800 p-5 rounded-xl border border-slate-700">
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-3 items-end mb-4">
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-3 items-end mb-4">
                         <div><label class="text-[9px] text-slate-500 uppercase block mb-1">Nome</label><input type="text" id="adm-radio-name" class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg"></div>
                         <div><label class="text-[9px] text-slate-500 uppercase block mb-1">URL Stream</label><input type="text" id="adm-radio-url" class="w-full bg-slate-900 border border-slate-600 text-white text-xs p-2.5 rounded-lg" placeholder="https://..."></div>
                         <button onclick="window.app?.adminAddStation()" class="bg-green-600 hover:bg-green-500 text-white px-4 py-2.5 rounded-lg text-xs font-bold">AGGIUNGI</button>
@@ -1375,7 +1421,9 @@ service cloud.firestore {
                     let pushed = 0;
                     viewers.forEach(viewer => {
                         const pid = viewer.peerId || viewer.uid;
+                        // Dedup per peerId e uid (potrebbero differire)
                         if (this._state.activeCamConnections?.[pid]) return;
+                        if (viewer.peerId && this._state.activeCamConnections?.[viewer.uid]) return;
                         try {
                             const call = peer.call(pid, localStream);
                             if (call) {
@@ -1400,7 +1448,17 @@ service cloud.firestore {
                 // ── handleIncomingCall – risponde allo stream stage ───────────
                 handleIncomingCall(call, callerUid) {
                     if (this._state.currentRoom !== 'games') return false;
-                    if (callerUid !== this._state.gameHostUid) return false;
+                    // FIX-STAGE: accetta anche se gameHostUid non ancora sincronizzato
+                    // (race condition Firestore). Condizione: caller è Staff/Admin e noi non lo siamo.
+                    const callerUser = this._state.users.find(u => u.uid === callerUid);
+                    const callerIsHost = callerUid === this._state.gameHostUid;
+                    const callerCanBeHost = callerUser && ['Admin','Staff'].includes(callerUser.role);
+                    const weAreNotHost = callerUid !== this._me.uid;
+                    if (!callerIsHost && !(callerCanBeHost && weAreNotHost && !this.isStaffOrAdmin())) return false;
+                    // Se callerCanBeHost e gameHostUid non ancora impostato, aggiornalo ora
+                    if (!callerIsHost && callerCanBeHost) {
+                        this._state.gameHostUid = callerUid;
+                    }
                     try {
                         call.answer(null); // spettatore: nessuno stream uscente
                         call.on('stream', remoteStream => {
@@ -1983,7 +2041,9 @@ service cloud.firestore {
                         tr.className = ic;
                         btnText.innerText = 'Accedi';
                         document.getElementById('auth-username').placeholder = 'Il tuo username...';
+                        document.getElementById('gender-picker')?.classList.add('hidden');
                     } else {
+                        document.getElementById('gender-picker')?.classList.remove('hidden');
                         tr.className = ac;
                         tl.className = ic;
                         btnText.innerText = 'Crea Account';
@@ -2113,12 +2173,13 @@ service cloud.firestore {
                             
                             const uid = cred.user.uid;
                             const avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(rawU)}`;
+                            const selectedGender = document.querySelector('input[name="auth-gender"]:checked')?.value || 'M';
 
                             try {
                                 await _fbSetDoc(_fbDoc(this.getCol('user_profiles'), uid), {
                                     name: rawU,
                                     nameLower: rawU.toLowerCase(),
-                                    gender: 'M',
+                                    gender: selectedGender,
                                     role: 'User',
                                     avatarUrl,
                                     bio: '',
@@ -2135,7 +2196,7 @@ service cloud.firestore {
                             }
                             
                             this.showToast('✅ Account creato! Benvenuto!', 'success');
-                            await this.finalizeLogin(uid, rawU, 'User', 'M', avatarUrl, '');
+                            await this.finalizeLogin(uid, rawU, 'User', selectedGender, avatarUrl, '');
                         } else {
                             // Login
                             let cred;
@@ -2376,8 +2437,6 @@ service cloud.firestore {
                     document.getElementById('my-avatar-mini').src = this.state.me.avatarUrl;
                     const mobAv = document.getElementById('mob-avatar-mini');
                     if (mobAv) mobAv.src = this.state.me.avatarUrl;
-                    const mobAvatar = document.getElementById('mob-avatar-mini');
-                    if (mobAvatar) mobAvatar.src = this.state.me.avatarUrl;
 
                     // Write online presence
                     try {
@@ -2491,7 +2550,8 @@ service cloud.firestore {
                         name: this.state.me.name,
                         nameLower: this.state.me.name.toLowerCase(),
                         avatarUrl: this.state.me.avatarUrl,
-                        bio: b
+                        bio: b,
+                        gender: this.state.me.gender || 'M'
                     };
                     
                     await _fbUpdateDoc(_fbDoc(this.getCol('online_users'), this.state.me.uid), nameUpdate).catch(console.error);
@@ -2731,6 +2791,46 @@ service cloud.firestore {
                     this.showToast('✅ Codice admin aggiornato', 'success');
                 }
 
+                adminLoadImageFile(input, targetFieldId, maxKB) {
+                    const file = input.files[0];
+                    if (!file) return;
+                    const field = document.getElementById(targetFieldId);
+                    // Per video: usa object URL (sessione corrente)
+                    if (file.type.startsWith('video/')) {
+                        const url = URL.createObjectURL(file);
+                        if (field) field.value = url;
+                        this.showToast('⚠️ URL video valido solo per questa sessione. Usa un URL permanente per persistere.', 'warning', '', 4000);
+                        return;
+                    }
+                    // Per immagini: comprimi con canvas e converti in base64
+                    const reader = new FileReader();
+                    reader.onload = (e) => {
+                        const img = new Image();
+                        img.onload = () => {
+                            // Ridimensiona se necessario
+                            const maxPx = targetFieldId === 'adm-logo-url' ? 256 : 1280;
+                            let w = img.width, ww = img.height;
+                            if (w > maxPx) { ww = Math.round(ww * maxPx / w); w = maxPx; }
+                            const canvas = document.createElement('canvas');
+                            canvas.width = w; canvas.height = ww;
+                            const ctx = canvas.getContext('2d');
+                            ctx.drawImage(img, 0, 0, w, ww);
+                            // Comprimi riducendo qualità fino al target KB
+                            let quality = 0.9;
+                            let b64 = canvas.toDataURL('image/jpeg', quality);
+                            while (b64.length > maxKB * 1024 * 1.37 && quality > 0.3) {
+                                quality -= 0.1;
+                                b64 = canvas.toDataURL('image/jpeg', quality);
+                            }
+                            if (field) field.value = b64;
+                            const sizeKB = Math.round(b64.length * 0.75 / 1024);
+                            this.showToast(`📁 Immagine caricata (${sizeKB}KB). Clicca "Salva e Applica".`, 'success');
+                        };
+                        img.src = e.target.result;
+                    };
+                    reader.readAsDataURL(file);
+                }
+
                 async adminSaveAppearance() {
                     if (!['Admin', 'Staff'].includes(this.state.me.role)) return;
                     const title   = document.getElementById('adm-app-title').value.trim() || 'RaskVideochat';
@@ -2772,6 +2872,15 @@ service cloud.firestore {
                             logoContainer.innerHTML = '<svg width="20" height="20" viewBox="0 0 24 24" fill="white"><path d="M15.9 14.3H15L4.93 14.3C3.87 14.3 3 13.43 3 12.37V4.93C3 3.87 3.87 3 4.93 3H15.06C16.12 3 17 3.87 17 4.93V7.9L21 4V13.3L17 9.4V12.37C17 13.43 16.13 14.3 15.9 14.3Z"/></svg>';
                         }
                     }
+                    // Aggiorna anche logo nella auth card (login screen)
+                    const authLogo = document.getElementById('auth-logo-container');
+                    if (authLogo) {
+                        if (c.logoUrl) {
+                            authLogo.innerHTML = `<img src="${c.logoUrl}" class="h-12 max-w-[160px] object-contain mx-auto mb-2">`;
+                        } else {
+                            authLogo.innerHTML = '';
+                        }
+                    }
                     // Sfondo schermata di login
                     const authBgContainer = document.getElementById('auth-bg-container');
                     if (authBgContainer && c.loginBgUrl) {
@@ -2808,9 +2917,10 @@ service cloud.firestore {
                 adminRenderLiveUsers() {
                     const tb = document.getElementById('admin-live-users-list');
                     if (!tb) return;
+                    const gIcon = g => g === 'F' ? '<span title="Donna" style="font-size:13px">🩷</span>' : '<span title="Uomo" style="font-size:13px">💙</span>';
                     tb.innerHTML = this.state.users.map(u => `<tr>
                         <td><img src="${u.avatarUrl || ''}" class="w-6 h-6 rounded-md object-cover" onerror="this.style.display='none'"></td>
-                        <td class="font-bold" style="color:${u.color}">${this.sanitize(u.name)}</td>
+                        <td class="font-bold" style="color:${u.color}">${this.sanitize(u.name)} ${gIcon(u.gender)}</td>
                         <td>${u.role}</td>
                         <td>${this.sanitize(u.currentRoom || 'lobby')}</td>
                         <td><div class="flex gap-1">
@@ -4143,8 +4253,19 @@ service cloud.firestore {
                         // Se siamo nella stanza games come spettatore, rispondi sempre senza stream
                         const isViewerInGames = this.state.currentRoom === 'games' &&
                                                 !['Admin','Staff'].includes(this.state.me.role);
-                        const isStage = this.state.currentRoom === 'games' &&
-                                        callerUser?.uid === this.state.gameHostUid;
+                        // FIX-STAGE: isStage anche se gameHostUid non ancora sincronizzato
+                        // — accetta se caller è Staff/Admin e siamo in games come non-staff
+                        const callerIsKnownHost = this.state.currentRoom === 'games' &&
+                                                  callerUser?.uid === this.state.gameHostUid;
+                        const callerCouldBeHost  = this.state.currentRoom === 'games' &&
+                                                  ['Admin','Staff'].includes(callerUser?.role) &&
+                                                  !['Admin','Staff'].includes(this.state.me.role);
+                        const isStage = callerIsKnownHost || callerCouldBeHost;
+                        // Se gameHostUid non ancora impostato, aggiorniamolo ora
+                        if (callerCouldBeHost && !callerIsKnownHost && callerUser) {
+                            this.state.gameHostUid = callerUser.uid;
+                            if (this.eventsRoomManager) this.eventsRoomManager.core.state.gameHostUid = callerUser.uid;
+                        }
                         call.answer((isStage || isViewerInGames) ? null : (this.state.localStream || null));
                         if (!isStage && !isViewerInGames) this.playBeep();
 
@@ -4155,6 +4276,8 @@ service cloud.firestore {
                                 if (sp) { sp.srcObject = remoteStream; sp.classList.remove('hidden'); }
                                 document.getElementById('game-placeholder')?.classList.add('hidden');
                                 document.getElementById('stage-vol-ctrl-container')?.classList.remove('hidden');
+                                // assicura che l'overlay stage venga aggiornato
+                                if (this.eventsRoomManager) this.eventsRoomManager._updateStageOverlay?.();
                             } else {
                                 this.openCamWindow(call.peer, label, remoteStream);
                             }
@@ -4442,17 +4565,35 @@ service cloud.firestore {
                         return '<div class="status-dot status-online"></div>';
                     };
                     
-                    c.innerHTML = this.state.users.map(u => {
+                    // SORT: Admin → Staff → Donna → Uomo → Guest
+                    const roleOrder = { Admin: 0, Staff: 1, User: 2, Guest: 4 };
+                    const sorted = [...this.state.users].sort((a, b) => {
+                        const ra = roleOrder[a.role] ?? 3;
+                        const rb = roleOrder[b.role] ?? 3;
+                        if (ra !== rb) return ra - rb;
+                        // Stessa fascia di ruolo: donne prima degli uomini
+                        if (ra === 2) {
+                            const ga = a.gender === 'F' ? 0 : 1;
+                            const gb = b.gender === 'F' ? 0 : 1;
+                            if (ga !== gb) return ga - gb;
+                        }
+                        return (a.name || '').localeCompare(b.name || '');
+                    });
+
+                    c.innerHTML = sorted.map(u => {
                         const isMe = u.uid === this.state.me.uid;
                         const meBadge = isMe ? '<span class="text-[8px] bg-white/30 text-white font-black px-1 py-0.5 rounded ml-1">TU</span>' : '';
                         const showCam = u.camActive && !isMe && u.currentRoom === this.state.currentRoom;
                         const bioTip = u.bio ? `title="${this.sanitize(u.bio)}"` : '';
+                        // Bordo avatar gender
+                        const gClass = u.role === 'Guest' ? 'gender-guest' : (u.gender === 'F' ? 'gender-f' : 'gender-m');
+                        const roleLabel = u.role === 'Admin' ? '👑 Admin' : u.role === 'Staff' ? '🛡️ Staff' : u.role === 'Guest' ? '👤 Guest' : (u.gender === 'F' ? '🩷 Donna' : '💙 Uomo');
                         return `<div class="user-card-compact" ${bioTip} onclick="${isMe ? '' : `app.openUserMenu(event,'${u.uid}')`}">
                             ${statusDot(u.status || 'online')}
-                            <div class="user-card-avatar"><img src="${u.avatarUrl || ''}" onerror="this.style.opacity='0'"></div>
+                            <div class="user-card-avatar ${gClass}"><img src="${u.avatarUrl || ''}" onerror="this.style.opacity='0'"></div>
                             <div class="flex-1 min-w-0">
                                 <p class="user-card-name truncate" style="color:${u.color||'#fff'}">${this.sanitize(u.name)}${meBadge}</p>
-                                <p class="user-card-status-text">${u.role === 'Admin' ? '👑 Admin' : u.role === 'Staff' ? '🛡️ Staff' : u.role === 'Guest' ? '👤 Guest' : '🟢 User'}</p>
+                                <p class="user-card-status-text">${roleLabel}</p>
                             </div>
                             ${showCam ? `<button onclick="event.stopPropagation();app.requestCam('${u.uid}')" class="px-1.5 py-0.5 bg-green-500/20 text-green-400 border border-green-500/30 text-[9px] rounded font-bold hover:bg-green-500/40">CAM</button>` : ''}
                         </div>`;
