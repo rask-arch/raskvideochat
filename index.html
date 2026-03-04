@@ -111,8 +111,15 @@
         @keyframes cardEntrance { 0% { opacity: 0; transform: scale(0.85) translateY(50px); filter: blur(12px); } 100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); } }
 
         /* === VIDEO WINDOWS === */
-        .video-window { position: fixed; background: #000; border: 3px solid white; border-radius: 16px; overflow: hidden; display: none; box-shadow: 0 15px 40px rgba(0,0,0,0.4); z-index: 7500; min-width: 120px; min-height: 120px; touch-action: none; }
-        .video-window.active { display: block; } .mirror { transform: scaleX(-1); }
+        .video-window { position: fixed; background: #000; border: 2px solid rgba(255,255,255,0.3); border-radius: 14px; overflow: hidden; display: none; box-shadow: 0 8px 32px rgba(0,0,0,0.6); z-index: 7500; min-width: 140px; min-height: 110px; touch-action: none; }
+        .video-window.active { display: flex; flex-direction: column; }
+        .video-window .drag-handle { height: 28px; background: linear-gradient(135deg,rgba(0,0,0,0.7),rgba(0,0,0,0.5)); display: flex; align-items: center; justify-content: space-between; padding: 0 8px; cursor: grab; flex-shrink: 0; }
+        .video-window .drag-handle:active { cursor: grabbing; }
+        .cam-win-label { color: white; font-size: 10px; font-weight: 900; text-transform: uppercase; letter-spacing: .05em; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: calc(100% - 28px); }
+        .cam-win-close { background: rgba(239,68,68,0.7); color: white; border: none; border-radius: 50%; width: 18px; height: 18px; font-size: 13px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; flex-shrink: 0; transition: background .15s; }
+        .cam-win-close:hover { background: #ef4444; }
+        .cam-win-vol { position: absolute; bottom: 6px; left: 6px; display: flex; align-items: center; gap: 4px; background: rgba(0,0,0,0.5); border-radius: 8px; padding: 3px 8px; }
+        .mirror { transform: scaleX(-1); }
         .drag-handle { position: absolute; top: 0; left: 0; right: 0; bottom: 0; z-index: 10; cursor: move; touch-action: none; }
         .resize-handle { position: absolute; bottom: 0; right: 0; width: 22px; height: 22px; cursor: se-resize; z-index: 60; background: linear-gradient(135deg, transparent 50%, var(--brand-col-2) 50%); border-bottom-right-radius: 13px; }
         #resize-pvt { background: linear-gradient(135deg, transparent 50%, #db2777 50%); border-bottom-right-radius: 16px; }
@@ -325,6 +332,11 @@
         /* ── Stage Live badge pulse ── */
         @keyframes livePulse { 0%,100%{opacity:1} 50%{opacity:.5} }
         .live-dot { animation: livePulse 1.2s ease-in-out infinite; }
+        /* ── Voice messages ── */
+        .voice-msg-wrap { display: flex; flex-direction: column; gap: 4px; background: #f0f4ff; border: 1px solid #c7d7f8; border-radius: 12px; padding: 8px 10px; max-width: 280px; margin-top: 4px; }
+        .voice-msg-label { font-size: 10px; font-weight: 800; color: #4f46e5; text-transform: uppercase; letter-spacing: .05em; }
+        .voice-msg-audio { width: 100%; height: 36px; border-radius: 20px; outline: none; }
+        .voice-msg-audio::-webkit-media-controls-panel { background: linear-gradient(135deg,#e0e7ff,#c7d7f8); border-radius: 20px; }
         /* ── Stage viewer overlay ── */
         #stage-viewer-overlay {
             position:absolute; inset:0; display:flex; flex-direction:column;
@@ -3203,10 +3215,19 @@ service cloud.firestore {
                     // ─ Online users ───────────────────────────────────────────
                     _fbSnap(this.getCol('online_users'), snap => {
                         const now = Date.now();
+                        const prevUids = new Set(this.state.users.map(u=>u.uid));
                         this.state.users = [];
                         snap.forEach(d => {
                             const u = { uid: d.id, ...d.data() };
                             if ((now - (u.lastActive || u.timestamp || 0)) <= 150000) this.state.users.push(u);
+                        });
+                        // CAM-08: quando un utente se ne va, chiudi la sua finestra cam e resetta lo stato
+                        const currUids = new Set(this.state.users.map(u=>u.uid));
+                        prevUids.forEach(uid => {
+                            if (!currUids.has(uid)) {
+                                delete this.state.camRequestStates[uid];
+                                this.closeCamWindow(uid);
+                            }
                         });
                         this.state.users.sort((a, b) => {
                             if (a.uid === this.state.me.uid) return -1;
@@ -3978,6 +3999,7 @@ service cloud.firestore {
 
                 _renderMsgText(m) {
                     const txt = m.text;
+                    // Immagini: placeholder se autoShowImages disabilitato
                     if (typeof txt === 'string' && txt.startsWith('<img ') && !this.state.autoShowImages) {
                         const srcMatch = txt.match(/src=["']([^"']+)["']/);
                         const src = srcMatch ? srcMatch[1].replace(/"/g, '&quot;') : '';
@@ -3985,6 +4007,13 @@ service cloud.firestore {
                             'onclick="var img=document.createElement(\'img\');img.src=this.dataset.s;' +
                             'img.className=\'chat-image\';img.onclick=function(){window.open(img.src)};' +
                             'this.replaceWith(img)">🖼️ Immagine — tocca per visualizzare</button>';
+                    }
+                    // Voice messages: contengono un tag audio con data URL base64 — ok
+                    // Audio/voice: passthrough (già HTML trustato via isSystemHtml)
+                    if (typeof txt === 'string' && txt.includes('voice-msg-wrap')) return txt;
+                    // Audio legacy (blob: URL da versioni precedenti) — mostra avviso
+                    if (typeof txt === 'string' && txt.includes('<audio') && txt.includes('blob:')) {
+                        return '🎤 <em style="color:#94a3b8;font-size:11px">Messaggio vocale non disponibile (inviato prima della v9)</em>';
                     }
                     return txt;
                 }
@@ -4090,8 +4119,16 @@ service cloud.firestore {
                         document.getElementById('header-btn-cam').classList.remove('cam-on');
                         this.state.me.camActive = false;
                         if (_fbUpdateDoc) _fbUpdateDoc(_fbDoc(this.getCol('online_users'), this.state.me.uid), { camActive: false }).catch(() => null);
-                        Object.entries(this.state.activeCamConnections).forEach(([, c]) => { try { c.close(); } catch(e){} });
-                        this.state.activeCamConnections = {}; this.state.camRequestStates = {};
+                        // CAM-06: chiudi sia connessioni che finestre DOM del viewer
+                        Object.entries(this.state.activeCamConnections).forEach(([pid, c]) => {
+                            try { c.close(); } catch(e){}
+                            // Pulisci la finestra se aperta (quando siamo noi i viewer)
+                            const winId = `cam-win-${pid.replace(/[^a-z0-9]/gi,'_')}`;
+                            const w = document.getElementById(winId);
+                            if (w) { const v=w.querySelector('video');if(v){v.srcObject=null;}w.remove(); }
+                        });
+                        this.state.activeCamConnections = {};
+                        this.state.camRequestStates = {};
                         _fbGetDocs(this.getCol('cam_viewers')).then(snap => {
                             snap.forEach(d => { if (d.data().hostUid === this.state.me.uid) _fbDeleteDoc(_fbDoc(this.getCol('cam_viewers'), d.id)).catch(() => null); });
                         });
@@ -4273,13 +4310,24 @@ service cloud.firestore {
                             const label = callerUser?.name || call.peer;
                             if (isStage) {
                                 const sp = document.getElementById('stage-player');
-                                if (sp) { sp.srcObject = remoteStream; sp.classList.remove('hidden'); }
+                                if (sp) {
+                                    sp.srcObject = remoteStream;
+                                    sp.classList.remove('hidden');
+                                    sp.play().catch(() => { sp.muted=true; sp.play().catch(()=>{}); });
+                                }
                                 document.getElementById('game-placeholder')?.classList.add('hidden');
                                 document.getElementById('stage-vol-ctrl-container')?.classList.remove('hidden');
-                                // assicura che l'overlay stage venga aggiornato
                                 if (this.eventsRoomManager) this.eventsRoomManager._updateStageOverlay?.();
                             } else {
                                 this.openCamWindow(call.peer, label, remoteStream);
+                                // CAM-04: ascolta ended su ogni track — se l'host spegne la cam
+                                // le tracce terminano → chiudi automaticamente la finestra
+                                remoteStream.getTracks().forEach(track => {
+                                    track.onended = () => {
+                                        const allEnded = remoteStream.getTracks().every(t => t.readyState === 'ended');
+                                        if (allEnded) this.closeCamWindow(call.peer);
+                                    };
+                                });
                             }
                         });
                         call.on('close',  () => {
@@ -4298,28 +4346,53 @@ service cloud.firestore {
 
                 openCamWindow(peerId, label, remoteStream) {
                     const winId = `cam-win-${peerId.replace(/[^a-z0-9]/gi,'_')}`;
-                    let win = document.getElementById(winId);
-                    if (!win) {
-                        win = document.createElement('div');
-                        win.id = winId;
-                        win.className = 'video-window';
-                        const offset = Object.keys(this.state.activeCamConnections).length;
-                        win.style.cssText = `width:180px;height:180px;top:${80+offset*20}px;left:20px;`;
-                        win.innerHTML = `
-                            <div class="drag-handle" id="drag-${winId}"></div>
-                            <video class="w-full h-full object-cover pointer-events-none" autoplay playsinline></video>
-                            <div class="absolute top-2 left-2 bg-black/60 px-1.5 py-0.5 rounded text-[7px] font-black text-white uppercase z-20 pointer-events-none">${this.sanitize(label)}</div>
-                            <button onclick="app.closeCamWindow('${peerId}')" class="absolute top-2 right-2 w-5 h-5 bg-black/50 text-white rounded-full flex items-center justify-center text-[10px] z-50 hover:bg-red-600 cursor-pointer">×</button>
-                            <div class="remote-vol-controls" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">
-                                <span class="text-[8px] text-white font-bold uppercase">Vol</span>
-                                <input type="range" class="vol-slider" min="0" max="1" step="0.05" value="1" oninput="this.closest('.video-window').querySelector('video').volume=this.value">
-                            </div>
-                            <div class="resize-handle" id="resize-${winId}"></div>`;
-                        document.body.appendChild(win);
-                        this.makeDraggable(win, win.querySelector('.drag-handle'));
-                        this.makeResizable(win, win.querySelector('.resize-handle'));
+                    // CAM-01: rimuovi sempre il vecchio window per garantire video fresco
+                    const oldWin = document.getElementById(winId);
+                    if (oldWin) {
+                        const oldVid = oldWin.querySelector('video');
+                        if (oldVid) { oldVid.srcObject = null; }
+                        oldWin._dragCleanup?.(); oldWin._resizeCleanup?.();
+                        oldWin.remove();
                     }
-                    win.querySelector('video').srcObject = remoteStream;
+
+                    const offset = Object.keys(this.state.activeCamConnections).length;
+                    const win = document.createElement('div');
+                    win.id = winId;
+                    win.className = 'video-window';
+                    win.style.cssText = `width:200px;height:160px;top:${80+offset*24}px;left:${20+offset*16}px;`;
+                    win.innerHTML = `
+                        <div class="drag-handle" id="drag-${winId}">
+                            <span class="cam-win-label">${this.sanitize(label)}</span>
+                            <button onclick="event.stopPropagation();app.closeCamWindow('${peerId}')" class="cam-win-close">×</button>
+                        </div>
+                        <video id="vid-${winId}" class="w-full object-cover pointer-events-none" style="height:calc(100% - 28px)" autoplay playsinline muted></video>
+                        <div class="cam-win-vol" onmousedown="event.stopPropagation()" ontouchstart="event.stopPropagation()">
+                            <span style="font-size:9px;color:rgba(255,255,255,0.7);font-weight:700">VOL</span>
+                            <input type="range" style="width:60px;height:3px;cursor:pointer" min="0" max="1" step="0.05" value="1"
+                                oninput="document.getElementById('vid-${winId}').volume=+this.value;document.getElementById('vid-${winId}').muted=+this.value===0">
+                        </div>
+                        <div class="resize-handle" id="resize-${winId}"></div>`;
+                    document.body.appendChild(win);
+                    this.makeDraggable(win, win.querySelector('.drag-handle'));
+                    this.makeResizable(win, win.querySelector('.resize-handle'));
+
+                    // CAM-01b: imposta srcObject e forza play (necessario su Safari/mobile)
+                    const video = win.querySelector('video');
+                    video.srcObject = remoteStream;
+                    video.muted = false; // inizialmente unmuted
+                    const playPromise = video.play();
+                    if (playPromise !== undefined) {
+                        playPromise.catch(() => {
+                            // Autoplay bloccato: mostra bottone "tocca per attivare"
+                            video.muted = true;
+                            const unmute = document.createElement('button');
+                            unmute.textContent = '▶ Tocca per attivare';
+                            unmute.style.cssText = 'position:absolute;inset:30px 10px auto;background:rgba(0,0,0,0.7);color:white;border:none;border-radius:8px;padding:6px 10px;font-size:11px;font-weight:bold;cursor:pointer;z-index:60;width:calc(100% - 20px)';
+                            unmute.onclick = () => { video.muted=false; video.play().catch(()=>{}); unmute.remove(); };
+                            win.appendChild(unmute);
+                        });
+                    }
+
                     win.classList.add('active');
                     this.bringToFront(win);
                 }
@@ -4329,12 +4402,19 @@ service cloud.firestore {
                     const win = document.getElementById(winId);
                     if (win) {
                         const video = win.querySelector('video');
-                        if (video) { video.srcObject = null; } // NON stoppare track remoti (non nostri)
-                        win.classList.remove('active');
-                        win.style.display = ''; // reset display coerente
+                        if (video) { try { video.pause(); } catch(e){} video.srcObject = null; }
+                        win._dragCleanup?.(); win._resizeCleanup?.();
+                        win.remove(); // rimuove completamente dal DOM
                     }
                     const call = this.state.activeCamConnections[peerId];
                     if (call) { try { call.close(); } catch(e){} delete this.state.activeCamConnections[peerId]; }
+
+                    // CAM-02: resetta camRequestStates così l'utente può richiedere di nuovo
+                    // peerId può essere uid o peerId — proviamo entrambi
+                    delete this.state.camRequestStates[peerId];
+                    // Cerca anche per uid corrispondente al peerId
+                    const u = this.state.users.find(u => u.peerId === peerId || u.uid === peerId);
+                    if (u) delete this.state.camRequestStates[u.uid];
                 }
 
                 closeRemoteStream() {
@@ -4351,9 +4431,19 @@ service cloud.firestore {
 
                 async requestCam(targetUid) {
                     const state = this.state.camRequestStates[targetUid];
-                    if (state === 'pending')   return this.showToast('📡 Richiesta già inviata, attendi...', 'info');
-                    if (state === 'accepted')  return this.showToast('🎥 Cam già visualizzata.', 'info');
-                    if (state === 'rejected')  return this.showToast("❌ Richiesta cam rifiutata dall'utente.", 'error');
+                    if (state === 'pending') return this.showToast('📡 Richiesta già inviata, attendi...', 'info');
+                    if (state === 'rejected') return this.showToast("❌ Richiesta cam rifiutata dall'utente.", 'error');
+                    if (state === 'accepted') {
+                        // CAM-03: controlla se la finestra è ancora aperta nel DOM
+                        const targetUser = this.state.users.find(u => u.uid === targetUid);
+                        const pid = targetUser?.peerId || targetUid;
+                        const winId = `cam-win-${pid.replace(/[^a-z0-9]/gi,'_')}`;
+                        if (document.getElementById(winId)) {
+                            return this.showToast('🎥 Cam già visualizzata.', 'info');
+                        }
+                        // Finestra chiusa: resetta stato e manda nuova richiesta
+                        delete this.state.camRequestStates[targetUid];
+                    }
                     this.state.camRequestStates[targetUid] = 'pending';
                     this.showToast('📡 Richiesta cam inviata...', 'info');
                     await _fbAddDoc(this.getCol('cam_requests'), {
@@ -4374,7 +4464,15 @@ service cloud.firestore {
                             call.on('error', err => console.warn('[answerCamRequest]', err));
                             call.on('close', () => {
                                 delete this.state.activeCamConnections[targetPeerId];
+                                // CAM-05: rimuovi finestra se il viewer era anche visibile all'host
+                                this.closeCamWindow(targetPeerId);
                                 _fbDeleteDoc(_fbDoc(this.getCol('cam_viewers'), `${fromUid}_${this.state.me.uid}`)).catch(() => null);
+                            });
+                            // CAM-05b: se il viewer ha anche lui la cam accesa, aprila
+                            call.on('stream', remoteStream => {
+                                if (remoteStream && remoteStream.getVideoTracks().length > 0) {
+                                    this.openCamWindow(targetPeerId, callerUser?.name || '?', remoteStream);
+                                }
                             });
                             this.state.activeCamConnections[targetPeerId] = call;
                         }
@@ -4995,10 +5093,28 @@ service cloud.firestore {
                         this.state.mediaRecorder.onstop = async () => {
                             stream.getTracks().forEach(t => t.stop());
                             if (!this.state.audioChunks.length) return;
-                            
-                            const blob = new Blob(this.state.audioChunks, { type: 'audio/webm' });
-                            const url = URL.createObjectURL(blob);
-                            this.sendChatMessage(`<audio controls src="${url}" class="h-10 mt-2 max-w-[240px] rounded-full"></audio>`, true);
+
+                            // VOICE-01: converti in base64 per renderlo valido a tutti i riceventi
+                            // (blob: URL è locale al tab del mittente e inutilizzabile dagli altri)
+                            const blob = new Blob(this.state.audioChunks, { type: 'audio/webm;codecs=opus' });
+                            const sizeKB = Math.round(blob.size / 1024);
+                            if (sizeKB > 700) {
+                                this.showToast('⚠️ Audio troppo lungo (max ~2 min). Riprova.', 'error');
+                                return;
+                            }
+                            // Mostra spinner di invio
+                            this.showToast('📤 Invio messaggio vocale...', 'info');
+                            const reader = new FileReader();
+                            reader.onloadend = () => {
+                                const base64 = reader.result; // data:audio/webm;base64,...
+                                const durLabel = sizeKB < 50 ? '🎤 Messaggio vocale' : `🎤 Messaggio vocale (${sizeKB}KB)`;
+                                const audioHtml = `<div class="voice-msg-wrap">
+                                    <span class="voice-msg-label">${durLabel}</span>
+                                    <audio controls src="${base64}" class="voice-msg-audio" preload="metadata"></audio>
+                                </div>`;
+                                this.sendChatMessage(audioHtml, true);
+                            };
+                            reader.readAsDataURL(blob);
                         };
                         
                         this.state.mediaRecorder.start();
