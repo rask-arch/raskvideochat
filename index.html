@@ -332,6 +332,19 @@
         /* ── Stage Live badge pulse ── */
         @keyframes livePulse { 0%,100%{opacity:1} 50%{opacity:.5} }
         .live-dot { animation: livePulse 1.2s ease-in-out infinite; }
+        /* ── Speaking indicator (audio level glow) ── */
+        .speaking-glow { animation: speakPulse 0.3s ease-out forwards; }
+        @keyframes speakPulse {
+            0%   { box-shadow: 0 0 0 0 rgba(99,255,99,0); outline: 2px solid rgba(99,255,99,0); }
+            30%  { box-shadow: 0 0 0 4px rgba(72,199,72,0.7); outline: 2px solid #48c748; }
+            100% { box-shadow: 0 0 0 8px rgba(72,199,72,0); outline: 2px solid rgba(72,199,72,0); }
+        }
+        #stage-player.speaking-glow { outline: 3px solid #48c748; box-shadow: 0 0 20px rgba(72,199,72,0.6), inset 0 0 15px rgba(72,199,72,0.1); transition: box-shadow .1s, outline .1s; }
+        #stage-player.speaking-off  { outline: none; box-shadow: none; transition: box-shadow .4s, outline .4s; }
+        #local-video-container.speaking-glow { border-color: #48c748 !important; box-shadow: 0 0 16px rgba(72,199,72,0.7) !important; transition: border-color .1s, box-shadow .1s; }
+        #local-video-container.speaking-off  { transition: border-color .4s, box-shadow .4s; }
+        .video-window.speaking-glow { border-color: rgba(72,199,72,0.9) !important; box-shadow: 0 0 14px rgba(72,199,72,0.6), 0 8px 32px rgba(0,0,0,0.6) !important; transition: border-color .1s, box-shadow .1s; }
+        .video-window.speaking-off  { transition: border-color .3s, box-shadow .3s; }
         /* ── Voice messages ── */
         .voice-msg-wrap { display: flex; flex-direction: column; gap: 4px; background: #f0f4ff; border: 1px solid #c7d7f8; border-radius: 12px; padding: 8px 10px; max-width: 280px; margin-top: 4px; }
         .voice-msg-label { font-size: 10px; font-weight: 800; color: #4f46e5; text-transform: uppercase; letter-spacing: .05em; }
@@ -1227,10 +1240,17 @@ service cloud.firestore {
                     this._state.gameHostUid = hostUid || null;
 
                     if (hostUid && !this.isCurrentHost() && !this.autoViewActive) {
+                        clearTimeout(this._stageReqTimer); // FIX-8: annulla timer precedente
                         this.autoConnectToStage(hostUid);
                     }
-                    if (!hostUid && this.autoViewActive) {
-                        this.disconnectFromStage();
+                    if (!hostUid) {
+                        if (this.autoViewActive) this.disconnectFromStage();
+                        clearTimeout(this._stageReqTimer);
+                        // Rimuovi stage_request se il host se ne va
+                        try {
+                            const myUid = this._state?.me?.uid;
+                            if (myUid) _fbDeleteDoc(_fbDoc(this.core.state.db,'stage_requests',myUid)).catch(()=>null);
+                        } catch(e){}
                     }
                     this._applyRoleUI();
                     this.core.updateStageUI?.(stageData);
@@ -1344,6 +1364,13 @@ service cloud.firestore {
 
                     // ── STEP 6: Persisti su Firestore ─────────────────────────────────────
                     await this.core.updateStage?.({ hostUid: null, hostName: null, bulletin: '' });
+                    // FIX-7: pulisci tutte le stage_requests pendenti
+                    try {
+                        const { getDocs, collection, deleteDoc, doc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
+                        const snap = await getDocs(collection(this.core.state.db, 'stage_requests'));
+                        snap.forEach(d => deleteDoc(d.ref).catch(()=>null));
+                    } catch(e){}
+                    clearTimeout(this._broadcastRetry);
 
                     this.core.showToast('👋 Sei sceso dal palco.', 'info');
                 }
@@ -1374,74 +1401,128 @@ service cloud.firestore {
 
                 // ── autoConnectToStage – spettatore riceve stream dall'host ───
                 autoConnectToStage(hostUid) {
-                    const host = this._state.users.find(u => u.uid === hostUid);
-                    if (!host || !this._state.peer) {
-                        // Ritenta quando PeerJS è pronto
+                    // FIX-1: viewer NON chiama più il host con null (peer.call con null non porta stream).
+                    // Invece scrive su Firestore stage_requests → il host risponde con peer.call(viewerPeerId, localStream).
+                    if (!this._state.peer || !this._state.me?.uid) {
                         setTimeout(() => {
                             if (this._state.peer && !this.autoViewActive && this._state.currentRoom === 'games')
                                 this.autoConnectToStage(hostUid);
                         }, 1500);
                         return;
                     }
-                    if (this._stageCall) {
-                        try { this._stageCall.close(); } catch(e) {} this._stageCall = null;
-                    }
-                    const peerId = host.peerId || hostUid;
+                    if (this.autoViewActive) return; // già connesso
+                    const myUid   = this._state.me.uid;
+                    const myPeerId = this._state.peer.id || myUid;
+                    // Scrivi richiesta su Firestore — il host risponderà con broadcastToSpecific
                     try {
-                        const call = this._state.peer.call(peerId, null);
-                        if (!call) return;
-                        this._stageCall = call;
-                        this._state.activeCamConnections = this._state.activeCamConnections || {};
-                        this._state.activeCamConnections[peerId] = call;
-
-                        call.on('stream', remoteStream => {
-                            const sp = document.getElementById('stage-player');
-                            if (sp) {
-                                sp.srcObject = remoteStream;
-                                sp.classList.remove('hidden');
-                                document.getElementById('game-placeholder')?.classList.add('hidden');
-                                document.getElementById('stage-vol-ctrl-container')?.classList.remove('hidden');
-                            }
-                            this.autoViewActive = true;
-                            this._updateStageOverlay();
-                        });
-                        call.on('close', () => this.disconnectFromStage());
-                        call.on('error', err => { console.warn('[stage call]', err); this.disconnectFromStage(); });
-                    } catch(e) { console.warn('[autoConnectToStage]', e); }
+                        const _fbSetDoc  = window._fbSetDoc  || ((...a)=>import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js').then(m=>m.setDoc(...a)));
+                        const _fbDoc     = window._fbDoc     || ((...a)=>import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js').then(m=>m.doc(...a)));
+                        const ref = _fbDoc(this.core.state.db, 'stage_requests', myUid);
+                        _fbSetDoc(ref, { viewerUid: myUid, viewerPeerId: myPeerId, hostUid, timestamp: Date.now() })
+                            .catch(e => console.warn('[stage_request write]', e));
+                    } catch(e) { console.warn('[autoConnectToStage Firestore]', e); }
+                    // Timeout di sicurezza: se il host non chiama entro 8s, ritenta
+                    clearTimeout(this._stageReqTimer);
+                    this._stageReqTimer = setTimeout(() => {
+                        if (!this.autoViewActive && this._state.currentRoom === 'games')
+                            this.autoConnectToStage(hostUid);
+                    }, 8000);
                 }
 
                 // ── disconnectFromStage ───────────────────────────────────────
                 disconnectFromStage() {
+                    clearTimeout(this._stageReqTimer);
                     if (this._stageCall) {
                         try { this._stageCall.close(); } catch(e) {}
                         this._stageCall = null;
                     }
                     const sp = document.getElementById('stage-player');
-                    if (sp) { sp.srcObject = null; sp.classList.add('hidden'); }
+                    if (sp) {
+                        // FIX-2: ripristina srcObject=null e hidden (erano mancanti)
+                        try { sp.pause(); } catch(e){}
+                        sp.srcObject = null;
+                        sp.classList.add('hidden');
+                        // Cleanup speaking detector
+                        if (sp._speakCtx) { try { sp._speakCtx.close(); } catch(e){} delete sp._speakCtx; }
+                        sp.classList.remove('speaking-glow','speaking-off');
+                    }
+                    document.getElementById('stage-unmute-btn')?.remove();
                     document.getElementById('game-placeholder')?.classList.remove('hidden');
                     document.getElementById('stage-vol-ctrl-container')?.classList.add('hidden');
                     document.getElementById('stage-viewer-overlay')?.classList.add('hidden');
                     this.autoViewActive = false;
+                    // Rimuovi la stage_request da Firestore se presente
+                    try {
+                        const myUid = this._state?.me?.uid;
+                        if (myUid) _fbDeleteDoc(_fbDoc(this.core.state.db,'stage_requests',myUid)).catch(()=>null);
+                    } catch(e){}
+                }
+
+                // ── _applyStageStream — imposta stream su stage-player + play() ─
+                _applyStageStream(remoteStream) {
+                    const sp = document.getElementById('stage-player');
+                    if (!sp) return;
+                    sp.srcObject = remoteStream;
+                    sp.classList.remove('hidden');
+                    document.getElementById('game-placeholder')?.classList.add('hidden');
+                    document.getElementById('stage-vol-ctrl-container')?.classList.remove('hidden');
+                    // STAGE-6: play() esplicito — OBBLIGATORIO su Safari/iOS/mobile
+                    const p = sp.play();
+                    if (p !== undefined) {
+                        p.catch(() => {
+                            // Autoplay bloccato: prova muted poi offri unmute
+                            sp.muted = true;
+                            sp.play().catch(()=>{});
+                            // Crea bottone "Tocca per attivare audio"
+                            const existing = document.getElementById('stage-unmute-btn');
+                            if (!existing) {
+                                const btn = document.createElement('button');
+                                btn.id = 'stage-unmute-btn';
+                                btn.textContent = '🔊 Tocca per attivare audio';
+                                btn.style.cssText = 'position:absolute;bottom:48px;left:50%;transform:translateX(-50%);' +
+                                    'background:rgba(0,0,0,0.75);color:white;border:none;border-radius:20px;' +
+                                    'padding:8px 18px;font-size:12px;font-weight:900;cursor:pointer;z-index:50;' +
+                                    'white-space:nowrap;letter-spacing:.03em';
+                                btn.onclick = () => { sp.muted=false; sp.play().catch(()=>{}); btn.remove(); };
+                                document.getElementById('stage-reaction-area')?.appendChild(btn);
+                            }
+                        });
+                    }
+                    // Attacca speaking indicator allo stream remoto (ID corretto)
+                    window.app?._attachSpeakingDetector(remoteStream, 'stage-player');
                 }
 
                 // ── broadcastToAll – host → tutti gli spettatori ──────────────
                 broadcastToAll() {
                     const { users, currentRoom, me, peer, localStream } = this._state;
-                    if (!peer || !localStream || currentRoom !== 'games') return;
-
+                    if (!localStream || currentRoom !== 'games') return;
+                    // FIX-6: retry se PeerJS non ancora aperto
+                    if (!peer || peer.destroyed || peer.disconnected) {
+                        clearTimeout(this._broadcastRetry);
+                        this._broadcastRetry = setTimeout(()=>this.broadcastToAll(), 2000);
+                        return;
+                    }
                     const viewers = users.filter(u => u.currentRoom === 'games' && u.uid !== me.uid);
                     let pushed = 0;
                     viewers.forEach(viewer => {
                         const pid = viewer.peerId || viewer.uid;
-                        // Dedup per peerId e uid (potrebbero differire)
-                        if (this._state.activeCamConnections?.[pid]) return;
-                        if (viewer.peerId && this._state.activeCamConnections?.[viewer.uid]) return;
+                        // Dedup: salta se connessione già attiva e viva
+                        const existing = this._state.activeCamConnections?.[pid];
+                        if (existing && existing.peerConnection?.connectionState === 'connected') return;
+                        if (viewer.peerId && viewer.peerId !== viewer.uid) {
+                            const ex2 = this._state.activeCamConnections?.[viewer.uid];
+                            if (ex2 && ex2.peerConnection?.connectionState === 'connected') return;
+                        }
+                        // Chiudi eventuale connessione stale prima di riaprire
+                        if (existing) {
+                            try { existing.close(); } catch(e){}
+                            delete this._state.activeCamConnections[pid];
+                        }
                         try {
                             const call = peer.call(pid, localStream);
                             if (call) {
                                 call.on('error', () => delete this._state.activeCamConnections[pid]);
                                 call.on('close', () => delete this._state.activeCamConnections[pid]);
-                                this._state.activeCamConnections = this._state.activeCamConnections || {};
                                 this._state.activeCamConnections[pid] = call;
                                 pushed++;
                             }
@@ -1449,6 +1530,12 @@ service cloud.firestore {
                     });
                     const n = pushed || viewers.length;
                     if (n > 0) this.core.showToast(`📡 Live — ${n} spettator${n===1?'e':'i'}`, 'success');
+                    // Pulisci anche le stage_requests pendenti (il host le ha processate)
+                    try {
+                        viewers.forEach(v => {
+                            _fbDeleteDoc(_fbDoc(this.core.state.db,'stage_requests',v.uid)).catch(()=>null);
+                        });
+                    } catch(e){}
                 }
 
                 // ── canShowMainCamButton – solo Staff/Admin in games ──────────
@@ -1460,27 +1547,27 @@ service cloud.firestore {
                 // ── handleIncomingCall – risponde allo stream stage ───────────
                 handleIncomingCall(call, callerUid) {
                     if (this._state.currentRoom !== 'games') return false;
-                    // FIX-STAGE: accetta anche se gameHostUid non ancora sincronizzato
-                    // (race condition Firestore). Condizione: caller è Staff/Admin e noi non lo siamo.
+                    // STAGE-2: accetta se il caller è Staff/Admin E noi siamo un viewer (non siamo l'host)
+                    // RIMOSSO il filtro !this.isStaffOrAdmin() che bloccava i viewer Staff
                     const callerUser = this._state.users.find(u => u.uid === callerUid);
                     const callerIsHost = callerUid === this._state.gameHostUid;
                     const callerCanBeHost = callerUser && ['Admin','Staff'].includes(callerUser.role);
-                    const weAreNotHost = callerUid !== this._me.uid;
-                    if (!callerIsHost && !(callerCanBeHost && weAreNotHost && !this.isStaffOrAdmin())) return false;
-                    // Se callerCanBeHost e gameHostUid non ancora impostato, aggiornalo ora
+                    const weAreNotHost = this._me.uid !== callerUid && !this.isCurrentHost();
+                    // Accetta: se il caller è l'host noto, OPPURE se può essere l'host e noi non lo siamo
+                    if (!callerIsHost && !(callerCanBeHost && weAreNotHost)) return false;
+                    // Sync gameHostUid se non ancora impostato
                     if (!callerIsHost && callerCanBeHost) {
                         this._state.gameHostUid = callerUid;
                     }
+                    // Se già connesso con uno stageCall valido, chiudilo prima
+                    if (this._stageCall && this._stageCall !== call) {
+                        try { this._stageCall.close(); } catch(e) {}
+                        this._stageCall = null;
+                    }
                     try {
-                        call.answer(null); // spettatore: nessuno stream uscente
+                        call.answer(null); // viewer: nessuno stream uscente
                         call.on('stream', remoteStream => {
-                            const sp = document.getElementById('stage-player');
-                            if (sp) {
-                                sp.srcObject = remoteStream;
-                                sp.classList.remove('hidden');
-                                document.getElementById('game-placeholder')?.classList.add('hidden');
-                                document.getElementById('stage-vol-ctrl-container')?.classList.remove('hidden');
-                            }
+                            this._applyStageStream(remoteStream);
                             this.autoViewActive = true;
                             this._stageCall = call;
                             this._updateStageOverlay();
@@ -3229,6 +3316,27 @@ service cloud.firestore {
                                 this.closeCamWindow(uid);
                             }
                         });
+                        // STAGE-5 (FIX-4): rileva nuovi viewer in games E cambi stanza
+                        if (this.state.me.uid && this.state.gameHostUid === this.state.me.uid &&
+                            this.eventsRoomManager && this.state.localStream) {
+                            // Salva mappa uid→currentRoom precedente per detectare room changes
+                            const prevRooms = this._prevUserRooms || {};
+                            const newInGames = this.state.users.filter(u => {
+                                const wasInGames = prevRooms[u.uid] === 'games';
+                                const isInGames  = u.currentRoom === 'games';
+                                return isInGames && !wasInGames; // entrato in games ora
+                            });
+                            if (newInGames.length > 0) {
+                                clearTimeout(this._rebroadcastTimer);
+                                this._rebroadcastTimer = setTimeout(() => {
+                                    if (this.state.gameHostUid === this.state.me.uid)
+                                        this.eventsRoomManager.broadcastToAll();
+                                }, 1000);
+                            }
+                            // Aggiorna mappa room precedente
+                            this._prevUserRooms = {};
+                            this.state.users.forEach(u => { this._prevUserRooms[u.uid] = u.currentRoom; });
+                        }
                         this.state.users.sort((a, b) => {
                             if (a.uid === this.state.me.uid) return -1;
                             if (b.uid === this.state.me.uid) return 1;
@@ -3485,6 +3593,39 @@ service cloud.firestore {
 
                 startViewersListener() {
                     if (!this.state.db) return;
+                    // ─ Stage requests (viewer → host push model) ──────────────
+                    _fbSnap(this.getCol('stage_requests'), snap => {
+                        snap.docChanges().forEach(ch => {
+                            if (ch.type !== 'added') return;
+                            const req = ch.doc.data();
+                            // Solo il host processa le richieste
+                            if (req.hostUid !== this.state.me.uid) return;
+                            if (Date.now() - (req.timestamp || 0) > 30000) {
+                                _fbDeleteDoc(_fbDoc(this.getCol('stage_requests'), ch.doc.id)).catch(()=>null);
+                                return;
+                            }
+                            // Se siamo host con localStream → chiama il viewer
+                            if (this.state.gameHostUid === this.state.me.uid && this.state.localStream && this.state.peer) {
+                                const viewerPeerId = req.viewerPeerId || req.viewerUid;
+                                // Evita doppio call se già connesso
+                                if (this.state.activeCamConnections?.[viewerPeerId]) {
+                                    _fbDeleteDoc(_fbDoc(this.getCol('stage_requests'), ch.doc.id)).catch(()=>null);
+                                    return;
+                                }
+                                try {
+                                    const call = this.state.peer.call(viewerPeerId, this.state.localStream);
+                                    if (call) {
+                                        call.on('error', () => delete this.state.activeCamConnections[viewerPeerId]);
+                                        call.on('close', () => delete this.state.activeCamConnections[viewerPeerId]);
+                                        this.state.activeCamConnections[viewerPeerId] = call;
+                                        this.eventsRoomManager && this.showToast('📡 Nuovo spettatore collegato', 'success');
+                                    }
+                                } catch(e) { console.warn('[stage_request call]', e); }
+                            }
+                            _fbDeleteDoc(_fbDoc(this.getCol('stage_requests'), ch.doc.id)).catch(()=>null);
+                        });
+                    });
+
                     _fbSnap(this.getCol('cam_viewers'), snap => {
                         const myViewers = [];
                         snap.forEach(d => {
@@ -4157,6 +4298,8 @@ service cloud.firestore {
                             src2.connect(this.state.micGainNode);
                             this.bringToFront(document.getElementById('local-video-container'));
                             this.showToast('🎥 Cam attivata', 'success');
+                            // Avvia speaking indicator locale
+                            setTimeout(() => this._startLocalSpeakingDetector(), 300);
                             if (this.state.currentRoom === 'games' && this.state.gameHostUid === this.state.me.uid && this.eventsRoomManager) {
                                 setTimeout(() => this.eventsRoomManager.broadcastToAll(), 1000);
                             }
@@ -4174,6 +4317,114 @@ service cloud.firestore {
                             bulletin: this.state.lastStageBulletin || ''
                         });
                     }
+                }
+
+                // ── Speaking Indicator Cam Windows ─────────────────────────
+                _attachSpeakingDetectorToWindow(winId, stream) {
+                    try {
+                        if (!stream || !stream.getAudioTracks().length) return;
+                        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                        const source = ctx.createMediaStreamSource(stream);
+                        const analyser = ctx.createAnalyser();
+                        analyser.fftSize = 512; analyser.smoothingTimeConstant = 0.6;
+                        source.connect(analyser);
+                        const buf = new Uint8Array(analyser.frequencyBinCount);
+                        const THRESHOLD = 14;
+                        let speaking = false;
+                        const tick = () => {
+                            const win = document.getElementById(winId);
+                            if (!win || !stream.active) { ctx.close(); return; }
+                            analyser.getByteFrequencyData(buf);
+                            const avg = buf.reduce((a,b)=>a+b,0)/buf.length;
+                            if (avg > THRESHOLD && !speaking) {
+                                speaking = true; win.classList.add('speaking-glow'); win.classList.remove('speaking-off');
+                            } else if (avg <= THRESHOLD && speaking) {
+                                speaking = false; win.classList.remove('speaking-glow'); win.classList.add('speaking-off');
+                            }
+                            setTimeout(tick, 80);
+                        };
+                        tick();
+                        const winEl = document.getElementById(winId);
+                        if (winEl) winEl._speakCtx = ctx;
+                    } catch(e) {}
+                }
+
+                // ── Speaking Indicator ──────────────────────────────────────
+                // Allega un AnalyserNode allo stream dato, applica classe CSS
+                // all'elemento con id=targetId quando il parlante è attivo.
+                _attachSpeakingDetector(stream, targetId) {
+                    try {
+                        if (!stream || !stream.getAudioTracks().length) return;
+                        // Usa un AudioContext dedicato per i remote stream
+                        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+                        const source = ctx.createMediaStreamSource(stream);
+                        const analyser = ctx.createAnalyser();
+                        analyser.fftSize = 512;
+                        analyser.smoothingTimeConstant = 0.6;
+                        source.connect(analyser);
+                        const buf = new Uint8Array(analyser.frequencyBinCount);
+                        let speaking = false;
+                        const THRESHOLD = 14; // 0-255, aggiusta se troppo sensibile
+                        const tick = () => {
+                            if (!document.getElementById(targetId)) { ctx.close(); return; }
+                            analyser.getByteFrequencyData(buf);
+                            const avg = buf.reduce((a,b)=>a+b,0)/buf.length;
+                            const el = document.getElementById(targetId);
+                            if (!el) { ctx.close(); return; }
+                            if (avg > THRESHOLD && !speaking) {
+                                speaking = true;
+                                el.classList.add('speaking-glow');
+                                el.classList.remove('speaking-off');
+                            } else if (avg <= THRESHOLD && speaking) {
+                                speaking = false;
+                                el.classList.remove('speaking-glow');
+                                el.classList.add('speaking-off');
+                            }
+                            // Riprendi il tick — ferma se stream terminato
+                            if (stream.active) setTimeout(tick, 80);
+                            else { ctx.close(); el.classList.remove('speaking-glow','speaking-off'); }
+                        };
+                        tick();
+                        // Salva riferimento per cleanup
+                        const elRef = document.getElementById(targetId);
+                        if (elRef) elRef._speakCtx = ctx;
+                    } catch(e) { /* AudioContext non supportato */ }
+                }
+
+                // Avvia il detector per il LOCAL stream (mic propria)
+                _startLocalSpeakingDetector() {
+                    if (!this.state.localStream) return;
+                    try {
+                        if (!this.state.localAudioCtx || this.state.localAudioCtx.state === 'closed') return;
+                        // Riuso l'AudioContext già esistente
+                        const analyser = this.state.localAudioCtx.createAnalyser();
+                        analyser.fftSize = 512;
+                        analyser.smoothingTimeConstant = 0.6;
+                        const src = this.state.localAudioCtx.createMediaStreamSource(this.state.localStream);
+                        src.connect(analyser);
+                        const buf = new Uint8Array(analyser.frequencyBinCount);
+                        const THRESHOLD = 14;
+                        let speaking = false;
+                        const tick = () => {
+                            if (!this.state.me.camActive || !this.state.localStream?.active) {
+                                const el = document.getElementById('local-video-container');
+                                if (el) el.classList.remove('speaking-glow','speaking-off');
+                                return;
+                            }
+                            analyser.getByteFrequencyData(buf);
+                            const avg = buf.reduce((a,b)=>a+b,0)/buf.length;
+                            const el = document.getElementById('local-video-container');
+                            if (el) {
+                                if (avg > THRESHOLD && !speaking) {
+                                    speaking = true; el.classList.add('speaking-glow'); el.classList.remove('speaking-off');
+                                } else if (avg <= THRESHOLD && speaking) {
+                                    speaking = false; el.classList.remove('speaking-glow'); el.classList.add('speaking-off');
+                                }
+                            }
+                            setTimeout(tick, 80);
+                        };
+                        tick();
+                    } catch(e) {}
                 }
 
                 toggleAudioTrack() {
@@ -4290,15 +4541,16 @@ service cloud.firestore {
                         // Se siamo nella stanza games come spettatore, rispondi sempre senza stream
                         const isViewerInGames = this.state.currentRoom === 'games' &&
                                                 !['Admin','Staff'].includes(this.state.me.role);
-                        // FIX-STAGE: isStage anche se gameHostUid non ancora sincronizzato
-                        // — accetta se caller è Staff/Admin e siamo in games come non-staff
+                        // STAGE-3: isStage se caller è host (noto o per ruolo) e NOI siamo in games
+                        // RIMOSSO !isStaff — ora anche i viewer Staff ricevono correttamente lo stream
                         const callerIsKnownHost = this.state.currentRoom === 'games' &&
                                                   callerUser?.uid === this.state.gameHostUid;
-                        const callerCouldBeHost  = this.state.currentRoom === 'games' &&
+                        // Caller può essere host se è Staff/Admin e noi non siamo l'host corrente
+                        const weAreNotHost = this.state.me.uid !== this.state.gameHostUid;
+                        const callerCouldBeHost = this.state.currentRoom === 'games' &&
                                                   ['Admin','Staff'].includes(callerUser?.role) &&
-                                                  !['Admin','Staff'].includes(this.state.me.role);
+                                                  weAreNotHost;
                         const isStage = callerIsKnownHost || callerCouldBeHost;
-                        // Se gameHostUid non ancora impostato, aggiorniamolo ora
                         if (callerCouldBeHost && !callerIsKnownHost && callerUser) {
                             this.state.gameHostUid = callerUser.uid;
                             if (this.eventsRoomManager) this.eventsRoomManager.core.state.gameHostUid = callerUser.uid;
@@ -4309,15 +4561,27 @@ service cloud.firestore {
                         call.on('stream', remoteStream => {
                             const label = callerUser?.name || call.peer;
                             if (isStage) {
-                                const sp = document.getElementById('stage-player');
-                                if (sp) {
-                                    sp.srcObject = remoteStream;
-                                    sp.classList.remove('hidden');
-                                    sp.play().catch(() => { sp.muted=true; sp.play().catch(()=>{}); });
+                                if (this.eventsRoomManager) {
+                                    this.eventsRoomManager._applyStageStream(remoteStream);
+                                    this.eventsRoomManager.autoViewActive = true;
+                                    this.eventsRoomManager._updateStageOverlay?.();
+                                } else {
+                                    const sp = document.getElementById('stage-player');
+                                    if (sp) {
+                                        sp.srcObject = remoteStream;
+                                        sp.classList.remove('hidden');
+                                        sp.play().catch(() => { sp.muted=true; sp.play().catch(()=>{}); });
+                                    }
+                                    document.getElementById('game-placeholder')?.classList.add('hidden');
+                                    document.getElementById('stage-vol-ctrl-container')?.classList.remove('hidden');
                                 }
-                                document.getElementById('game-placeholder')?.classList.add('hidden');
-                                document.getElementById('stage-vol-ctrl-container')?.classList.remove('hidden');
-                                if (this.eventsRoomManager) this.eventsRoomManager._updateStageOverlay?.();
+                                // Ascolta track ended → host ha spento la cam
+                                remoteStream.getTracks().forEach(track => {
+                                    track.onended = () => {
+                                        if (remoteStream.getTracks().every(t=>t.readyState==='ended'))
+                                            this.eventsRoomManager?.disconnectFromStage();
+                                    };
+                                });
                             } else {
                                 this.openCamWindow(call.peer, label, remoteStream);
                                 // CAM-04: ascolta ended su ogni track — se l'host spegne la cam
@@ -4395,6 +4659,9 @@ service cloud.firestore {
 
                     win.classList.add('active');
                     this.bringToFront(win);
+                    // Attach speaking indicator — usa l'id del video come target tramite custom attr
+                    win._speakStream = remoteStream;
+                    this._attachSpeakingDetectorToWindow(winId, remoteStream);
                 }
 
                 closeCamWindow(peerId) {
@@ -4408,6 +4675,9 @@ service cloud.firestore {
                     }
                     const call = this.state.activeCamConnections[peerId];
                     if (call) { try { call.close(); } catch(e){} delete this.state.activeCamConnections[peerId]; }
+
+                    // Cleanup speaking AudioContext
+                    if (win?._speakCtx) { try { win._speakCtx.close(); } catch(e){} }
 
                     // CAM-02: resetta camRequestStates così l'utente può richiedere di nuovo
                     // peerId può essere uid o peerId — proviamo entrambi
